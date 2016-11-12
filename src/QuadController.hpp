@@ -8,6 +8,7 @@
 
 #include <ros/ros.h>
 #include "FeedForwardPid.hpp"
+#include "iarc7_msgs/Float64Stamped.h"
 
 namespace Iarc7Motion
 {
@@ -27,7 +28,7 @@ namespace Iarc7Motion
 
         void init();
 
-        void setCurrentHeight(const double height);
+        void setCurrentHeight(const iarc7_msgs::Float64Stamped::ConstPtr& message);
         void setCurrentPitchRollYaw(const double pitch, const double roll, const double yaw);
 
     private:
@@ -38,6 +39,7 @@ namespace Iarc7Motion
         ros::NodeHandle& nh_;
 
         ros::Publisher uav_control_;
+        ros::Subscriber altitude_subscriber_;
 
         ros::Timer interpolation_timer_;
 

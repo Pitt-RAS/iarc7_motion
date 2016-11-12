@@ -25,6 +25,7 @@ yaw_pid_(0.0, 0.0, 0.0)
 void QuadController::init()
 {
     uav_control_ = nh_.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
+    altitude_subscriber_ = nh_.subscribe("altitude", 100, &QuadController::setCurrentHeight, this);
 }
 
 void QuadController::update(const ros::TimerEvent& time)
@@ -56,10 +57,10 @@ void QuadController::interpolatePositions(const double time_delta)
     // Interpolate our position based on the previous velocity acceleration and position
 }
 
-void QuadController::setCurrentHeight(const double height)
+void QuadController::setCurrentHeight(const iarc7_msgs::Float64Stamped::ConstPtr& message)
 {
     // Set the current height and all the derivates that go with it
-    interpolated_height_ = height;
+    interpolated_height_ = message->data;
 }
 
 void QuadController::setCurrentPitchRollYaw(const double pitch, const double roll, const double yaw)
