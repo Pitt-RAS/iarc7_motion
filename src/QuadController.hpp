@@ -25,8 +25,10 @@ namespace Iarc7Motion
         QuadController(const QuadController& rhs) = delete;
         QuadController& operator=(const QuadController& rhs) = delete;
 
+        void init();
+
         void setCurrentHeight(const double height);
-        void QuadController::setCurrentPitchRollYaw(const double pitch, const double roll, const double yaw);
+        void setCurrentPitchRollYaw(const double pitch, const double roll, const double yaw);
 
     private:
         void update(const ros::TimerEvent& time);
@@ -34,6 +36,8 @@ namespace Iarc7Motion
         void interpolatePositions(const double time_delta);
 
         ros::NodeHandle& nh_;
+
+        ros::Publisher uav_control_;
 
         ros::Timer interpolation_timer_;
 

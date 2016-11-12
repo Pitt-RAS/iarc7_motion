@@ -21,6 +21,8 @@ int main(int argc, char **argv)
 
     QuadController quadController(nh);
 
+    quadController.init();
+
     // All is good.
     return 0;
 }

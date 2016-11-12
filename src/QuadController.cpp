@@ -8,6 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include "QuadController.hpp"
+#include "iarc7_msgs/OrientationThrottleStamped.h"
 
 using namespace Iarc7Motion;
 
@@ -19,6 +20,11 @@ roll_pid_(0.0, 0.0, 0.0) ,
 yaw_pid_(0.0, 0.0, 0.0)
 {
     interpolation_timer_ = nh_.createTimer(ros::Duration(0.1), &QuadController::update, this);
+}
+
+void QuadController::init()
+{
+    uav_control_ = nh_.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
 }
 
 void QuadController::update(const ros::TimerEvent& time)
@@ -33,7 +39,16 @@ void QuadController::update(const ros::TimerEvent& time)
     double yaw_output = throttle_pid_.update(interpolated_yaw_, time_delta);
     double roll_output = throttle_pid_.update(interpolated_roll_, time_delta);
 
-    // Handle sending the values here or returning them?
+    // Handle sending the values here
+
+    iarc7_msgs::OrientationThrottleStamped uav_command;
+    uav_command.throttle = throttle_output;
+    uav_command.data.pitch = pitch_output;
+    uav_command.data.roll = roll_output;
+    uav_command.data.yaw = yaw_output;
+
+    // Publish the desired angles and throttle
+    uav_control_.publish(uav_command);
 }
 
 void QuadController::interpolatePositions(const double time_delta)
