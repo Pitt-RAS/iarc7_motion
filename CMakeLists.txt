@@ -7,6 +7,8 @@ project(iarc7_motion)
 find_package(catkin REQUIRED COMPONENTS
   iarc7_msgs
   roscpp
+  tf2
+  tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -127,7 +129,7 @@ include_directories(
 # add_dependencies(iarc7_motion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(LowLevelMotionController src/LowLevelMotionController.cpp src/FeedForwardPid.cpp src/QuadController.cpp)
+add_executable(LowLevelMotionController src/LowLevelMotionController.cpp src/FeedForwardPid.cpp src/QuadVelocityController.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

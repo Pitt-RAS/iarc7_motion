@@ -21,7 +21,7 @@ double FeedForwardPid::update(double current_value, double time_delta)
     static double i_accumulator{0.0};
     static double last_current_value{0.0};
 
-    double difference = current_value - setpoint_;
+    double difference = setpoint_ - current_value;
     double p_term = p_gain_ * difference;
     i_accumulator += i_gain_ * difference;
     double d_term = d_gain_ * (current_value - last_current_value);

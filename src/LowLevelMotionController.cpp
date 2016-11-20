@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include <ros/ros.h>
-#include "QuadController.hpp"
+#include "QuadVelocityController.hpp"
 
 using namespace Iarc7Motion;
 
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
 
-    QuadController quadController(nh);
+    QuadVelocityController quadController(nh);
 
     quadController.init();
 
