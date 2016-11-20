@@ -31,9 +31,9 @@ namespace Iarc7Motion
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
         void init();
+        void update();
 
     private:
-        void update();
 
         bool getVelocities(geometry_msgs::Vector3& return_velocities);
 

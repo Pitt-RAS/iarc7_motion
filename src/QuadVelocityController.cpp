@@ -34,6 +34,7 @@ void QuadVelocityController::update()
     geometry_msgs::Vector3 velocities;
     getVelocities(velocities);
     double time_delta = 0.0;
+
     // Update all the PID loops
     double throttle_output = throttle_pid_.update(velocities.x, time_delta);
     double pitch_output    = throttle_pid_.update(velocities.y, time_delta);
