@@ -78,6 +78,12 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
     double delta_seconds = static_cast<double>(transformStamped.header.stamp.nsec - lastTransformStamped.header.stamp.nsec) /
                                                NANO_SECONDS_IN_SECOND;
 
+    if(delta_seconds > MAX_TRANSFORM_DIFFERENCE_SECONDS)
+    {
+        ROS_ERROR("Velocities invalid, time between transforms is too high: %f seconds", delta_seconds);
+        velocities_valid = false;
+    }
+
     if(ran_once)
     {
         // Get the transforms with the stamps for readability
