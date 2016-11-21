@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
     quadController.init();
 
-    while(true)
+    while(ros::ok())
     {
         quadController.update();
         ros::spinOnce();

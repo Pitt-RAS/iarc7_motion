@@ -48,9 +48,9 @@ namespace Iarc7Motion
         FeedForwardPid pitch_pid_;
         FeedForwardPid roll_pid_;
 
-        static const uint32_t NANO_SECONDS_IN_SECOND = 1'000'000U;
-        static const double MAX_TRANSFORM_WAIT_SECONDS = 1.0;
-        static const double MAX_TRANSFORM_DIFFERENCE_SECONDS = 0.3;
+        static const uint32_t NANO_SECONDS_IN_SECOND{1'000'000U};
+        static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
+        static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
     };
 
 }

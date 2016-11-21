@@ -68,7 +68,7 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
     // Get the map to level quad transform
     geometry_msgs::TransformStamped transformStamped;
     try{
-        transformStamped = tfBuffer_.lookupTransform("/map", "/level_quad", ros::Time::now(), ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
+        transformStamped = tfBuffer_.lookupTransform("map", "level_quad", ros::Time::now(), ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
     }
     catch (tf2::TransformException& ex){
         ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
