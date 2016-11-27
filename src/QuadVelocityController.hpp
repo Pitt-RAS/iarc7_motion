@@ -47,6 +47,7 @@ namespace Iarc7Motion
         FeedForwardPid throttle_pid_;
         FeedForwardPid pitch_pid_;
         FeedForwardPid roll_pid_;
+        FeedForwardPid yaw_pid_;
 
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
