@@ -69,40 +69,41 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
     geometry_msgs::TransformStamped transformStamped;
     try{
         transformStamped = tfBuffer_.lookupTransform("map", "level_quad", ros::Time::now(), ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
+
+        if(ran_once)
+        {
+            // Get the time between the two transforms
+            ros::Duration delta_seconds = transformStamped.header.stamp - lastTransformStamped.header.stamp;
+            
+            if(delta_seconds > ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS))
+            {
+                ROS_ERROR("Velocities invalid, time between transforms is too high: %f seconds", delta_seconds.toSec());
+                velocities_valid = false;
+            }
+
+            // Get the transforms with the stamps for readability
+            geometry_msgs::Transform& transform = transformStamped.transform;
+            geometry_msgs::Transform& oldTransform = lastTransformStamped.transform;
+            
+            // Calculate x, y, and z velocity
+            double delta = delta_seconds.toSec();
+            return_velocities.x = static_cast<double>(transform.translation.x - oldTransform.translation.x) / delta;
+            return_velocities.y = static_cast<double>(transform.translation.y - oldTransform.translation.y) / delta;
+            return_velocities.z = static_cast<double>(transform.translation.z - oldTransform.translation.z) / delta;
+        }
+        else
+        {
+            velocities_valid = false;
+            ran_once = true;
+        }
+
+        lastTransformStamped = transformStamped;
     }
     catch (tf2::TransformException& ex){
         ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
         velocities_valid = false;
+        ran_once = false;
     }
-
-    // Get the time between the two transforms
-    double delta_seconds = static_cast<double>(transformStamped.header.stamp.nsec - lastTransformStamped.header.stamp.nsec) /
-                                               NANO_SECONDS_IN_SECOND;
-
-    if(delta_seconds > MAX_TRANSFORM_DIFFERENCE_SECONDS)
-    {
-        ROS_ERROR("Velocities invalid, time between transforms is too high: %f seconds", delta_seconds);
-        velocities_valid = false;
-    }
-
-    if(ran_once)
-    {
-        // Get the transforms with the stamps for readability
-        geometry_msgs::Transform& transform = transformStamped.transform;
-        geometry_msgs::Transform& oldTransform = lastTransformStamped.transform;
-        
-        // Calculate x, y, and z velocity
-        return_velocities.x = static_cast<double>(transform.translation.x - oldTransform.translation.x) / delta_seconds;
-        return_velocities.y = static_cast<double>(transform.translation.y - oldTransform.translation.y) / delta_seconds;
-        return_velocities.z = static_cast<double>(transform.translation.z - oldTransform.translation.z) / delta_seconds;
-    }
-    else
-    {
-        velocities_valid = false;
-        ran_once = true;
-    }
-
-    lastTransformStamped = transformStamped;
 
     return velocities_valid;
 }
