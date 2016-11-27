@@ -129,14 +129,14 @@ include_directories(
 # add_dependencies(iarc7_motion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(LowLevelMotionController src/LowLevelMotionController.cpp src/FeedForwardPid.cpp src/QuadVelocityController.cpp)
+add_executable(low_level_motion_controller src/low_level_motion_controller.cpp src/FeedForwardPid.cpp src/QuadVelocityController.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(LowLevelMotionController ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(low_level_motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(LowLevelMotionController
+target_link_libraries(low_level_motion_controller
   ${catkin_LIBRARIES}
 )
 
