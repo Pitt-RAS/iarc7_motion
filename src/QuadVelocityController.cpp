@@ -36,9 +36,9 @@ void QuadVelocityController::update()
     double time_delta = 0.0;
 
     // Update all the PID loops
-    double throttle_output = throttle_pid_.update(velocities.x, time_delta);
-    double pitch_output    = throttle_pid_.update(velocities.y, time_delta);
-    double roll_output     = throttle_pid_.update(velocities.z, time_delta);
+    double throttle_output = throttle_pid_.update(velocities.z, time_delta);
+    double pitch_output    = throttle_pid_.update(velocities.x, time_delta);
+    double roll_output     = throttle_pid_.update(velocities.y, time_delta);
 
     // For now publish, should send values to a hard limiter first
     iarc7_msgs::OrientationThrottleStamped uav_command;
@@ -46,6 +46,10 @@ void QuadVelocityController::update()
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
     uav_command.data.yaw = 0;
+
+    // Print the velocity and throttle information
+    ROS_DEBUG("Vz:       %f Vx:    %f Vy:   %f", velocities.z, velocities.x, velocities.y);
+    ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
 
     // Publish the desired angles and throttle
     uav_control_.publish(uav_command);
