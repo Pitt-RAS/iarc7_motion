@@ -21,8 +21,6 @@ int main(int argc, char **argv)
 
     QuadVelocityController quadController(nh);
 
-    quadController.init();
-
     while(ros::ok())
     {
         quadController.update();

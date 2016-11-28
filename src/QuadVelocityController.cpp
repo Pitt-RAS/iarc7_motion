@@ -20,12 +20,14 @@ yaw_pid_(0.0, 0.0, 0.0) ,
 tfBuffer_(),
 tfListener_(tfBuffer_)
 {
-
-}
-
-void QuadVelocityController::init()
-{
     uav_control_ = nh_.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
+
+    // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
+    // section 1
+    if(!uav_control_)
+    {
+        ROS_ASSERT("Could not create uav_control_ publisher");
+    }
 }
 
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
