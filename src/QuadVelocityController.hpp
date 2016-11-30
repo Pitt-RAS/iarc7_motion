@@ -1,10 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Quad Controller
+// Quad Velocity Controller
 //
 // Implements details involving the throttle controller
 //
 ////////////////////////////////////////////////////////////////////////////
+
+#ifndef QUAD_VELOCITY_CONTROLLER_H
+#define QUAD_VELOCITY_CONTROLLER_H
 
 #include <ros/ros.h>
 #include <geometry_msgs/Transform.h>
@@ -53,3 +56,5 @@ namespace Iarc7Motion
     };
 
 }
+
+#endif // QUAD_VELOCITY_CONTROLLER_H

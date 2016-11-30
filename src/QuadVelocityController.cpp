@@ -42,7 +42,7 @@ void QuadVelocityController::update()
     double throttle_output = throttle_pid_.update(velocities.z, time_delta);
     double pitch_output    = throttle_pid_.update(velocities.x, time_delta);
     double roll_output     = throttle_pid_.update(velocities.y, time_delta);
-    double yaw_output     = yaw_pid_.update(velocities.y, time_delta);
+    double yaw_output      = yaw_pid_.update(velocities.y, time_delta);
 
     // For now publish, should send values to a hard limiter first
     iarc7_msgs::OrientationThrottleStamped uav_command;
