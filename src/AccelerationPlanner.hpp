@@ -124,8 +124,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const 
 
     if(twists.empty())
     {
-        // Nothing to do here
-        return;
+        ROS_ASSERT("trimVelocityQueue detected no velocities available");
     }
 
     // Find the first time more than or equal
@@ -136,7 +135,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const 
     if(it == twists.begin())
     {
         // ALl the times are greater than the current time
-        ROS_ASSERT("trimVelocityQueue there are no valid velocities available");
+        ROS_ASSERT("trimVelocityQueue there are no valid acceleration profiles available");
     }
     else
     {
@@ -150,7 +149,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const 
 // Assume sorted
 // Search our velocities array until you find an item more than the earlies time in the message passed us
 // Erase our velocities array from there on and add the velocities passed in
-// TODO: check that message is sorted properly, do not add if message is corrupt, default to safe state
+// TODO: check that message is sorted properly, default to safe state if anythings wrong?
 template<class T>
 void AccelerationPlanner<T>::processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message)
 {
