@@ -88,23 +88,17 @@ void AccelerationPlanner<T>::dispatchVelocity(const ros::TimerEvent&)
     // Cache time to make sure it stays the same
     ros::Time current_time = ros::Time::now();
 
+    // Trim velocity queue when done we will have one or two velocities available.
     trimVelocityQueue(velocity_targets_, current_time);
 
     TwistStamped target_twist;
-    if(!velocity_targets_.empty())
+    if(velocity_targets_.size() == 1U)
     {
-        if(velocity_targets_.size() == 1U)
-        {
-            target_twist = velocity_targets_[0];
-        }
-        else
-        {
-            target_twist = interpolateTwists(velocity_targets_[0], velocity_targets_[1], current_time);
-        }
+        target_twist = velocity_targets_[0];
     }
     else
     {
-        ROS_WARN("No velocity targets");
+        target_twist = interpolateTwists(velocity_targets_[0], velocity_targets_[1], current_time);
     }
 
     //velocity_controller_.setTargetVelocity(target_twist);
