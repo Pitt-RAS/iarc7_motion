@@ -42,7 +42,7 @@ namespace Iarc7Motion
 
         void dispatchVelocity(const ros::TimerEvent&);
 
-        void trimVelocityQueue(ros::Time time);
+        static void trimVelocityQueue(TwistStampedArray& twists, const ros::Time& time);
 
         static TwistStamped interpolateTwists(TwistStamped& begin, TwistStamped& end, ros::Time time);
 
@@ -87,7 +87,7 @@ void AccelerationPlanner<T>::dispatchVelocity(const ros::TimerEvent&)
     // Cache time to make sure it stays the same
     ros::Time current_time = ros::Time::now();
 
-    trimVelocityQueue(current_time);
+    trimVelocityQueue(velocity_targets_, current_time);
 
     TwistStamped target_twist;
     if(!velocity_targets_.empty())
@@ -117,22 +117,22 @@ TwistStamped AccelerationPlanner<T>::interpolateTwists(TwistStamped& begin, Twis
 }
 
 template<class T>
-void AccelerationPlanner<T>::trimVelocityQueue(ros::Time time)
+void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const ros::Time& time)
 {
     // We want to remove everything before the first time less than followed by a time more than or equal
 
-    if(velocity_targets_.empty())
+    if(twists.empty())
     {
         // Nothing to do here
         return;
     }
 
     // Find the first time more than or equal
-    TwistArrayStamped::iterator it = std::lower_bound(velocity_targets_.begin(), velocity_targets_.end(), time,
+    TwistArrayStamped::iterator it = std::lower_bound(twists.begin(), twists.end(), time,
                                                       [](auto& twist, auto& time) { return twist.header.stamp < time; });
     
 
-    if(it == velocity_targets_.begin())
+    if(it == twists.begin())
     {
         // ALl the times are greater than the current time
         ROS_ASSERT("trimVelocityQueue there are no valid velocities available");
@@ -140,7 +140,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(ros::Time time)
     else
     {
         // it is somwhere in the middle go delete stuff
-        (void)velocity_targets_.erase(velocity_targets_.begin(), std::prev(it, 1));
+        (void)twists.erase(twists.begin(), std::prev(it, 1));
     }
 }
 
@@ -154,6 +154,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(ros::Time time)
 template<class T>
 void AccelerationPlanner<T>::processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message)
 {
+
     ros::Time last_message_time = velocity_targets_.back().header.stamp;
 
     // Check for empty message
