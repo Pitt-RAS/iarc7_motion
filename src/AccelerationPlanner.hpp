@@ -20,6 +20,8 @@ using geometry_msgs::TwistStamped;
 
 namespace Iarc7Motion
 {
+    typedef std::vector<geometry_msgs::TwistStamped> TwistStampedArray;
+
     template<class T>
     class AccelerationPlanner
     {
@@ -55,8 +57,7 @@ namespace Iarc7Motion
         // Subscriber for uav_arm
         ros::Subscriber velocity_targets_subsriber_;
 
-        typedef std::vector<geometry_msgs::TwistStamped> TwistArrayStamped;
-        TwistArrayStamped velocity_targets_;
+        TwistStampedArray velocity_targets_;
     };
 }
 
@@ -128,7 +129,7 @@ void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const 
     }
 
     // Find the first time more than or equal
-    TwistArrayStamped::iterator it = std::lower_bound(twists.begin(), twists.end(), time,
+    TwistStampedArray::iterator it = std::lower_bound(twists.begin(), twists.end(), time,
                                                       [](auto& twist, auto& time) { return twist.header.stamp < time; });
     
 
@@ -144,7 +145,6 @@ void AccelerationPlanner<T>::trimVelocityQueue(TwistStampedArray& twists, const 
     }
 }
 
-
 // Receive a new list of velocities commands and place them into our list properly
 // Basic Operation:
 // Assume sorted
@@ -155,51 +155,52 @@ template<class T>
 void AccelerationPlanner<T>::processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message)
 {
 
-    ros::Time last_message_time = velocity_targets_.back().header.stamp;
-
     // Check for empty message
     if(message->data.empty())
     {
-        ROS_WARN("processVelocityCommand passed an empty array of TwistArrayStamped, not accepting");
+        ROS_WARN("processVelocityCommand passed an empty array of TwistStampedArray, not accepting");
         return;
     }
 
-    // Don't search the list if the size is zero
-    if(velocity_targets_.empty())
-    {
-        // Nothing to do in this case, just add the items and start the timer
-    }
-    // Do a simple check if the the velocity targets is one element long
-    else if(velocity_targets_.size() == 1U && 
-            velocity_targets_.front().header.stamp < static_cast<ros::Time>(message->data.front().header.stamp))
-    {
-        // Remove the first element since it's invalid
-        velocity_targets_.erase(velocity_targets_.begin());
-    }
-    else
-    {
-        ros::Time target_time = static_cast<ros::Time>(message->data.front().header.stamp);
+    // Cache time to make sure it stays the same
+    ros::Time current_time = ros::Time::now();
 
-        // Get an iterator to the first time more than the first time from the message
-        TwistArrayStamped::iterator it = std::lower_bound(velocity_targets_.begin(), velocity_targets_.end(), target_time,
+    // Find the first time from the message more than or equal
+    TwistStampedArray::const_iterator first_valid_twist = std::lower_bound(message->data.begin(), message->data.end(), current_time,
+                                                                           [](auto& twist, auto& time) { return twist.header.stamp < time; });
+
+    if(first_valid_twist == message->data.end())
+    {
+        ROS_ERROR("processVelocityCommand passed a TwistStampedArray with all old timestamps, rejecting");
+        return;
+    }
+    else if(first_valid_twist != message->data.begin())
+    {
+        ROS_INFO("All velocities were flushed out");
+        // There is at least one element with a time less than current time
+        // All the stored velocities are invalid
+        first_valid_twist = std::prev(first_valid_twist, 1);
+        velocity_targets_.clear();
+    }
+    // Search through to find where we should start inserting unless its empty
+    else if(!velocity_targets_.empty())
+    {
+        ros::Time target_time = static_cast<ros::Time>(first_valid_twist->header.stamp);
+
+        // Get an iterator to the first time more than or equal to the first time we're appending from the message
+        TwistStampedArray::iterator it = std::lower_bound(velocity_targets_.begin(), velocity_targets_.end(), target_time,
                                                           [](auto& twist, auto& time) { return twist.header.stamp < time; });
 
-        // Check if its the last element and decide whether to remove it
-        if(it == velocity_targets_.end() && target_time <= it->header.stamp)
-        {
-            // Remove last element
-            velocity_targets_.pop_back();
-        }
-        else
+        // Check if its the last element before attempting to remove
+        if(it != velocity_targets_.end())
         {
             // Erase from the index to the end since the iterator must be somewhere in the the list
             (void)velocity_targets_.erase(it, velocity_targets_.end());
         }
-
     }
 
     // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
-    std::for_each(message->data.begin(), message->data.end(), [&](auto i){ velocity_targets_.emplace_back(i); } );
+    std::for_each(first_valid_twist, message->data.end(), [&](auto i){ velocity_targets_.emplace_back(i); } );
 }
 
 #endif // ACCLERATION_PLANNER_H
