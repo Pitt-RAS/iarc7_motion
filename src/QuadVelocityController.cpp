@@ -30,6 +30,15 @@ tfListener_(tfBuffer_)
     }
 }
 
+// TODO sanity check these values
+void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
+{
+    throttle_pid_.setSetpoint(twist.linear.z);
+    pitch_pid_.setSetpoint(twist.linear.x);
+    roll_pid_.setSetpoint(twist.linear.y);
+    yaw_pid_.setSetpoint(twist.angular.z);
+}
+
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
 void QuadVelocityController::update()
 {
@@ -40,8 +49,8 @@ void QuadVelocityController::update()
 
     // Update all the PID loops
     double throttle_output = throttle_pid_.update(velocities.z, time_delta);
-    double pitch_output    = throttle_pid_.update(velocities.x, time_delta);
-    double roll_output     = throttle_pid_.update(velocities.y, time_delta);
+    double pitch_output    = pitch_pid_.update(velocities.x, time_delta);
+    double roll_output     = roll_pid_.update(velocities.y, time_delta);
     double yaw_output      = yaw_pid_.update(velocities.y, time_delta);
 
     // For now publish, should send values to a hard limiter first

@@ -12,6 +12,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Vector3.h>
 #include "FeedForwardPid.hpp"
 #include "iarc7_msgs/Float64Stamped.h"
@@ -34,6 +35,8 @@ namespace Iarc7Motion
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
         void update();
+
+        void setTargetVelocity(geometry_msgs::Twist twist);
 
     private:
 

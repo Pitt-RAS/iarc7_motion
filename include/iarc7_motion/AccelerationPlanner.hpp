@@ -6,8 +6,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#ifndef ACCLERATION_PLANNER_H
-#define ACCLERATION_PLANNER_H
+#ifndef ACCELERATION_PLANNER_H
+#define ACCELERATION_PLANNER_H
 
 #include <ros/ros.h>
 #include <algorithm>
@@ -103,7 +103,7 @@ namespace Iarc7Motion
             target_twist = interpolateTwists(velocity_targets_[0], velocity_targets_[1], current_time);
         }
 
-        //velocity_controller_.setTargetVelocity(target_twist);
+        velocity_controller_.setTargetVelocity(target_twist.twist);
     }
 
     template<class T>
@@ -211,4 +211,4 @@ namespace Iarc7Motion
     }
 } // End namespace Iarc7Motion
 
-#endif // ACCLERATION_PLANNER_H
+#endif // ACCELERATION_PLANNER_H

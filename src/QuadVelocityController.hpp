@@ -35,6 +35,8 @@ namespace Iarc7Motion
 
         void update();
 
+        void setTargetVelocity(geometry_msgs::TwistStamped);
+
     private:
 
         bool getVelocities(geometry_msgs::Vector3& return_velocities);
