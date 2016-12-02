@@ -62,7 +62,7 @@ namespace Iarc7Motion
         T& velocity_controller_;
 
         // Subscriber for uav_arm
-        ros::Subscriber velocity_targets_subsriber_;
+        ros::Subscriber velocity_targets_subscriber_;
 
         TwistStampedArray velocity_targets_;
     };
@@ -70,11 +70,11 @@ namespace Iarc7Motion
     template<class T>
     AccelerationPlanner<T>::AccelerationPlanner(ros::NodeHandle& nh, T& velocity_controller) :
     nh_(nh),
-    velocity_targets_subsriber_(),
+    velocity_targets_subscriber_(),
     velocity_targets_(),
     velocity_controller_(velocity_controller)
     {
-        velocity_targets_subsriber_ = nh_.subscribe("movement_velocity_targets", 100, &AccelerationPlanner::processVelocityCommand, this);
+        velocity_targets_subscriber_ = nh_.subscribe("movement_velocity_targets", 100, &AccelerationPlanner::processVelocityCommand, this);
 
         // Create the dispatch timer
         dispatch_timer_ = nh_.createTimer(ros::Duration(0.05), &AccelerationPlanner<T>::dispatchVelocity, this);
