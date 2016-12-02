@@ -12,10 +12,12 @@
 #include <ros/ros.h>
 #include <algorithm>
 #include <vector>
+
 #include "gtest/gtest_prod.h"
+#include "QuadVelocityController.hpp"
+
 #include "iarc7_msgs/TwistStampedArrayStamped.h"
 #include "geometry_msgs/TwistStamped.h"
-#include "QuadVelocityController.hpp"
 
 using geometry_msgs::TwistStamped;
 
