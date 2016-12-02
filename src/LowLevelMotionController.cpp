@@ -7,7 +7,8 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include <ros/ros.h>
-#include "QuadVelocityController.hpp"
+#include "iarc7_motion/AccelerationPlanner.hpp"
+#include "iarc7_motion/QuadVelocityController.hpp"
 
 using namespace Iarc7Motion;
 
@@ -20,6 +21,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     QuadVelocityController quadController(nh);
+
+    AccelerationPlanner<QuadVelocityController> accelerationPlanner(nh, quadController);
 
     while(ros::ok())
     {

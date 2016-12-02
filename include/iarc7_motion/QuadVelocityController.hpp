@@ -1,18 +1,24 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// Quad Controller
+// Quad Velocity Controller
 //
 // Implements details involving the throttle controller
 //
 ////////////////////////////////////////////////////////////////////////////
 
+#ifndef QUAD_VELOCITY_CONTROLLER_H
+#define QUAD_VELOCITY_CONTROLLER_H
+
 #include <ros/ros.h>
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Vector3.h>
-#include "FeedForwardPid.hpp"
+#include "iarc7_motion/FeedForwardPid.hpp"
+#include "tf2_ros/transform_listener.h"
+
+#include "geometry_msgs/Transform.h"
+#include "geometry_msgs/TransformStamped.h"
+#include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/Vector3.h"
 #include "iarc7_msgs/Float64Stamped.h"
-#include <tf2_ros/transform_listener.h>
+
 
 namespace Iarc7Motion
 {
@@ -31,6 +37,8 @@ namespace Iarc7Motion
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
         void update();
+
+        void setTargetVelocity(geometry_msgs::Twist twist);
 
     private:
 
@@ -53,3 +61,5 @@ namespace Iarc7Motion
     };
 
 }
+
+#endif // QUAD_VELOCITY_CONTROLLER_H
