@@ -6,7 +6,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include "QuadVelocityController.hpp"
+#include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
 using namespace Iarc7Motion;

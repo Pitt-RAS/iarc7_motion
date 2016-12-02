@@ -101,7 +101,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES iarc7_motion
 #  CATKIN_DEPENDS iarc7_msgs
 #  DEPENDS system_lib
@@ -115,7 +115,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  include ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -180,10 +180,11 @@ target_link_libraries(low_level_motion_controller
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_iarc7_motion.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
+catkin_add_gtest(acceleration_planner_test test/AccelerationPlannerTest.cpp)
+if(TARGET acceleration_planner_test)
+  target_link_libraries(acceleration_planner_test ${catkin_LIBRARIES}
+)
+endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)

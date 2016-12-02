@@ -7,8 +7,8 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include <ros/ros.h>
-#include "AccelerationPlanner.hpp"
-#include "QuadVelocityController.hpp"
+#include "iarc7_motion/AccelerationPlanner.hpp"
+#include "iarc7_motion/QuadVelocityController.hpp"
 
 using namespace Iarc7Motion;
 
