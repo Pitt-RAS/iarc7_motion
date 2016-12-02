@@ -48,6 +48,96 @@ namespace Iarc7Motion
         twists.empty();
         ASSERT_FALSE(Planner::trimVelocityQueue(twists, current_time));
     }
+
+    TEST(AccelerationPlannerTests, testAppendVelocityQueue)
+    {
+        typedef Iarc7Motion::AccelerationPlanner<Iarc7Motion::QuadVelocityController> Planner;
+
+        ros::Time::init();
+        ros::Time current_time(0.0);
+
+        Iarc7Motion::TwistStampedArray twists;
+        Iarc7Motion::TwistStampedArray twists_append;
+        // Create an array of 10 twists and ten twists to append
+        for(int32_t i = 0; i < 10; i++)
+        {
+            TwistStamped twist;
+            twist.header.stamp = current_time + ros::Duration(i);
+            twists.push_back(twist);
+            twist.header.stamp = current_time + ros::Duration(i+11.0);
+            twists_append.push_back(twist);
+        }
+
+        // Make sure a list of old timestamps is rejected
+        EXPECT_FALSE(Planner::appendVelocityQueue(twists_append, twists, current_time + ros::Duration(20.0)));
+
+        // See if it will append all at the end as expected
+        size_t expected_size = twists.size() + twists_append.size();
+        EXPECT_TRUE(Planner::appendVelocityQueue(twists, twists_append, current_time));
+        EXPECT_EQ(twists.size(), expected_size);
+
+        for(int32_t i = 0; i < 10; i++)
+        {
+            // Test bottom half which should all be from twists
+            EXPECT_EQ(twists[i].header.stamp, current_time + ros::Duration(i));
+
+            // Test top half which should be all from tests_append
+            EXPECT_EQ(twists[i + 10].header.stamp, current_time + ros::Duration(i + 11.0));
+        }
+
+        // See if it will overwrite in the middle as expected
+        twists_append.pop_back();
+        --expected_size;
+        EXPECT_TRUE(Planner::appendVelocityQueue(twists, twists_append, current_time));
+        EXPECT_EQ(twists.size(), expected_size);
+
+        for(int32_t i = 0; i < 10; i++)
+        {
+            // Test bottom half which should all be from twists
+            EXPECT_EQ(twists[i].header.stamp, current_time + ros::Duration(i));
+        }
+
+        for(int32_t i = 0; i < 9; i++)
+        {
+            // Test top half which should be all from tests_append
+            EXPECT_EQ(twists[i + 10].header.stamp, current_time + ros::Duration(i + 11.0));
+        }
+
+        // See if it will not add the whole list if current time is more than the beginning
+        // Regenerate twists and twists append
+        twists.clear();
+        twists_append.clear();
+        // Create an array of 10 twists and ten twists to append
+        for(int32_t i = 0; i < 10; i++)
+        {
+            TwistStamped twist;
+            twist.header.stamp = current_time + ros::Duration(i);
+            twists.push_back(twist);
+            twist.header.stamp = current_time + ros::Duration(i+11.0);
+            twists_append.push_back(twist);
+        }
+
+        // Should cut one element off of twists_append since it will keep the first one before the target time if it exists
+        expected_size = twists.size() + twists_append.size() - 1;
+        EXPECT_TRUE(Planner::appendVelocityQueue(twists, twists_append, current_time+ros::Duration(13.0)));
+        EXPECT_EQ(twists.size(), expected_size);
+
+        for(int32_t i = 0; i < 10; i++)
+        {
+            // Test bottom half which should all be from twists
+            EXPECT_EQ(twists[i].header.stamp, current_time + ros::Duration(i));
+        }
+
+        for(int32_t i = 0; i < 8; i++)
+        {
+            // Test top half which should be all from tests_append 13.0 and up
+            EXPECT_EQ(twists[i + 10].header.stamp, current_time + ros::Duration(i + 12.0));
+        }
+
+        // Make sure it errors when handed an empty twist
+        twists_append.empty();
+        ASSERT_FALSE(Planner::appendVelocityQueue(twists, twists_append, current_time));
+    }
 }
 
 // Run all the tests that were declared with TEST()

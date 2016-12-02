@@ -41,12 +41,15 @@ namespace Iarc7Motion
 
     private:
         FRIEND_TEST(AccelerationPlannerTests, testTrimVelocityQueue);
+        FRIEND_TEST(AccelerationPlannerTests, testAppendVelocityQueue);
 
         void processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message);
 
         void dispatchVelocity(const ros::TimerEvent&);
 
         static bool trimVelocityQueue(TwistStampedArray& twists, const ros::Time& time);
+
+        static bool appendVelocityQueue(TwistStampedArray& current_twists, const TwistStampedArray& new_twists, const ros::Time& time);
 
         static TwistStamped interpolateTwists(TwistStamped& begin, TwistStamped& end, ros::Time time);
 
@@ -139,6 +142,51 @@ namespace Iarc7Motion
         }
     }
 
+    template<class T>
+    bool AccelerationPlanner<T>::appendVelocityQueue(TwistStampedArray& current_twists, const TwistStampedArray& new_twists, const ros::Time& time)
+    {
+        if(new_twists.empty())
+        {
+            ROS_ERROR("appendVelocityQueue handed empty twist array");
+            return false;
+        }
+
+        // Find the first time from the new twists more than or equal
+        TwistStampedArray::const_iterator first_valid_twist = std::lower_bound(new_twists.begin(), new_twists.end(), time,
+                                                                               [](auto& twist, auto& time) { return twist.header.stamp < time; });
+
+        if(first_valid_twist == new_twists.end())
+        {
+            ROS_ERROR("processVelocityCommand passed a TwistStampedArray with all old timestamps, rejecting");
+            return false;
+        }
+        else if(first_valid_twist != new_twists.begin())
+        {
+            // There is at least one element with a time less than current time
+            // Make sure we get it so as to get a more accurate target interpolation value
+            first_valid_twist = std::prev(first_valid_twist, 1);
+        }
+        // Search through to find where we should start inserting unless its empty
+        else if(!current_twists.empty())
+        {
+            ros::Time target_time = static_cast<ros::Time>(first_valid_twist->header.stamp);
+
+            // Get an iterator to the first time more than or equal to the first time we're appending from the new twists
+            TwistStampedArray::iterator it = std::lower_bound(current_twists.begin(), current_twists.end(), target_time,
+                                                              [](auto& twist, auto& time) { return twist.header.stamp < time; });
+
+            // Check if its the last element before attempting to remove
+            if(it != current_twists.end())
+            {
+                // Erase from the index to the end since the iterator must be somewhere in the the list
+                (void)current_twists.erase(it, current_twists.end());
+            }
+        }
+
+        // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
+        std::for_each(first_valid_twist, new_twists.end(), [&](auto i){ current_twists.emplace_back(i); } );
+    }
+
     // Receive a new list of velocities commands and place them into our list properly
     // Basic Operation:
     // Assume sorted
@@ -159,42 +207,7 @@ namespace Iarc7Motion
         // Cache time to make sure it stays the same
         ros::Time current_time = ros::Time::now();
 
-        // Find the first time from the message more than or equal
-        TwistStampedArray::const_iterator first_valid_twist = std::lower_bound(message->data.begin(), message->data.end(), current_time,
-                                                                               [](auto& twist, auto& time) { return twist.header.stamp < time; });
-
-        if(first_valid_twist == message->data.end())
-        {
-            ROS_ERROR("processVelocityCommand passed a TwistStampedArray with all old timestamps, rejecting");
-            return;
-        }
-        else if(first_valid_twist != message->data.begin())
-        {
-            ROS_INFO("All velocities were flushed out");
-            // There is at least one element with a time less than current time
-            // All the stored velocities are invalid
-            first_valid_twist = std::prev(first_valid_twist, 1);
-            velocity_targets_.clear();
-        }
-        // Search through to find where we should start inserting unless its empty
-        else if(!velocity_targets_.empty())
-        {
-            ros::Time target_time = static_cast<ros::Time>(first_valid_twist->header.stamp);
-
-            // Get an iterator to the first time more than or equal to the first time we're appending from the message
-            TwistStampedArray::iterator it = std::lower_bound(velocity_targets_.begin(), velocity_targets_.end(), target_time,
-                                                              [](auto& twist, auto& time) { return twist.header.stamp < time; });
-
-            // Check if its the last element before attempting to remove
-            if(it != velocity_targets_.end())
-            {
-                // Erase from the index to the end since the iterator must be somewhere in the the list
-                (void)velocity_targets_.erase(it, velocity_targets_.end());
-            }
-        }
-
-        // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
-        std::for_each(first_valid_twist, message->data.end(), [&](auto i){ velocity_targets_.emplace_back(i); } );
+        appendVelocityQueue(velocity_targets_, message->data, current_time);
     }
 } // End namespace Iarc7Motion
 
