@@ -53,7 +53,7 @@ namespace Iarc7Motion
 
         static bool appendVelocityQueue(TwistStampedArray& current_twists, const TwistStampedArray& new_twists, const ros::Time& time);
 
-        static TwistStamped interpolateTwists(TwistStamped& begin, TwistStamped& end, ros::Time time);
+        static bool interpolateTwists(TwistStamped& begin, TwistStamped& end, TwistStamped& interpolated, ros::Time time);
 
         ros::NodeHandle& nh_;
 
@@ -102,17 +102,49 @@ namespace Iarc7Motion
         }
         else
         {
-            target_twist = interpolateTwists(velocity_targets_[0], velocity_targets_[1], current_time);
+            bool fail = interpolateTwists(velocity_targets_[0], velocity_targets_[1], target_twist, current_time);
+            if(fail)
+            {
+                ROS_ERROR("Interpolation failed, not dispatching velocity");
+                return;
+            }
         }
 
         velocity_controller_.setTargetVelocity(target_twist.twist);
     }
 
     template<class T>
-    TwistStamped AccelerationPlanner<T>::interpolateTwists(TwistStamped& begin, TwistStamped& end, ros::Time time)
+    bool AccelerationPlanner<T>::interpolateTwists(TwistStamped& begin, TwistStamped& end, TwistStamped& interpolated, ros::Time time)
     {
-        TwistStamped interpolated;
-        return interpolated;
+
+        ros::Time begin_time = begin.header.stamp;
+        ros::Time end_time   = end.header.stamp;
+
+        if(end_time < begin_time)
+        {
+            return false;
+        }
+        
+        if(time > end_time)
+        {
+            return false;
+        }
+
+        if(time < begin_time)
+        {
+            return false;
+        }
+ 
+        double point_on_line = (time - begin_time).toSec() / (end_time - begin_time).toSec();
+
+        interpolated.twist.linear.x = (end.twist.linear.x - begin.twist.linear.x) * point_on_line + begin.twist.linear.x;
+        interpolated.twist.linear.y = (end.twist.linear.y - begin.twist.linear.y) * point_on_line + begin.twist.linear.y;
+        interpolated.twist.linear.z = (end.twist.linear.z - begin.twist.linear.z) * point_on_line + begin.twist.linear.z;
+        interpolated.twist.angular.z = (end.twist.angular.z - begin.twist.angular.z) * point_on_line + begin.twist.angular.z;
+
+        interpolated.header.stamp = time;
+
+        return true;
     }
 
     template<class T>
