@@ -7,6 +7,9 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include "iarc7_motion/QuadVelocityController.hpp"
+
+#include <geometry_msgs/Vector3Stamped.h>
+
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
 using namespace Iarc7Motion;
@@ -76,6 +79,9 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
     // Holds the last transform received to calculate velocities
     static geometry_msgs::TransformStamped lastTransformStamped;
 
+    // Holds the last valid velocity reading
+    static geometry_msgs::Vector3Stamped lastVelocityStamped;
+
     // Makes sure that we have a lastTransformStamped before returning a valid velocity
     static bool ran_once{false};
 
@@ -84,14 +90,24 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
 
     // Get the map to level quad transform
     geometry_msgs::TransformStamped transformStamped;
+
+    // Get current ROS time
+    ros::Time time = ros::Time::now();
+
+    // Check if we already have a velocity at this time
+    if (time == lastVelocityStamped.header.stamp) {
+        return_velocities = lastVelocityStamped.vector;
+        return true;
+    }
+
     try{
-        transformStamped = tfBuffer_.lookupTransform("map", "level_quad", ros::Time::now(), ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
+        transformStamped = tfBuffer_.lookupTransform("map", "level_quad", time, ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
 
         if(ran_once)
         {
             // Get the time between the two transforms
             ros::Duration delta_seconds = transformStamped.header.stamp - lastTransformStamped.header.stamp;
-            
+
             if(delta_seconds > ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS))
             {
                 ROS_ERROR("Velocities invalid, time between transforms is too high: %f seconds", delta_seconds.toSec());
@@ -101,12 +117,17 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Vector3& return_veloci
             // Get the transforms with the stamps for readability
             geometry_msgs::Transform& transform = transformStamped.transform;
             geometry_msgs::Transform& oldTransform = lastTransformStamped.transform;
-            
+
             // Calculate x, y, and z velocity
             double delta = delta_seconds.toSec();
-            return_velocities.x = static_cast<double>(transform.translation.x - oldTransform.translation.x) / delta;
-            return_velocities.y = static_cast<double>(transform.translation.y - oldTransform.translation.y) / delta;
-            return_velocities.z = static_cast<double>(transform.translation.z - oldTransform.translation.z) / delta;
+
+            return_velocities.x = (transform.translation.x - oldTransform.translation.x) / delta;
+            return_velocities.y = (transform.translation.y - oldTransform.translation.y) / delta;
+            return_velocities.z = (transform.translation.z - oldTransform.translation.z) / delta;
+
+            // Store this as the last valid velocity
+            lastVelocityStamped.vector = return_velocities;
+            lastVelocityStamped.header.stamp = time;
         }
         else
         {
