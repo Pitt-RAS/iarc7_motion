@@ -137,10 +137,10 @@ namespace Iarc7Motion
  
         double point_on_line = (time - begin_time).toSec() / (end_time - begin_time).toSec();
 
-        interpolated.twist.linear.x = (end.twist.linear.x - begin.twist.linear.x) * point_on_line;
-        interpolated.twist.linear.y = (end.twist.linear.y - begin.twist.linear.y) * point_on_line;
-        interpolated.twist.linear.z = (end.twist.linear.z - begin.twist.linear.z) * point_on_line;
-        interpolated.twist.angular.z = (end.twist.angular.z - begin.twist.angular.z) * point_on_line;
+        interpolated.twist.linear.x = (end.twist.linear.x - begin.twist.linear.x) * point_on_line + begin.twist.linear.x;
+        interpolated.twist.linear.y = (end.twist.linear.y - begin.twist.linear.y) * point_on_line + begin.twist.linear.y;
+        interpolated.twist.linear.z = (end.twist.linear.z - begin.twist.linear.z) * point_on_line + begin.twist.linear.z;
+        interpolated.twist.angular.z = (end.twist.angular.z - begin.twist.angular.z) * point_on_line + begin.twist.angular.z;
 
         interpolated.header.stamp = time;
 
