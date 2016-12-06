@@ -102,8 +102,8 @@ namespace Iarc7Motion
         }
         else
         {
-            bool fail = interpolateTwists(velocity_targets_[0], velocity_targets_[1], target_twist, current_time);
-            if(fail)
+            bool success = interpolateTwists(velocity_targets_[0], velocity_targets_[1], target_twist, current_time);
+            if(!success)
             {
                 ROS_ERROR("Interpolation failed, not dispatching velocity");
                 return;
