@@ -111,7 +111,7 @@ void QuadVelocityController::limitUavCommand(iarc7_msgs::OrientationThrottleStam
     min.angular.z = 20.0;
 
     QuadTwistRequestLimiter limiter(min, max, max_rate);
-    uav_twist_stamped = limiter.limitTwist(uav_twist_stamped);
+    limiter.limitTwist(uav_twist_stamped);
 
     // Copy the twist to the uav command
     uav_command.header.stamp = uav_twist_stamped.header.stamp;

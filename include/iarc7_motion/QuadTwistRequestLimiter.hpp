@@ -32,13 +32,13 @@ namespace Iarc7Motion
         QuadTwistRequestLimiter(const QuadTwistRequestLimiter& rhs) = delete;
         QuadTwistRequestLimiter& operator=(const QuadTwistRequestLimiter& rhs) = delete;
 
-        TwistStamped limitTwist(const TwistStamped& twist);
+        void limitTwist(TwistStamped& input_twist);
 
     private:
 
-        static double velocityLimit(double start, double end, double max, ros::Duration& delta, char const * axis);
-        static double minLimit(double request, double min, char const * axis);
-        static double maxLimit(double request, double max, char const * axis);
+        static void velocityLimit(double& request, const double old, const double max, const ros::Duration& delta, char const * axis);
+        static void minLimit(double& request, const double min, char const * axis);
+        static void maxLimit(double& request, const double max, char const * axis);
 
         Twist minTwist_;
         Twist maxTwist_;
