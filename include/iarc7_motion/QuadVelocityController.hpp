@@ -18,7 +18,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Vector3.h"
 #include "iarc7_msgs/Float64Stamped.h"
-
+#include "iarc7_msgs/OrientationThrottleStamped.h"
 
 namespace Iarc7Motion
 {
@@ -43,6 +43,8 @@ namespace Iarc7Motion
     private:
 
         bool getVelocities(geometry_msgs::Vector3& return_velocities);
+
+        static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
         ros::NodeHandle& nh_;
 

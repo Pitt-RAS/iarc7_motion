@@ -6,11 +6,14 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+// Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
-#include <geometry_msgs/Vector3Stamped.h>
+// Package headers
+#include "iarc7_motion/QuadTwistRequestLimiter.hpp"
 
-#include "iarc7_msgs/OrientationThrottleStamped.h"
+// ROS message headers
+#include "geometry_msgs/Vector3Stamped.h"
 
 using namespace Iarc7Motion;
 
@@ -67,8 +70,55 @@ void QuadVelocityController::update()
     ROS_DEBUG("Vz:       %f Vx:    %f Vy:   %f", velocities.z, velocities.x, velocities.y);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
 
+    // Limit the uav command
+    limitUavCommand(uav_command);
+
     // Publish the desired angles and throttle
     uav_control_.publish(uav_command);
+}
+
+// This is a helper function that will limit a uav command using the twist limiter
+// It will eventually no longer be needed when the quad controller is converted to use twists
+void QuadVelocityController::limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command)
+{
+    TwistStamped uav_twist_stamped;
+    Twist& uav_twist = uav_twist_stamped.twist;
+
+    // Convert from uav command to twist
+    uav_twist_stamped.header.stamp = uav_command.header.stamp;
+    uav_twist.linear.z  = uav_command.throttle;
+    uav_twist.angular.y = uav_command.data.pitch;
+    uav_twist.angular.x = uav_command.data.roll;
+    uav_twist.angular.z = uav_command.data.yaw;
+
+    // Limit the twist
+    Twist min;
+    min.linear.z  = 0.0;
+    min.angular.y = -20.0;
+    min.angular.x = -20.0;
+    min.angular.z = -20.0;
+
+    Twist max;
+    min.linear.z  = 100.0;
+    min.angular.y = 20.0;
+    min.angular.x = 20.0;
+    min.angular.z = 20.0;
+
+    Twist max_rate;
+    min.linear.z  = 100.0;
+    min.angular.y = 20.0;
+    min.angular.x = 20.0;
+    min.angular.z = 20.0;
+
+    QuadTwistRequestLimiter limiter(min, max, max_rate);
+    uav_twist_stamped = limiter.limitTwist(uav_twist_stamped);
+
+    // Copy the twist to the uav command
+    uav_command.header.stamp = uav_twist_stamped.header.stamp;
+    uav_command.throttle     = uav_twist.linear.z;
+    uav_command.data.pitch   = uav_twist.angular.y;
+    uav_command.data.roll    = uav_twist.angular.x;
+    uav_command.data.yaw     = uav_twist.angular.z;
 }
 
 
