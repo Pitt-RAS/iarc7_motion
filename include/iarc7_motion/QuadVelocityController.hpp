@@ -36,7 +36,7 @@ namespace Iarc7Motion
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
-        void update();
+        iarc7_msgs::OrientationThrottleStamped update();
 
         void setTargetVelocity(geometry_msgs::Twist twist);
 
@@ -47,8 +47,6 @@ namespace Iarc7Motion
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
         ros::NodeHandle& nh_;
-
-        ros::Publisher uav_control_;
 
         tf2_ros::Buffer tfBuffer_;
         tf2_ros::TransformListener tfListener_;

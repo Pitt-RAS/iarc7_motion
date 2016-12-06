@@ -9,9 +9,6 @@
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
-// Package headers
-#include "iarc7_motion/QuadTwistRequestLimiter.hpp"
-
 // ROS message headers
 #include "geometry_msgs/Vector3Stamped.h"
 
@@ -26,14 +23,7 @@ yaw_pid_(0.0, 0.0, 0.0) ,
 tfBuffer_(),
 tfListener_(tfBuffer_)
 {
-    uav_control_ = nh_.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
 
-    // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
-    // section 1
-    if(!uav_control_)
-    {
-        ROS_ASSERT("Could not create uav_control_ publisher");
-    }
 }
 
 // TODO sanity check these values
@@ -46,7 +36,7 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 }
 
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
-void QuadVelocityController::update()
+iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update()
 {
     // Get the time delta
     geometry_msgs::Vector3 velocities;
@@ -70,57 +60,8 @@ void QuadVelocityController::update()
     ROS_DEBUG("Vz:       %f Vx:    %f Vy:   %f", velocities.z, velocities.x, velocities.y);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
 
-    // Limit the uav command
-    limitUavCommand(uav_command);
-
-    // Publish the desired angles and throttle
-    uav_control_.publish(uav_command);
+    return uav_command;
 }
-
-// This is a helper function that will limit a uav command using the twist limiter
-// It will eventually no longer be needed when the quad controller is converted to use twists
-void QuadVelocityController::limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command)
-{
-    TwistStamped uav_twist_stamped;
-    Twist& uav_twist = uav_twist_stamped.twist;
-
-    // Convert from uav command to twist
-    uav_twist_stamped.header.stamp = uav_command.header.stamp;
-    uav_twist.linear.z  = uav_command.throttle;
-    uav_twist.angular.y = uav_command.data.pitch;
-    uav_twist.angular.x = uav_command.data.roll;
-    uav_twist.angular.z = uav_command.data.yaw;
-
-    // Limit the twist
-    Twist min;
-    min.linear.z  = 0.0;
-    min.angular.y = -20.0;
-    min.angular.x = -20.0;
-    min.angular.z = -20.0;
-
-    Twist max;
-    min.linear.z  = 100.0;
-    min.angular.y = 20.0;
-    min.angular.x = 20.0;
-    min.angular.z = 20.0;
-
-    Twist max_rate;
-    min.linear.z  = 100.0;
-    min.angular.y = 20.0;
-    min.angular.x = 20.0;
-    min.angular.z = 20.0;
-
-    QuadTwistRequestLimiter limiter(min, max, max_rate);
-    limiter.limitTwist(uav_twist_stamped);
-
-    // Copy the twist to the uav command
-    uav_command.header.stamp = uav_twist_stamped.header.stamp;
-    uav_command.throttle     = uav_twist.linear.z;
-    uav_command.data.pitch   = uav_twist.angular.y;
-    uav_command.data.roll    = uav_twist.angular.x;
-    uav_command.data.yaw     = uav_twist.angular.z;
-}
-
 
 // Waits for the next transform to come in, returns true if velocities are valid
 // Has to receive two transforms within the timeout period to consider the velocity valid
