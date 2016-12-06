@@ -46,7 +46,7 @@ iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update()
     // Update all the PID loops
     double throttle_output = throttle_pid_.update(velocities.z, time_delta);
     double pitch_output    = pitch_pid_.update(velocities.x, time_delta);
-    double roll_output     = roll_pid_.update(velocities.y, time_delta);
+    double roll_output     = roll_pid_.update(-velocities.y, time_delta);
     double yaw_output      = yaw_pid_.update(velocities.y, time_delta);
 
     // For now publish, should send values to a hard limiter first
