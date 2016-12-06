@@ -113,6 +113,7 @@ int main(int argc, char **argv)
     getUavCommandParams(nh, min, max, max_rate);
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
+    ros::Rate rate (100);
     while(ros::ok())
     {
         iarc7_msgs::OrientationThrottleStamped uav_command = quadController.update();
@@ -124,6 +125,7 @@ int main(int argc, char **argv)
         uav_control_.publish(uav_command);
 
         ros::spinOnce();
+        rate.sleep();
     }
 
     // All is good.
