@@ -63,7 +63,7 @@ void QuadTwistRequestLimiter::velocityLimit(double& request, const double old, c
 {
     double velocity = (request - old) / delta.toSec();
 
-    if(abs(velocity) > max)
+    if(std::abs(velocity) > max)
     {
         // result = (sign of velocity) * max_velocity + start
         double result = (((velocity > 0) - (velocity < 0)) * max) + old;
