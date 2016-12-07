@@ -32,7 +32,7 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 {
     throttle_pid_.setSetpoint(twist.linear.z);
     pitch_pid_.setSetpoint(twist.linear.x);
-    roll_pid_.setSetpoint(twist.linear.y);
+    roll_pid_.setSetpoint(-twist.linear.y);
     yaw_pid_.setSetpoint(twist.angular.z);
 }
 
