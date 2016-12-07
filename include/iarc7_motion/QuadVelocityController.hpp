@@ -18,7 +18,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Vector3.h"
 #include "iarc7_msgs/Float64Stamped.h"
-
+#include "iarc7_msgs/OrientationThrottleStamped.h"
 
 namespace Iarc7Motion
 {
@@ -36,7 +36,7 @@ namespace Iarc7Motion
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
-        void update();
+        iarc7_msgs::OrientationThrottleStamped update();
 
         void setTargetVelocity(geometry_msgs::Twist twist);
 
@@ -44,9 +44,9 @@ namespace Iarc7Motion
 
         bool getVelocities(geometry_msgs::Vector3& return_velocities);
 
-        ros::NodeHandle& nh_;
+        static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
-        ros::Publisher uav_control_;
+        ros::NodeHandle& nh_;
 
         tf2_ros::Buffer tfBuffer_;
         tf2_ros::TransformListener tfListener_;

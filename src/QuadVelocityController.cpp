@@ -6,11 +6,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+// Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
-#include <geometry_msgs/Vector3Stamped.h>
-
-#include "iarc7_msgs/OrientationThrottleStamped.h"
+// ROS message headers
+#include "geometry_msgs/Vector3Stamped.h"
 
 using namespace Iarc7Motion;
 
@@ -23,14 +23,7 @@ yaw_pid_(0.0, 0.0, 0.0) ,
 tfBuffer_(),
 tfListener_(tfBuffer_)
 {
-    uav_control_ = nh_.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
 
-    // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
-    // section 1
-    if(!uav_control_)
-    {
-        ROS_ASSERT("Could not create uav_control_ publisher");
-    }
 }
 
 // TODO sanity check these values
@@ -43,7 +36,7 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 }
 
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
-void QuadVelocityController::update()
+iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update()
 {
     // Get the time delta
     geometry_msgs::Vector3 velocities;
@@ -67,10 +60,8 @@ void QuadVelocityController::update()
     ROS_DEBUG("Vz:       %f Vx:    %f Vy:   %f", velocities.z, velocities.x, velocities.y);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
 
-    // Publish the desired angles and throttle
-    uav_control_.publish(uav_command);
+    return uav_command;
 }
-
 
 // Waits for the next transform to come in, returns true if velocities are valid
 // Has to receive two transforms within the timeout period to consider the velocity valid
