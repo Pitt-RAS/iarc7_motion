@@ -39,7 +39,7 @@ void QuadTwistRequestLimiter::limitTwist(TwistStamped& input_twist)
     // Limit the rates
     ros::Duration delta = input_twist.header.stamp - last_twist.header.stamp;
     velocityLimit(input_twist.twist.linear.z,  last_twist.twist.linear.z,  maxTwistChange_.linear.z,  delta, "Thrust");
-    // If X extends towards the front of the quad than rotating around the X axis is pitch
+    // If X extends towards the front of the quad than rotating around the Y axis is pitch
     velocityLimit(input_twist.twist.angular.y, last_twist.twist.angular.y, maxTwistChange_.angular.y, delta, "Pitch");
     // If X extends towards the front of the quad than rotating around the X axis is roll
     velocityLimit(input_twist.twist.angular.x, last_twist.twist.angular.x, maxTwistChange_.angular.x, delta, "Roll");
@@ -57,6 +57,8 @@ void QuadTwistRequestLimiter::limitTwist(TwistStamped& input_twist)
     minLimit(input_twist.twist.angular.y, minTwist_.angular.y, "Pitch");
     minLimit(input_twist.twist.angular.x, minTwist_.angular.x, "Roll");
     minLimit(input_twist.twist.angular.z, minTwist_.angular.z, "Yaw");
+
+    last_twist = input_twist;
 }
 
 void QuadTwistRequestLimiter::velocityLimit(double& request, const double old, const double max, const ros::Duration& delta, char const * axis)
@@ -65,9 +67,10 @@ void QuadTwistRequestLimiter::velocityLimit(double& request, const double old, c
 
     if(std::abs(velocity) > max)
     {
-        // result = (sign of velocity) * max_velocity + start
-        double result = (((velocity > 0) - (velocity < 0)) * max) + old;
-        ROS_WARN("%s rate limit reached, requested: %f allowed: %f", axis, result, old);
+        // result = (sign of velocity) * max_velocity * dt + start
+        double result = ((velocity > 0 ? 1 : -1) * max * delta.toSec()) + old;
+        ROS_WARN("%s rate limit reached, requested: %f allowed: [%f, %f] result: %f",
+                 axis, request, old - max * delta.toSec(), old + max * delta.toSec(), result);
         request = result;
     }
 }
