@@ -24,12 +24,13 @@ if __name__ == '__main__':
     waypoints = [
             (0, 0, 3),
             (3, 0, 3),
+            (-3, 1, 4),
             ]
     waypoints_iter = iter(waypoints)
     target = next(waypoints_iter)
 
-    kP = 0.3
-    max_angle = 0.3
+    kP = 0.5
+    max_vel = 1
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
@@ -43,9 +44,9 @@ if __name__ == '__main__':
         velocity.header.frame_id = 'level_quad'
         velocity.header.stamp = rospy.Time.now() + rospy.Duration(1)
         if abs(target[0] - trans[0]) >= 0.1:
-            velocity.twist.linear.x = constrain((target[0] - trans[0]) * kP, -max_angle, max_angle)
+            velocity.twist.linear.x = constrain((target[0] - trans[0]) * kP, -max_vel, max_vel)
         if abs(target[1] - trans[1]) >= 0.1:
-            velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_angle, max_angle)
+            velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_vel, max_vel)
         if abs(target[2] - trans[2]) >= 0.1:
             velocity.twist.linear.z = target[2] - trans[2]
         print velocity
