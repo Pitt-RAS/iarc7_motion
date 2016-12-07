@@ -19,31 +19,32 @@ using geometry_msgs::Twist;
 namespace Iarc7Motion
 {
 
-    class QuadTwistRequestLimiter
-    {
-    public:
-        QuadTwistRequestLimiter() = delete;
+class QuadTwistRequestLimiter
+{
+public:
+    QuadTwistRequestLimiter() = delete;
 
-        QuadTwistRequestLimiter(Twist minTwist, Twist maxTwist, Twist maxChange);
+    QuadTwistRequestLimiter(Twist minTwist, Twist maxTwist, Twist maxChange);
 
-        ~QuadTwistRequestLimiter() = default;
+    ~QuadTwistRequestLimiter() = default;
 
-        // Don't allow the copy constructor or assignment.
-        QuadTwistRequestLimiter(const QuadTwistRequestLimiter& rhs) = delete;
-        QuadTwistRequestLimiter& operator=(const QuadTwistRequestLimiter& rhs) = delete;
+    // Don't allow the copy constructor or assignment.
+    QuadTwistRequestLimiter(const QuadTwistRequestLimiter& rhs) = delete;
+    QuadTwistRequestLimiter& operator=(const QuadTwistRequestLimiter& rhs) = delete;
 
-        void limitTwist(TwistStamped& input_twist);
+    void limitTwist(TwistStamped& input_twist);
 
-    private:
+private:
 
-        static void velocityLimit(double& request, const double old, const double max, const ros::Duration& delta, char const * axis);
-        static void minLimit(double& request, const double min, char const * axis);
-        static void maxLimit(double& request, const double max, char const * axis);
+    static void velocityLimit(double& request, const double old, const double max, const ros::Duration& delta, char const * axis);
+    static void minLimit(double& request, const double min, char const * axis);
+    static void maxLimit(double& request, const double max, char const * axis);
 
-        Twist minTwist_;
-        Twist maxTwist_;
-        Twist maxTwistChange_;
-    };
+    Twist minTwist_;
+    Twist maxTwist_;
+    Twist maxTwistChange_;
+};
+
 } // End namespace Iarc7Motion
 
 #endif // QUAD_TWIST_LIMITER_HPP

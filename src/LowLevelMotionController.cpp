@@ -59,10 +59,7 @@ int main(int argc, char **argv)
 
     // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
     // section 1
-    if(!uav_control_)
-    {
-        ROS_ASSERT("Could not create uav_control_ publisher");
-    }
+    ROS_ASSERT_MSG(uav_control_, "Could not create uav_direction_command publisher");
 
     // Limit the twist, this will be cleaned up when we switch to rosparam
     Twist min;
@@ -72,16 +69,16 @@ int main(int argc, char **argv)
     min.angular.z = -20.0;
 
     Twist max;
-    min.linear.z  = 100.0;
-    min.angular.y = 20.0;
-    min.angular.x = 20.0;
-    min.angular.z = 20.0;
+    max.linear.z  = 100.0;
+    max.angular.y = 20.0;
+    max.angular.x = 20.0;
+    max.angular.z = 20.0;
 
     Twist max_rate;
-    min.linear.z  = 100.0;
-    min.angular.y = 20.0;
-    min.angular.x = 20.0;
-    min.angular.z = 20.0;
+    max_rate.linear.z  = 100.0;
+    max_rate.angular.y = 20.0;
+    max_rate.angular.x = 20.0;
+    max_rate.angular.z = 20.0;
 
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 

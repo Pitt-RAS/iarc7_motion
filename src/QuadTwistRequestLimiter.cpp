@@ -67,7 +67,7 @@ void QuadTwistRequestLimiter::velocityLimit(double& request, const double old, c
     {
         // result = (sign of velocity) * max_velocity + start
         double result = (((velocity > 0) - (velocity < 0)) * max) + old;
-        ROS_ERROR("%s rate limit reached, requested: %f allowed: %f", axis, result, old);
+        ROS_WARN("%s rate limit reached, requested: %f allowed: %f", axis, result, old);
         request = result;
     }
 }
@@ -76,7 +76,7 @@ void QuadTwistRequestLimiter::maxLimit(double& request, const double max, char c
 {
     if(request > max)
     {
-        ROS_ERROR("%s max value exceeded, requested: %f allowed: %f", axis, request, max);
+        ROS_WARN("%s max value exceeded, requested: %f allowed: %f", axis, request, max);
         request = max;
     }
 }
@@ -85,7 +85,7 @@ void QuadTwistRequestLimiter::minLimit(double& request, const double min, char c
 {
     if(request < min)
     {
-        ROS_ERROR("%s min value exceeded, requested: %f allowed: %f", axis, request, min);
+        ROS_WARN("%s min value exceeded, requested: %f allowed: %f", axis, request, min);
         request = min;
     }
 }
