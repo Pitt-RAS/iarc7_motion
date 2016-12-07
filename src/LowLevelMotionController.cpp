@@ -43,15 +43,38 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
+void getParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3], double roll_pid[3])
+{
+    // Throttle PID settings retrieve
+    nh.param("throttle_p", throttle_pid[0], 0.0);
+    nh.param("throttle_i", throttle_pid[1], 0.0);
+    nh.param("throttle_d", throttle_pid[2], 0.0);
+
+    // Pitch PID settings retrieve
+    nh.param("pitch_p", pitch_pid[0], 0.0);
+    nh.param("pitch_i", pitch_pid[1], 0.0);
+    nh.param("pitch_d", pitch_pid[2], 0.0);
+
+    // Roll PID settings retrieve
+    nh.param("roll_p", roll_pid[0], 0.0);
+    nh.param("roll_i", roll_pid[1], 0.0);
+    nh.param("roll_d", roll_pid[2], 0.0);
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Low_Level_Motion_Control");
 
     ROS_INFO("Low_Level_Motion_Control begin");
 
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("low_level_motion_controller");
 
-    QuadVelocityController quadController(nh);
+    double throttle_pid[3];
+    double pitch_pid[3];
+    double roll_pid[3];
+    getParams(nh, throttle_pid, pitch_pid,roll_pid);
+
+    QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);
 
     AccelerationPlanner<QuadVelocityController> accelerationPlanner(nh, quadController);
 
