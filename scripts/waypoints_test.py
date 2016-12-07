@@ -43,11 +43,11 @@ if __name__ == '__main__':
         velocity = TwistStamped()
         velocity.header.frame_id = 'level_quad'
         velocity.header.stamp = rospy.Time.now() + rospy.Duration(1)
-        if abs(target[0] - trans[0]) >= 0.1:
+        if abs(target[0] - trans[0]) >= 0.02:
             velocity.twist.linear.x = constrain((target[0] - trans[0]) * kP, -max_vel, max_vel)
-        if abs(target[1] - trans[1]) >= 0.1:
+        if abs(target[1] - trans[1]) >= 0.02:
             velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_vel, max_vel)
-        if abs(target[2] - trans[2]) >= 0.1:
+        if abs(target[2] - trans[2]) >= 0.02:
             velocity.twist.linear.z = target[2] - trans[2]
         print velocity
 
