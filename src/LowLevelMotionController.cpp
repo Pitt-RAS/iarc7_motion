@@ -43,7 +43,7 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
-void getParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3], double roll_pid[3])
+void getPidParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3], double roll_pid[3])
 {
     // Throttle PID settings retrieve
     nh.param("throttle_p", throttle_pid[0], 0.0);
@@ -61,6 +61,29 @@ void getParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3],
     nh.param("roll_d", roll_pid[2], 0.0);
 }
 
+void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
+{
+    // Throttle Limit settings retrieve
+    nh.param("throttle_max", max.linear.z, 0.0);
+    nh.param("throttle_min", min.linear.z, 0.0);
+    nh.param("throttle_max_rate", max_rate.linear.z, 0.0);
+
+    // Pitch Limit settings retrieve
+    nh.param("pitch_max", max.angular.y, 0.0);
+    nh.param("pitch_min", min.angular.y, 0.0);
+    nh.param("pitch_max_rate", max_rate.angular.y, 0.0);
+
+    // Roll Limit settings retrieve
+    nh.param("roll_max", max.angular.x, 0.0);
+    nh.param("roll_min", min.angular.x, 0.0);
+    nh.param("roll_max_rate", max_rate.angular.y, 0.0);
+
+    // Yaw Limit settings retrieve
+    nh.param("yaw_max", max.angular.z, 0.0);
+    nh.param("yaw_min", min.angular.z, 0.0);
+    nh.param("yaw_max_rate", max_rate.angular.z, 0.0);
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Low_Level_Motion_Control");
@@ -72,7 +95,7 @@ int main(int argc, char **argv)
     double throttle_pid[3];
     double pitch_pid[3];
     double roll_pid[3];
-    getParams(nh, throttle_pid, pitch_pid,roll_pid);
+    getPidParams(nh, throttle_pid, pitch_pid,roll_pid);
 
     QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);
 
@@ -84,25 +107,10 @@ int main(int argc, char **argv)
     // section 1
     ROS_ASSERT_MSG(uav_control_, "Could not create uav_direction_command publisher");
 
-    // Limit the twist, this will be cleaned up when we switch to rosparam
     Twist min;
-    min.linear.z  = 0.0;
-    min.angular.y = -20.0;
-    min.angular.x = -20.0;
-    min.angular.z = -20.0;
-
     Twist max;
-    max.linear.z  = 100.0;
-    max.angular.y = 20.0;
-    max.angular.x = 20.0;
-    max.angular.z = 20.0;
-
     Twist max_rate;
-    max_rate.linear.z  = 100.0;
-    max_rate.angular.y = 20.0;
-    max_rate.angular.x = 20.0;
-    max_rate.angular.z = 20.0;
-
+    getUavCommandParams(nh, min, max, max_rate);
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
     while(ros::ok())

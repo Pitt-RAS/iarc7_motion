@@ -9,3 +9,19 @@ pitch_d: 0.0
 roll_p: 0.0
 roll_i: 0.0
 roll_d: 0.0
+
+throttle_max      : 100.0
+throttle_min      : 0.0
+throttle_max_rate : 100.0
+
+pitch_max         : 20.0
+pitch_min         : -20.0
+pitch_max_rate    : 20.0
+
+roll_max          : 20.0
+roll_min          : -20.0
+roll_max_rate     : 20.0
+
+yaw_max           : 10.0
+yaw_min           : -10.0
+yaw_max_rate      : 10.0
