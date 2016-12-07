@@ -36,7 +36,7 @@ namespace Iarc7Motion
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
-        iarc7_msgs::OrientationThrottleStamped update();
+        iarc7_msgs::OrientationThrottleStamped update(const ros::Time& time);
 
         void setTargetVelocity(geometry_msgs::Twist twist);
 
@@ -55,6 +55,8 @@ namespace Iarc7Motion
         FeedForwardPid pitch_pid_;
         FeedForwardPid roll_pid_;
         FeedForwardPid yaw_pid_;
+
+        ros::Time last_time_;
 
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};

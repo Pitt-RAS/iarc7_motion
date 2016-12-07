@@ -21,7 +21,8 @@ pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], 1, -1) ,
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], 1, -1) ,
 yaw_pid_(0.0, 0.0, 0.0, 1, -1) ,
 tfBuffer_(),
-tfListener_(tfBuffer_)
+tfListener_(tfBuffer_),
+last_time_(0.0)
 {
 
 }
@@ -36,12 +37,17 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 }
 
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
-iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update()
+iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros::Time& time)
 {
-    // Get the time delta
     geometry_msgs::Vector3 velocities;
     getVelocities(velocities);
-    double time_delta = 0.0;
+
+    // Get the time delta
+    if (last_time_ == ros::Time(0)) {
+        last_time_ = time;
+    }
+    double time_delta = (time - last_time_).toSec();
+    last_time_ = time;
 
     // Update all the PID loops
     double throttle_output = throttle_pid_.update(velocities.z, time_delta);

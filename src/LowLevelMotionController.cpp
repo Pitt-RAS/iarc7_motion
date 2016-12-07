@@ -114,9 +114,14 @@ int main(int argc, char **argv)
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
     ros::Rate rate (100);
-    while(ros::ok())
+    while (ros::ok() && ros::Time::now() == ros::Time(0)) {
+        // wait
+        ros::spinOnce();
+    }
+
+    while (ros::ok())
     {
-        iarc7_msgs::OrientationThrottleStamped uav_command = quadController.update();
+        iarc7_msgs::OrientationThrottleStamped uav_command = quadController.update(ros::Time::now());
 
         // Limit the uav command
         limitUavCommand(limiter, uav_command);
