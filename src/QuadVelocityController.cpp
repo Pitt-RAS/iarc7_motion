@@ -58,6 +58,7 @@ iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros:
 
     // For now publish, should send values to a hard limiter first
     iarc7_msgs::OrientationThrottleStamped uav_command;
+    uav_command.header.stamp = time;
     uav_command.throttle = throttle_output + hover_throttle_;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;

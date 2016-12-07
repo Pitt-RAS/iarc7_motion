@@ -76,7 +76,7 @@ void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& m
     // Roll Limit settings retrieve
     nh.param("roll_max", max.angular.x, 0.0);
     nh.param("roll_min", min.angular.x, 0.0);
-    nh.param("roll_max_rate", max_rate.angular.y, 0.0);
+    nh.param("roll_max_rate", max_rate.angular.x, 0.0);
 
     // Yaw Limit settings retrieve
     nh.param("yaw_max", max.angular.z, 0.0);
