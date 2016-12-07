@@ -1,12 +1,12 @@
-throttle_p: 0.0
-throttle_i: 0.0
-throttle_d: 0.0
+throttle_p: 8.0
+throttle_i: 0.8
+throttle_d: 2.0
 
-pitch_p: 0.0
+pitch_p: 0.3
 pitch_i: 0.0
 pitch_d: 0.0
 
-roll_p: 0.0
+roll_p: 0.3
 roll_i: 0.0
 roll_d: 0.0
 
