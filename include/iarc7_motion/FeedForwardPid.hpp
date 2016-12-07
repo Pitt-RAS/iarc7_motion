@@ -16,7 +16,8 @@ namespace Iarc7Motion
     {
     public:
 
-        FeedForwardPid(double p_gain, double i_gain, double d_gain);
+        FeedForwardPid(double p_gain, double i_gain, double d_gain,
+                       double i_accumulator_max, double i_accumulator_min);
 
         FeedForwardPid() = delete;
         ~FeedForwardPid() = default;
@@ -35,6 +36,11 @@ namespace Iarc7Motion
 
         double setpoint_;
 
+        double i_accumulator_;
+        double last_current_value_;
+
+        const double i_accumulator_max_;
+        const double i_accumulator_min_;
     };
 
 }
