@@ -22,7 +22,8 @@ roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], 1, -1) ,
 yaw_pid_(0.0, 0.0, 0.0, 1, -1) ,
 tfBuffer_(),
 tfListener_(tfBuffer_),
-last_time_(0.0)
+last_time_(0.0),
+hover_throttle_(58.0)
 {
 
 }
@@ -57,7 +58,7 @@ iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros:
 
     // For now publish, should send values to a hard limiter first
     iarc7_msgs::OrientationThrottleStamped uav_command;
-    uav_command.throttle = throttle_output;
+    uav_command.throttle = throttle_output + hover_throttle_;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
     uav_command.data.yaw = yaw_output;

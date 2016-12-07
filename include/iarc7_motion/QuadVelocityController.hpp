@@ -58,6 +58,8 @@ namespace Iarc7Motion
 
         ros::Time last_time_;
 
+        double hover_throttle_;
+
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
     };
