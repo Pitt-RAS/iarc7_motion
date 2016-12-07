@@ -90,12 +90,13 @@ int main(int argc, char **argv)
 
     ROS_INFO("Low_Level_Motion_Control begin");
 
-    ros::NodeHandle nh("low_level_motion_controller");
+    ros::NodeHandle nh;
+    ros::NodeHandle param_nh ("low_level_motion_controller");
 
     double throttle_pid[3];
     double pitch_pid[3];
     double roll_pid[3];
-    getPidParams(nh, throttle_pid, pitch_pid,roll_pid);
+    getPidParams(param_nh, throttle_pid, pitch_pid,roll_pid);
 
     QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);
 
@@ -110,7 +111,7 @@ int main(int argc, char **argv)
     Twist min;
     Twist max;
     Twist max_rate;
-    getUavCommandParams(nh, min, max, max_rate);
+    getUavCommandParams(param_nh, min, max, max_rate);
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
     ros::Rate rate (100);
