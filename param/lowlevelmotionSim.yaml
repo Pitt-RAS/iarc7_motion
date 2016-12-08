@@ -1,14 +1,20 @@
 throttle_p: 8.0
 throttle_i: 0.8
 throttle_d: 2.0
+throttle_accumulator_max: 50.0
+throttle_accumulator_min: -50.0
 
 pitch_p: 0.3
 pitch_i: 0.0
 pitch_d: 0.0
+pitch_accumulator_max: 0.0
+pitch_accumulator_min: 0.0
 
 roll_p: 0.3
 roll_i: 0.0
 roll_d: 0.0
+roll_accumulator_max: 0.0
+roll_accumulator_min: 0.0
 
 throttle_max      : 100.0
 throttle_min      : 0.0

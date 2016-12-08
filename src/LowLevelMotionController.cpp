@@ -43,22 +43,28 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
-void getPidParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3], double roll_pid[3])
+void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5])
 {
     // Throttle PID settings retrieve
     nh.param("throttle_p", throttle_pid[0], 0.0);
     nh.param("throttle_i", throttle_pid[1], 0.0);
     nh.param("throttle_d", throttle_pid[2], 0.0);
+    nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
+    nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
 
     // Pitch PID settings retrieve
     nh.param("pitch_p", pitch_pid[0], 0.0);
     nh.param("pitch_i", pitch_pid[1], 0.0);
     nh.param("pitch_d", pitch_pid[2], 0.0);
+    nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
+    nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
 
     // Roll PID settings retrieve
     nh.param("roll_p", roll_pid[0], 0.0);
     nh.param("roll_i", roll_pid[1], 0.0);
     nh.param("roll_d", roll_pid[2], 0.0);
+    nh.param("roll_accumulator_max", roll_pid[3], 0.0);
+    nh.param("roll_accumulator_min", roll_pid[4], 0.0);
 }
 
 void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
@@ -93,9 +99,9 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::NodeHandle param_nh ("low_level_motion_controller");
 
-    double throttle_pid[3];
-    double pitch_pid[3];
-    double roll_pid[3];
+    double throttle_pid[5];
+    double pitch_pid[5];
+    double roll_pid[5];
     getPidParams(param_nh, throttle_pid, pitch_pid,roll_pid);
 
     QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);

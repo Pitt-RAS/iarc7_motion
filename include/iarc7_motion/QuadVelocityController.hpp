@@ -28,7 +28,7 @@ namespace Iarc7Motion
     public:
         QuadVelocityController() = delete;
 
-        QuadVelocityController(ros::NodeHandle& nh, double thrust_pid[3], double pitch_pid[3], double roll_pid[3]);
+        QuadVelocityController(ros::NodeHandle& nh, double thrust_pid[5], double pitch_pid[5], double roll_pid[5]);
 
         ~QuadVelocityController() = default;
 
