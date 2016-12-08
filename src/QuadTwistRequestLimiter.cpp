@@ -13,7 +13,8 @@ using namespace Iarc7Motion;
 QuadTwistRequestLimiter::QuadTwistRequestLimiter(Twist minTwist, Twist maxTwist, Twist maxChange) :
 minTwist_(minTwist) ,
 maxTwist_(maxTwist) ,
-maxTwistChange_(maxChange)
+maxTwistChange_(maxChange),
+run_once_(false)
 {
 
 }
@@ -21,13 +22,10 @@ maxTwistChange_(maxChange)
 // TODO sanity check these values
 void QuadTwistRequestLimiter::limitTwist(TwistStamped& input_twist)
 {
-    static TwistStamped last_twist;
-    static bool run_once{false};
-
-    if(!run_once)
+    if(!run_once_)
     {
-        last_twist = input_twist;
-        run_once = true;
+        last_twist_ = input_twist;
+        run_once_ = true;
 
         // Return empty TwistStamped
         TwistStamped return_twist;
@@ -37,14 +35,14 @@ void QuadTwistRequestLimiter::limitTwist(TwistStamped& input_twist)
     }
 
     // Limit the rates
-    ros::Duration delta = input_twist.header.stamp - last_twist.header.stamp;
-    velocityLimit(input_twist.twist.linear.z,  last_twist.twist.linear.z,  maxTwistChange_.linear.z,  delta, "Thrust");
+    ros::Duration delta = input_twist.header.stamp - last_twist_.header.stamp;
+    velocityLimit(input_twist.twist.linear.z,  last_twist_.twist.linear.z,  maxTwistChange_.linear.z,  delta, "Thrust");
     // If X extends towards the front of the quad than rotating around the Y axis is pitch
-    velocityLimit(input_twist.twist.angular.y, last_twist.twist.angular.y, maxTwistChange_.angular.y, delta, "Pitch");
+    velocityLimit(input_twist.twist.angular.y, last_twist_.twist.angular.y, maxTwistChange_.angular.y, delta, "Pitch");
     // If X extends towards the front of the quad than rotating around the X axis is roll
-    velocityLimit(input_twist.twist.angular.x, last_twist.twist.angular.x, maxTwistChange_.angular.x, delta, "Roll");
+    velocityLimit(input_twist.twist.angular.x, last_twist_.twist.angular.x, maxTwistChange_.angular.x, delta, "Roll");
     // If X extends towards the front of the quad than rotating around the Z axis is yaw
-    velocityLimit(input_twist.twist.angular.z, last_twist.twist.angular.z, maxTwistChange_.angular.z, delta, "Yaw");
+    velocityLimit(input_twist.twist.angular.z, last_twist_.twist.angular.z, maxTwistChange_.angular.z, delta, "Yaw");
 
     // Limit the max
     maxLimit(input_twist.twist.linear.z,  maxTwist_.linear.z,  "Thrust");
@@ -58,7 +56,7 @@ void QuadTwistRequestLimiter::limitTwist(TwistStamped& input_twist)
     minLimit(input_twist.twist.angular.x, minTwist_.angular.x, "Roll");
     minLimit(input_twist.twist.angular.z, minTwist_.angular.z, "Yaw");
 
-    last_twist = input_twist;
+    last_twist_ = input_twist;
 }
 
 void QuadTwistRequestLimiter::velocityLimit(double& request, const double old, const double max, const ros::Duration& delta, char const * axis)

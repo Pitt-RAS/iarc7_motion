@@ -17,6 +17,7 @@
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Vector3.h"
+#include "geometry_msgs/Vector3Stamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
@@ -59,6 +60,15 @@ namespace Iarc7Motion
         ros::Time last_time_;
 
         double hover_throttle_;
+
+        // Holds the last transform received to calculate velocities
+        geometry_msgs::TransformStamped last_transform_stamped_;
+
+        // Holds the last valid velocity reading
+        geometry_msgs::Vector3Stamped last_velocity_stamped_;
+
+        // Makes sure that we have a lastTransformStamped before returning a valid velocity
+        bool ran_once_;
 
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
