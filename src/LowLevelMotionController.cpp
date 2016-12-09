@@ -128,7 +128,9 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-        iarc7_msgs::OrientationThrottleStamped uav_command = quadController.update(ros::Time::now());
+        iarc7_msgs::OrientationThrottleStamped uav_command;
+        bool success = quadController.update(ros::Time::now(), uav_command);
+        ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
 
         // Limit the uav command
         limitUavCommand(limiter, uav_command);

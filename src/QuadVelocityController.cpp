@@ -39,7 +39,8 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 }
 
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
-iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros::Time& time)
+bool QuadVelocityController::update(const ros::Time& time,
+                                    iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     geometry_msgs::Vector3 velocities;
     getVelocities(velocities);
@@ -49,16 +50,40 @@ iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros:
         last_time_ = time;
     }
     double time_delta = (time - last_time_).toSec();
+
     last_time_ = time;
 
     // Update all the PID loops
-    double throttle_output = throttle_pid_.update(velocities.z, time_delta);
-    double pitch_output    = pitch_pid_.update(velocities.x, time_delta);
-    double roll_output     = roll_pid_.update(-velocities.y, time_delta);
-    double yaw_output      = yaw_pid_.update(velocities.y, time_delta);
+    double throttle_output;
+    double pitch_output;
+    double roll_output;
+    double yaw_output;
+
+    bool success = throttle_pid_.update(velocities.z, time_delta, throttle_output);
+    if (!success) {
+        ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
+        return false;
+    }
+
+    success = pitch_pid_.update(velocities.x, time_delta, pitch_output);
+    if (!success) {
+        ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
+        return false;
+    }
+
+    success = roll_pid_.update(-velocities.y, time_delta, roll_output);
+    if (!success) {
+        ROS_WARN("Roll PID update failed in QuadVelocityController::update");
+        return false;
+    }
+
+    success = yaw_pid_.update(velocities.y, time_delta, yaw_output);
+    if (!success) {
+        ROS_WARN("Yaw PID update failed in QuadVelocityController::update");
+        return false;
+    }
 
     // For now publish, should send values to a hard limiter first
-    iarc7_msgs::OrientationThrottleStamped uav_command;
     uav_command.header.stamp = time;
     uav_command.throttle = throttle_output + hover_throttle_;
     uav_command.data.pitch = pitch_output;
@@ -69,7 +94,7 @@ iarc7_msgs::OrientationThrottleStamped QuadVelocityController::update(const ros:
     ROS_DEBUG("Vz:       %f Vx:    %f Vy:   %f", velocities.z, velocities.x, velocities.y);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
 
-    return uav_command;
+    return true;
 }
 
 // Waits for the next transform to come in, returns true if velocities are valid

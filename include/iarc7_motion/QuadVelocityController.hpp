@@ -37,7 +37,9 @@ namespace Iarc7Motion
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
-        iarc7_msgs::OrientationThrottleStamped update(const ros::Time& time);
+        bool __attribute__((warn_unused_result)) update(
+            const ros::Time& time,
+            iarc7_msgs::OrientationThrottleStamped& uav_command);
 
         void setTargetVelocity(geometry_msgs::Twist twist);
 

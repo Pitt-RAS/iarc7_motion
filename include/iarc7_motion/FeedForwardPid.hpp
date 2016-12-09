@@ -27,17 +27,21 @@ namespace Iarc7Motion
         FeedForwardPid& operator=(const FeedForwardPid& rhs) = delete;
 
         void setSetpoint(double setpoint);
-        double update(double current_value, double time_delta);
+
+        // returns true on success
+        bool __attribute__((warn_unused_result)) update(double current_value,
+                                                        double time_delta,
+                                                        double& result);
 
     private:
         const double p_gain_;
         const double i_gain_;
         const double d_gain_;
 
-        double setpoint_;
-
+        double initialized_;
         double i_accumulator_;
         double last_current_value_;
+        double setpoint_;
 
         const double i_accumulator_max_;
         const double i_accumulator_min_;
