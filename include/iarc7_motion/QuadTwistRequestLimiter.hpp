@@ -43,6 +43,9 @@ private:
     Twist minTwist_;
     Twist maxTwist_;
     Twist maxTwistChange_;
+
+    TwistStamped last_twist_;
+    bool run_once_;
 };
 
 } // End namespace Iarc7Motion

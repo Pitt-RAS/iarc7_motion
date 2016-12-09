@@ -43,22 +43,28 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
-void getPidParams(ros::NodeHandle& nh, double throttle_pid[3], double pitch_pid[3], double roll_pid[3])
+void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5])
 {
     // Throttle PID settings retrieve
     nh.param("throttle_p", throttle_pid[0], 0.0);
     nh.param("throttle_i", throttle_pid[1], 0.0);
     nh.param("throttle_d", throttle_pid[2], 0.0);
+    nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
+    nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
 
     // Pitch PID settings retrieve
     nh.param("pitch_p", pitch_pid[0], 0.0);
     nh.param("pitch_i", pitch_pid[1], 0.0);
     nh.param("pitch_d", pitch_pid[2], 0.0);
+    nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
+    nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
 
     // Roll PID settings retrieve
     nh.param("roll_p", roll_pid[0], 0.0);
     nh.param("roll_i", roll_pid[1], 0.0);
     nh.param("roll_d", roll_pid[2], 0.0);
+    nh.param("roll_accumulator_max", roll_pid[3], 0.0);
+    nh.param("roll_accumulator_min", roll_pid[4], 0.0);
 }
 
 void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
@@ -76,7 +82,7 @@ void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& m
     // Roll Limit settings retrieve
     nh.param("roll_max", max.angular.x, 0.0);
     nh.param("roll_min", min.angular.x, 0.0);
-    nh.param("roll_max_rate", max_rate.angular.y, 0.0);
+    nh.param("roll_max_rate", max_rate.angular.x, 0.0);
 
     // Yaw Limit settings retrieve
     nh.param("yaw_max", max.angular.z, 0.0);
@@ -90,14 +96,15 @@ int main(int argc, char **argv)
 
     ROS_INFO("Low_Level_Motion_Control begin");
 
-    ros::NodeHandle nh("low_level_motion_controller");
+    ros::NodeHandle nh;
+    ros::NodeHandle param_nh ("low_level_motion_controller");
 
-    double throttle_pid[3];
-    double pitch_pid[3];
-    double roll_pid[3];
-    getPidParams(nh, throttle_pid, pitch_pid,roll_pid);
+    double throttle_pid[5];
+    double pitch_pid[5];
+    double roll_pid[5];
+    getPidParams(param_nh, throttle_pid, pitch_pid,roll_pid);
 
-    QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);
+    QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid);
 
     AccelerationPlanner<QuadVelocityController> accelerationPlanner(nh, quadController);
 
@@ -110,12 +117,20 @@ int main(int argc, char **argv)
     Twist min;
     Twist max;
     Twist max_rate;
-    getUavCommandParams(nh, min, max, max_rate);
+    getUavCommandParams(param_nh, min, max, max_rate);
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
-    while(ros::ok())
+    ros::Rate rate (100);
+    while (ros::ok() && ros::Time::now() == ros::Time(0)) {
+        // wait
+        ros::spinOnce();
+    }
+
+    while (ros::ok())
     {
-        iarc7_msgs::OrientationThrottleStamped uav_command = quadController.update();
+        iarc7_msgs::OrientationThrottleStamped uav_command;
+        bool success = quadController.update(ros::Time::now(), uav_command);
+        ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
 
         // Limit the uav command
         limitUavCommand(limiter, uav_command);
@@ -124,6 +139,7 @@ int main(int argc, char **argv)
         uav_control_.publish(uav_command);
 
         ros::spinOnce();
+        rate.sleep();
     }
 
     // All is good.

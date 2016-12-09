@@ -17,6 +17,7 @@
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/Vector3.h"
+#include "geometry_msgs/Vector3Stamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
@@ -28,7 +29,9 @@ namespace Iarc7Motion
     public:
         QuadVelocityController() = delete;
 
-        QuadVelocityController(ros::NodeHandle& nh, double thrust_pid[3], double pitch_pid[3], double roll_pid[3]);
+        QuadVelocityController(double thrust_pid[5],
+                               double pitch_pid[5],
+                               double roll_pid[5]);
 
         ~QuadVelocityController() = default;
 
@@ -36,7 +39,9 @@ namespace Iarc7Motion
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
-        iarc7_msgs::OrientationThrottleStamped update();
+        bool __attribute__((warn_unused_result)) update(
+            const ros::Time& time,
+            iarc7_msgs::OrientationThrottleStamped& uav_command);
 
         void setTargetVelocity(geometry_msgs::Twist twist);
 
@@ -46,8 +51,6 @@ namespace Iarc7Motion
 
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
-        ros::NodeHandle& nh_;
-
         tf2_ros::Buffer tfBuffer_;
         tf2_ros::TransformListener tfListener_;
 
@@ -55,6 +58,17 @@ namespace Iarc7Motion
         FeedForwardPid pitch_pid_;
         FeedForwardPid roll_pid_;
         FeedForwardPid yaw_pid_;
+
+        double hover_throttle_;
+
+        // Holds the last transform received to calculate velocities
+        geometry_msgs::TransformStamped last_transform_stamped_;
+
+        // Holds the last valid velocity reading
+        geometry_msgs::Vector3Stamped last_velocity_stamped_;
+
+        // Makes sure that we have a lastTransformStamped before returning a valid velocity
+        bool ran_once_;
 
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
