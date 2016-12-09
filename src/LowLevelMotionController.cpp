@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     double roll_pid[5];
     getPidParams(param_nh, throttle_pid, pitch_pid,roll_pid);
 
-    QuadVelocityController quadController(nh, throttle_pid, pitch_pid, roll_pid);
+    QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid);
 
     AccelerationPlanner<QuadVelocityController> accelerationPlanner(nh, quadController);
 

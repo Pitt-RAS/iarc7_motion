@@ -29,7 +29,9 @@ namespace Iarc7Motion
     public:
         QuadVelocityController() = delete;
 
-        QuadVelocityController(ros::NodeHandle& nh, double thrust_pid[5], double pitch_pid[5], double roll_pid[5]);
+        QuadVelocityController(double thrust_pid[5],
+                               double pitch_pid[5],
+                               double roll_pid[5]);
 
         ~QuadVelocityController() = default;
 
@@ -48,8 +50,6 @@ namespace Iarc7Motion
         bool getVelocities(geometry_msgs::Vector3& return_velocities);
 
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
-
-        ros::NodeHandle& nh_;
 
         tf2_ros::Buffer tfBuffer_;
         tf2_ros::TransformListener tfListener_;

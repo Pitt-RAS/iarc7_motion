@@ -14,14 +14,15 @@
 
 using namespace Iarc7Motion;
 
-QuadVelocityController::QuadVelocityController(ros::NodeHandle& nh, double thrust_pid[5], double pitch_pid[5], double roll_pid[5]) :
-nh_(nh),  
+QuadVelocityController::QuadVelocityController(double thrust_pid[5],
+                                               double pitch_pid[5],
+                                               double roll_pid[5]) :
+tfBuffer_(),
+tfListener_(tfBuffer_),
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(0.0, 0.0, 0.0, 0.0, 0.0),
-tfBuffer_(),
-tfListener_(tfBuffer_),
 last_time_(0.0),
 hover_throttle_(58.0),
 ran_once_(false)
