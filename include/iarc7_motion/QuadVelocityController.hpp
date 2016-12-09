@@ -59,8 +59,6 @@ namespace Iarc7Motion
         FeedForwardPid roll_pid_;
         FeedForwardPid yaw_pid_;
 
-        ros::Time last_time_;
-
         double hover_throttle_;
 
         // Holds the last transform received to calculate velocities

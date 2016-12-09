@@ -30,7 +30,7 @@ namespace Iarc7Motion
 
         // returns true on success
         bool __attribute__((warn_unused_result)) update(double current_value,
-                                                        double time_delta,
+                                                        const ros::Time& time,
                                                         double& result);
 
     private:
@@ -41,6 +41,7 @@ namespace Iarc7Motion
         double initialized_;
         double i_accumulator_;
         double last_current_value_;
+        ros::Time last_time_;
         double setpoint_;
 
         const double i_accumulator_max_;

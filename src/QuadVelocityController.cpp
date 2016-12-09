@@ -23,7 +23,6 @@ throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(0.0, 0.0, 0.0, 0.0, 0.0),
-last_time_(0.0),
 hover_throttle_(58.0),
 ran_once_(false)
 {
@@ -46,39 +45,31 @@ bool QuadVelocityController::update(const ros::Time& time,
     geometry_msgs::Vector3 velocities;
     getVelocities(velocities);
 
-    // Get the time delta
-    if (last_time_ == ros::Time(0)) {
-        last_time_ = time;
-    }
-    double time_delta = (time - last_time_).toSec();
-
-    last_time_ = time;
-
     // Update all the PID loops
     double throttle_output;
     double pitch_output;
     double roll_output;
     double yaw_output;
 
-    bool success = throttle_pid_.update(velocities.z, time_delta, throttle_output);
+    bool success = throttle_pid_.update(velocities.z, time, throttle_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
     }
 
-    success = pitch_pid_.update(velocities.x, time_delta, pitch_output);
+    success = pitch_pid_.update(velocities.x, time, pitch_output);
     if (!success) {
         ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
-    success = roll_pid_.update(-velocities.y, time_delta, roll_output);
+    success = roll_pid_.update(-velocities.y, time, roll_output);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
         return false;
     }
 
-    success = yaw_pid_.update(velocities.y, time_delta, yaw_output);
+    success = yaw_pid_.update(velocities.y, time, yaw_output);
     if (!success) {
         ROS_WARN("Yaw PID update failed in QuadVelocityController::update");
         return false;
