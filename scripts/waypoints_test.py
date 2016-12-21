@@ -56,7 +56,7 @@ if __name__ == '__main__':
             velocity.twist.linear.z = target[2] - trans[2]
         
         # Get the yaw (z axis) rotation from the quanternion
-        current_yaw = tf.transformations.euler_from_quaternion(rot)[2]
+        current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
         
         # Transform current yaw to be between 0 and 2pi because the points are encoded from 0 to 2pi
         if current_yaw < 0:
