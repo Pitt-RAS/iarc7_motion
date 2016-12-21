@@ -154,14 +154,14 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
             // Assumes that we don't have a yaw_difference more than 2pi. We won't since we get all the angles
             // from an atan2 which only return -pi to pi
             // Also assumes that we won't have a rotation difference more than pi
-            if(yaw_difference > 3.14159)
+            if(yaw_difference > M_PI)
             {
-                yaw_difference = yaw_difference - 2 * 3.14159;
+                yaw_difference = yaw_difference - 2 * M_PI;
             }
 
-            if(yaw_difference < -3.14159)
+            if(yaw_difference < -M_PI)
             {
-                yaw_difference = yaw_difference + 2 * 3.14159;
+                yaw_difference = yaw_difference + 2 * M_PI;
             }
 
             return_velocities.angular.z = yaw_difference / delta;
