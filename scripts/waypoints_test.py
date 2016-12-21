@@ -58,7 +58,7 @@ if __name__ == '__main__':
         # Get the yaw (z axis) rotation from the quanternion
         current_yaw = tf.transformations.euler_from_quaternion(rot)[2]
         
-        # Transform current yaw to be between 0 and 2pi
+        # Transform current yaw to be between 0 and 2pi because the points are encoded from 0 to 2pi
         if current_yaw < 0:
             current_yaw = (2.0 * math.pi) + current_yaw
 
@@ -77,6 +77,7 @@ if __name__ == '__main__':
         if abs(yaw_difference) >= 0.02:
             velocity.twist.angular.z = constrain(yaw_difference * kP_yaw, -max_yaw_vel, max_yaw_vel)
         print velocity
+        print target
 
         velocity_msg = TwistStampedArrayStamped()
         velocity_msg.header.stamp = rospy.Time.now()
