@@ -1,5 +1,5 @@
 <launch>
-    <node name="low_level_motion_controller" pkg="iarc7_motion" type="low_level_motion_controller">
+    <node name="low_level_motion_controller" pkg="iarc7_motion" type="low_level_motion_controller" output="screen">
         <rosparam command="load" file="$(find iarc7_motion)/param/sim_low_level_motion.yaml" />
     </node>
 </launch>

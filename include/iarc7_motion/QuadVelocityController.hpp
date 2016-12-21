@@ -31,7 +31,8 @@ namespace Iarc7Motion
 
         QuadVelocityController(double thrust_pid[5],
                                double pitch_pid[5],
-                               double roll_pid[5]);
+                               double roll_pid[5],
+                               double yaw_pid[5]);
 
         ~QuadVelocityController() = default;
 
@@ -47,7 +48,7 @@ namespace Iarc7Motion
 
     private:
 
-        bool getVelocities(geometry_msgs::Vector3& return_velocities);
+        bool getVelocities(geometry_msgs::Twist& return_velocities);
 
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
@@ -63,9 +64,10 @@ namespace Iarc7Motion
 
         // Holds the last transform received to calculate velocities
         geometry_msgs::TransformStamped last_transform_stamped_;
+        double last_yaw_;
 
         // Holds the last valid velocity reading
-        geometry_msgs::Vector3Stamped last_velocity_stamped_;
+        geometry_msgs::TwistStamped last_velocity_stamped_;
 
         // Makes sure that we have a lastTransformStamped before returning a valid velocity
         bool ran_once_;
