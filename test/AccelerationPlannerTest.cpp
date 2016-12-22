@@ -135,7 +135,7 @@ namespace Iarc7Motion
         }
 
         // Make sure it errors when handed an empty twist
-        twists_append.empty();
+        twists_append.clear();
         ASSERT_FALSE(Planner::appendVelocityQueue(twists, twists_append, current_time));
     }
 }

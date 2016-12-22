@@ -219,6 +219,8 @@ namespace Iarc7Motion
 
         // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
         std::for_each(first_valid_twist, new_twists.end(), [&](auto i){ current_twists.emplace_back(i); } );
+
+        return true;
     }
 
     // Receive a new list of velocities commands and place them into our list properly
