@@ -13,7 +13,7 @@ namespace Iarc7Motion
         typedef Iarc7Motion::AccelerationPlanner<Iarc7Motion::QuadVelocityController> Planner;
 
         ros::Time::init();
-        ros::Time current_time = ros::Time::now();
+        ros::Time current_time(ros::Time::now());
 
         Iarc7Motion::TwistStampedArray twists;
         // Create an array of 10 twists
@@ -54,7 +54,7 @@ namespace Iarc7Motion
         typedef Iarc7Motion::AccelerationPlanner<Iarc7Motion::QuadVelocityController> Planner;
 
         ros::Time::init();
-        ros::Time current_time(0.0);
+        ros::Time current_time(ros::Time::now());
 
         Iarc7Motion::TwistStampedArray twists;
         Iarc7Motion::TwistStampedArray twists_append;
