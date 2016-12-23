@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf2
   tf2_ros
+  iarc7_safety
 )
 
 ## System dependencies are found with CMake's conventions

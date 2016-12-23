@@ -6,12 +6,16 @@ import math
 
 from iarc7_msgs.msg import TwistStampedArrayStamped
 from geometry_msgs.msg import TwistStamped
+from iarc7_safety.SafetyClient import SafetyClient
 
 def constrain(x, l, h):
     return min(h, max(x, l))
 
 if __name__ == '__main__':
     rospy.init_node('waypoints_test', anonymous=True)
+
+    safety_client = SafetyClient('motion_planner')
+    assert(safety_client.form_bond())
 
     velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
     tf_listener = tf.TransformListener()
@@ -39,11 +43,20 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
+
         try:
             (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
         except tf.Exception as ex:
             rospy.logerr(ex.message)
             continue
+
+        # Exit immediately if fatal
+        if safety_client.is_fatal_active():
+            break;
+
+        # Land if put into safety mode
+        if safety_client.is_safety_active():
+            target = (trans[0], trans[1], 0, 0)
 
         velocity = TwistStamped()
         velocity.header.frame_id = 'level_quad'

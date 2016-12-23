@@ -12,6 +12,8 @@
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
 
+#include "iarc7_safety/SafetyClient.hpp"
+
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
 
@@ -106,6 +108,10 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::NodeHandle param_nh ("low_level_motion_controller");
 
+    ROS_INFO("low_level_motion: Attempting to form safety bond");
+    Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion_bond");
+    ROS_ASSERT_MSG(safety_client.formBond(), "low_level_motion: Could not form bond with safety client");
+
     double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
@@ -136,6 +142,16 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
+        // Check the safety client before updating anything
+        ROS_ASSERT_MSG(!safety_client.isFatalActive(), "low_level_motion: fatal event from safety");
+
+        if(safety_client.isSafetyActive())
+        {
+            // Override whatever the Acceleration Planner wants to do and attempt to land
+            geometry_msgs::Twist twist;
+            twist.linear.z = -0.2; // Try to descend
+            quadController.setTargetVelocity(twist);
+        }
         iarc7_msgs::OrientationThrottleStamped uav_command;
         bool success = quadController.update(ros::Time::now(), uav_command);
         ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
