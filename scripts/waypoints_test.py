@@ -48,6 +48,7 @@ if __name__ == '__main__':
             (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
         except tf.Exception as ex:
             rospy.logerr(ex.message)
+            rate.sleep()
             continue
 
         # Exit immediately if fatal

@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     ros::NodeHandle param_nh ("low_level_motion_controller");
 
     ROS_INFO("low_level_motion: Attempting to form safety bond");
-    Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion_bond");
+    Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion");
     ROS_ASSERT_MSG(safety_client.formBond(), "low_level_motion: Could not form bond with safety client");
 
     double throttle_pid[5];
