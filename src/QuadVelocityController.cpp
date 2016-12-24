@@ -24,9 +24,9 @@ pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4])
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 hover_throttle_(58.0),
-ran_once_(false),
 last_transform_stamped_(),
-last_yaw_(0.0)
+last_yaw_(0.0),
+ran_once_(false)
 {
 
 }

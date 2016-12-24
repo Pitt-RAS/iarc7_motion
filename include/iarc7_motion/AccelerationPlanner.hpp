@@ -70,9 +70,9 @@ namespace Iarc7Motion
     template<class T>
     AccelerationPlanner<T>::AccelerationPlanner(ros::NodeHandle& nh, T& velocity_controller) :
     nh_(nh),
+    velocity_controller_(velocity_controller),
     velocity_targets_subscriber_(),
-    velocity_targets_(),
-    velocity_controller_(velocity_controller)
+    velocity_targets_()
     {
         velocity_targets_subscriber_ = nh_.subscribe("movement_velocity_targets", 100, &AccelerationPlanner::processVelocityCommand, this);
 
@@ -159,9 +159,14 @@ namespace Iarc7Motion
         }
 
         // Find the first time more than or equal
-        TwistStampedArray::iterator it = std::lower_bound(twists.begin(), twists.end(), time,
-                                                          [](auto& twist, auto& time) { return twist.header.stamp < time; });
-        
+        TwistStampedArray::iterator it = std::lower_bound(
+                twists.begin(),
+                twists.end(),
+                time,
+                [](auto& twist, auto& time) {
+                    return twist.header.stamp < time;
+                });
+
 
         if(it == twists.begin())
         {
@@ -173,6 +178,7 @@ namespace Iarc7Motion
         {
             // it is somwhere in the middle go delete stuff
             (void)twists.erase(twists.begin(), std::prev(it, 1));
+            return true;
         }
     }
 
@@ -219,6 +225,8 @@ namespace Iarc7Motion
 
         // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
         std::for_each(first_valid_twist, new_twists.end(), [&](auto i){ current_twists.emplace_back(i); } );
+
+        return true;
     }
 
     // Receive a new list of velocities commands and place them into our list properly
