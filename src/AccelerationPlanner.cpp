@@ -91,11 +91,15 @@ bool AccelerationPlanner::trimVelocityQueue(TwistStampedArray& twists, const ros
         return false;
     }
 
-    // Find the first time more than or equal
-    TwistStampedArray::iterator it = std::lower_bound(twists.begin(), twists.end(), time,
-                                                      [](auto& twist, auto& time) { return twist.header.stamp < time; });
-    
-
+    // Find the first time more than or equal    
+    TwistStampedArray::iterator it = std::lower_bound(
+                    twists.begin(),
+                    twists.end(),
+                    time,
+                    [](auto& twist, auto& time) {
+                        return twist.header.stamp < time;
+                    });
+ 
     if(it == twists.begin())
     {
         // ALl the times are greater than the current time
@@ -106,6 +110,7 @@ bool AccelerationPlanner::trimVelocityQueue(TwistStampedArray& twists, const ros
     {
         // it is somwhere in the middle go delete stuff
         (void)twists.erase(twists.begin(), std::prev(it, 1));
+        return true;
     }
 }
 
@@ -151,6 +156,8 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
 
     // Copy all future targets into our buffer. All targets that were after these targets should be deleted now.
     std::for_each(first_valid_twist, new_twists.end(), [&](auto i){ current_twists.emplace_back(i); } );
+
+    return true;
 }
 
 // Receive a new list of velocities commands and place them into our list properly
