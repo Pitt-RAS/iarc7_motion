@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf2
   tf2_ros
+  iarc7_safety
 )
 
 ## System dependencies are found with CMake's conventions
@@ -131,7 +132,7 @@ include_directories(
 # add_dependencies(iarc7_motion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/FeedForwardPid.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp)
+add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/FeedForwardPid.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp src/AccelerationPlanner.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -182,7 +183,7 @@ target_link_libraries(low_level_motion_controller
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(acceleration_planner_test test/AccelerationPlannerTest.cpp)
+catkin_add_gtest(acceleration_planner_test test/AccelerationPlannerTest.cpp src/AccelerationPlanner.cpp)
 if(TARGET acceleration_planner_test)
   target_link_libraries(acceleration_planner_test ${catkin_LIBRARIES}
 )

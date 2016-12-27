@@ -1,6 +1,5 @@
 // Bring in my package's API, which is what I'm testing
 #include "iarc7_motion/AccelerationPlanner.hpp"
-#include "iarc7_motion/QuadVelocityController.hpp"
 
 // Bring in gtest
 #include "gtest/gtest.h"
@@ -10,7 +9,7 @@ namespace Iarc7Motion
 {
     TEST(AccelerationPlannerTests, testTrimVelocityQueue)
     {
-        typedef Iarc7Motion::AccelerationPlanner<Iarc7Motion::QuadVelocityController> Planner;
+        typedef Iarc7Motion::AccelerationPlanner Planner;
 
         ros::Time::init();
         ros::Time current_time(ros::Time::now());
@@ -51,7 +50,7 @@ namespace Iarc7Motion
 
     TEST(AccelerationPlannerTests, testAppendVelocityQueue)
     {
-        typedef Iarc7Motion::AccelerationPlanner<Iarc7Motion::QuadVelocityController> Planner;
+        typedef Iarc7Motion::AccelerationPlanner Planner;
 
         ros::Time::init();
         ros::Time current_time(ros::Time::now());
