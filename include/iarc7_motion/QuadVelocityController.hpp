@@ -48,7 +48,8 @@ namespace Iarc7Motion
 
     private:
 
-        bool getVelocities(geometry_msgs::Twist& return_velocities);
+        bool __attribute__((warn_unused_result)) getVelocities(
+            geometry_msgs::Twist& return_velocities);
 
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
@@ -67,6 +68,7 @@ namespace Iarc7Motion
         double last_yaw_;
 
         // Holds the last valid velocity reading
+        bool have_last_velocity_stamped_;
         geometry_msgs::TwistStamped last_velocity_stamped_;
 
         // Makes sure that we have a lastTransformStamped before returning a valid velocity

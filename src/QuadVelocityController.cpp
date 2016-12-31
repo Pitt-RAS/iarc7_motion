@@ -6,6 +6,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+#include <sstream>
+
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
@@ -26,6 +28,7 @@ yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 hover_throttle_(58.0),
 last_transform_stamped_(),
 last_yaw_(0.0),
+have_last_velocity_stamped_(false),
 ran_once_(false)
 {
 
@@ -49,7 +52,11 @@ bool QuadVelocityController::update(const ros::Time& time,
                                     iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     geometry_msgs::Twist velocities;
-    getVelocities(velocities);
+    bool success = getVelocities(velocities);
+    if (!success) {
+        ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
+        return false;
+    }
 
     // Update all the PID loops
     double throttle_output;
@@ -57,7 +64,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     double roll_output;
     double yaw_output;
 
-    bool success = throttle_pid_.update(velocities.linear.z, time, throttle_output);
+    success = throttle_pid_.update(velocities.linear.z, time, throttle_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
@@ -109,13 +116,52 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
     ros::Time time = ros::Time::now();
 
     // Check if we already have a velocity at this time
-    if (time == last_velocity_stamped_.header.stamp) {
+    if (have_last_velocity_stamped_ && time == last_velocity_stamped_.header.stamp) {
         return_velocities = last_velocity_stamped_.twist;
         return true;
     }
 
+    // We don't have a velocity at this time yet, so make sure we don't fetch
+    // a transform at the same time as the last one
+    while (ran_once_ && time == last_transform_stamped_.header.stamp) {
+        time = ros::Time::now();
+    }
+
     try{
-        transformStamped = tfBuffer_.lookupTransform("map", "quad", time, ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
+        bool found_transform = false;
+        while (ros::ok()) {
+            if (ros::Time::now() > time + ros::Duration(MAX_TRANSFORM_WAIT_SECONDS)) {
+                std::ostringstream out;
+                out << "Transform timed out ("
+                    << "current time: " << ros::Time::now() << ", "
+                    << "request time: " << time
+                    << ")";
+                throw tf2::TransformException(out.str().c_str());
+            } else if (tfBuffer_.canTransform("map", "quad", time)) {
+                transformStamped = tfBuffer_.lookupTransform("map", "quad", time);
+                found_transform = true;
+                break;
+            } else {
+                // Check if we can transform at the current time, but not
+                // the original time, which means the requested time was
+                // too old.  If so, we accept this newer transform instead.
+                if (tfBuffer_.canTransform("map", "quad", ros::Time(0))) {
+                    transformStamped = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
+                    if (transformStamped.header.stamp > time) {
+                        time = transformStamped.header.stamp;
+                        found_transform = true;
+                        break;
+                    }
+                }
+                ros::spinOnce();
+                ros::Duration(0.005).sleep();
+            }
+        }
+
+        if (!found_transform) {
+            throw tf2::TransformException("Node shut down while looking up transform");
+        }
+
         double current_yaw{0.0};
         if(ran_once_)
         {
@@ -167,17 +213,21 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
             return_velocities.angular.z = yaw_difference / delta;
 
             // Store this as the last valid velocity
+            have_last_velocity_stamped_ = true;
             last_velocity_stamped_.twist = return_velocities;
             last_velocity_stamped_.header.stamp = time;
+
+            last_transform_stamped_ = transformStamped;
+            last_yaw_ = current_yaw;
         }
         else
         {
-            velocities_valid = false;
             ran_once_ = true;
+            last_transform_stamped_ = transformStamped;
+            last_yaw_ = current_yaw;
+            velocities_valid = getVelocities(return_velocities);
         }
 
-        last_transform_stamped_ = transformStamped;
-        last_yaw_ = current_yaw;
     }
     catch (tf2::TransformException& ex){
         ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
