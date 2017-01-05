@@ -90,8 +90,6 @@ if __name__ == '__main__':
         # Finally set the desired twist velocity
         if abs(yaw_difference) >= 0.02:
             velocity.twist.angular.z = constrain(yaw_difference * kP_yaw, -max_yaw_vel, max_yaw_vel)
-        print velocity
-        print target
 
         velocity_msg = TwistStampedArrayStamped()
         velocity_msg.header.stamp = rospy.Time.now()

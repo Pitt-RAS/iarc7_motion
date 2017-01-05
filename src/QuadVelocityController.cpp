@@ -6,6 +6,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+#include <sstream>
+
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
@@ -26,6 +28,7 @@ yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 hover_throttle_(58.0),
 last_transform_stamped_(),
 last_yaw_(0.0),
+have_last_velocity_stamped_(false),
 ran_once_(false)
 {
 
@@ -49,7 +52,11 @@ bool QuadVelocityController::update(const ros::Time& time,
                                     iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     geometry_msgs::Twist velocities;
-    getVelocities(velocities);
+    bool success = getVelocities(velocities);
+    if (!success) {
+        ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
+        return false;
+    }
 
     // Update all the PID loops
     double throttle_output;
@@ -57,7 +64,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     double roll_output;
     double yaw_output;
 
-    bool success = throttle_pid_.update(velocities.linear.z, time, throttle_output);
+    success = throttle_pid_.update(velocities.linear.z, time, throttle_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
@@ -95,13 +102,82 @@ bool QuadVelocityController::update(const ros::Time& time,
     return true;
 }
 
-// Waits for the next transform to come in, returns true if velocities are valid
-// Has to receive two transforms within the timeout period to consider the velocity valid
+bool QuadVelocityController::getTransformAfterTime(
+        const ros::Time& time,
+        geometry_msgs::TransformStamped& transform,
+        const ros::Time& latest_time_allowed) {
+
+    try
+    {
+        while (ros::ok())
+        {
+            if (ros::Time::now() > time + ros::Duration(MAX_TRANSFORM_WAIT_SECONDS))
+            {
+                ROS_ERROR_STREAM("Transform timed out ("
+                                 << "current time: " << ros::Time::now() << ", "
+                                 << "request time: " << time
+                                 << ")");
+                return false;
+            }
+            else if (tfBuffer_.canTransform("map", "quad", time))
+            {
+                transform = tfBuffer_.lookupTransform("map", "quad", time);
+
+                if (transform.header.stamp > latest_time_allowed)
+                {
+                    ROS_ERROR_STREAM(
+                        "First available transform came after latest allowed time"
+                        << " (transform time: " << transform.header.stamp
+                        << ", latest allowed time: " << latest_time_allowed
+                        << ")");
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                // Check if we can transform at the current time, but not
+                // the original time, which means the requested time was
+                // too old.  If so, we accept this newer transform instead.
+                if (tfBuffer_.canTransform("map", "quad", ros::Time(0)))
+                {
+                    transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
+
+                    if (transform.header.stamp > latest_time_allowed)
+                    {
+                        ROS_ERROR_STREAM(
+                            "First available transform came after latest allowed time"
+                            << " (transform time: " << transform.header.stamp
+                            << ", latest allowed time: " << latest_time_allowed
+                            << ")");
+                        return false;
+                    }
+
+                    if (transform.header.stamp > time)
+                    {
+                        return true;
+                    }
+                }
+
+                ros::spinOnce();
+                ros::Duration(0.005).sleep();
+            }
+        }
+    }
+    catch (tf2::TransformException& ex)
+    {
+        ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
+    }
+
+    ROS_ERROR("ros::ok false while waiting for transform");
+    return false;
+}
+
 bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velocities)
 {
-    // Can be set to mark a velocity reading invalid
-    bool velocities_valid{true};
-
     // Get the map to level quad transform
     geometry_msgs::TransformStamped transformStamped;
 
@@ -109,81 +185,89 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
     ros::Time time = ros::Time::now();
 
     // Check if we already have a velocity at this time
-    if (time == last_velocity_stamped_.header.stamp) {
+    if (have_last_velocity_stamped_ && time == last_velocity_stamped_.header.stamp) {
         return_velocities = last_velocity_stamped_.twist;
         return true;
     }
 
-    try{
-        transformStamped = tfBuffer_.lookupTransform("map", "quad", time, ros::Duration(MAX_TRANSFORM_WAIT_SECONDS));
-        double current_yaw{0.0};
-        if(ran_once_)
-        {
-            // Get the time between the two transforms
-            ros::Duration delta_seconds = transformStamped.header.stamp - last_transform_stamped_.header.stamp;
+    // We don't have a velocity at this time yet, so make sure we don't fetch
+    // a transform at the same time as the last one
+    while (ros::ok()
+            && ran_once_
+            && time == last_transform_stamped_.header.stamp) {
+        ros::spinOnce();
+    }
 
-            if(delta_seconds > ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS))
-            {
-                ROS_ERROR("Velocities invalid, time between transforms is too high: %f seconds", delta_seconds.toSec());
-                velocities_valid = false;
-            }
+    // Fetch the new transform
+    ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
+                                  + ros::Duration(
+                                        MAX_TRANSFORM_DIFFERENCE_SECONDS);
+    bool fetched_transform = getTransformAfterTime(time,
+                                                   transformStamped,
+                                                   latest_time_allowed);
+    if (!fetched_transform)
+    {
+        ROS_ERROR("Failed to fetch new transform in QuadVelocityController");
+        ran_once_ = false;
+        return false;
+    }
 
-            // Get the transforms without the stamps for readability
-            geometry_msgs::Transform& transform = transformStamped.transform;
-            geometry_msgs::Transform& oldTransform = last_transform_stamped_.transform;
+    // Get the transforms without the stamps for readability
+    geometry_msgs::Transform& transform = transformStamped.transform;
+    geometry_msgs::Transform& oldTransform = last_transform_stamped_.transform;
 
-            // Get the yaw (z axis) rotation from the quanternion
-            double ysqr = transform.rotation.y * transform.rotation.y;
-            double t3 = 2.0f * (transform.rotation.w * transform.rotation.z + transform.rotation.x * transform.rotation.y);
-            double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);  
-            current_yaw = std::atan2(t3, t4);
+    // Get the yaw (z axis) rotation from the quanternion
+    double ysqr = transform.rotation.y * transform.rotation.y;
+    double t3 = 2.0f * (transform.rotation.w * transform.rotation.z + transform.rotation.x * transform.rotation.y);
+    double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);  
+    double current_yaw = std::atan2(t3, t4);
 
-            // Calculate x, y, and z velocity
-            // X and Y are transformed using the current yaw heading to velocities that the pitch and roll can respond to directly
-            double delta = delta_seconds.toSec();
-            double world_x_vel = ((transform.translation.x - oldTransform.translation.x) / delta);
-            double world_y_vel = ((transform.translation.y - oldTransform.translation.y) / delta);
-            return_velocities.linear.x = world_x_vel * std::cos(current_yaw) + world_y_vel * std::sin(current_yaw);
-            return_velocities.linear.y = world_x_vel * -std::sin(current_yaw) + world_y_vel * std::cos(current_yaw);
-
-            return_velocities.linear.z = (transform.translation.z - oldTransform.translation.z) / delta;
-
-            double yaw_difference = current_yaw - last_yaw_;
-
-            // The next two if statements handle if the yaw_difference is large due to gimbal lock
-            // Assumes that we don't have a yaw_difference more than 2pi. We won't since we get all the angles
-            // from an atan2 which only return -pi to pi
-            // Also assumes that we won't have a rotation difference more than pi
-            if(yaw_difference > M_PI)
-            {
-                yaw_difference = yaw_difference - 2 * M_PI;
-            }
-
-            if(yaw_difference < -M_PI)
-            {
-                yaw_difference = yaw_difference + 2 * M_PI;
-            }
-
-            return_velocities.angular.z = yaw_difference / delta;
-
-            // Store this as the last valid velocity
-            last_velocity_stamped_.twist = return_velocities;
-            last_velocity_stamped_.header.stamp = time;
-        }
-        else
-        {
-            velocities_valid = false;
-            ran_once_ = true;
-        }
-
+    if(!ran_once_)
+    {
+        ran_once_ = true;
         last_transform_stamped_ = transformStamped;
         last_yaw_ = current_yaw;
-    }
-    catch (tf2::TransformException& ex){
-        ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
-        velocities_valid = false;
-        ran_once_ = false;
+        return getVelocities(return_velocities);
     }
 
-    return velocities_valid;
+    // Get the time between the two transforms
+    ros::Duration delta_seconds = transformStamped.header.stamp - last_transform_stamped_.header.stamp;
+
+    // Calculate x, y, and z velocity
+    // X and Y are transformed using the current yaw heading to velocities that the pitch and roll can respond to directly
+    double delta = delta_seconds.toSec();
+    double world_x_vel = ((transform.translation.x - oldTransform.translation.x) / delta);
+    double world_y_vel = ((transform.translation.y - oldTransform.translation.y) / delta);
+    return_velocities.linear.x = world_x_vel * std::cos(current_yaw) + world_y_vel * std::sin(current_yaw);
+    return_velocities.linear.y = world_x_vel * -std::sin(current_yaw) + world_y_vel * std::cos(current_yaw);
+
+    return_velocities.linear.z = (transform.translation.z - oldTransform.translation.z) / delta;
+
+    double yaw_difference = current_yaw - last_yaw_;
+
+    // The next two if statements handle if the yaw_difference is large due to gimbal lock
+    // Assumes that we don't have a yaw_difference more than 2pi. We won't since we get all the angles
+    // from an atan2 which only return -pi to pi
+    // Also assumes that we won't have a rotation difference more than pi
+    if(yaw_difference > M_PI)
+    {
+        yaw_difference = yaw_difference - 2 * M_PI;
+    }
+
+    if(yaw_difference < -M_PI)
+    {
+        yaw_difference = yaw_difference + 2 * M_PI;
+    }
+
+    return_velocities.angular.z = yaw_difference / delta;
+
+    // Store this as the last valid velocity
+    have_last_velocity_stamped_ = true;
+    last_velocity_stamped_.twist = return_velocities;
+    last_velocity_stamped_.header.stamp = transformStamped.header.stamp;
+
+    last_transform_stamped_ = transformStamped;
+    last_yaw_ = current_yaw;
+
+    return true;
 }

@@ -48,7 +48,20 @@ namespace Iarc7Motion
 
     private:
 
-        bool getVelocities(geometry_msgs::Twist& return_velocities);
+        /// Waits until a transform is available at time or later, returns
+        /// true on success.
+        bool __attribute__((warn_unused_result)) getTransformAfterTime(
+            const ros::Time& time,
+            geometry_msgs::TransformStamped& transform,
+            const ros::Time& latest_time_allowed);
+
+        /// Waits for the next transform to come in, returns true if velocities
+        /// are valid.
+        ///
+        /// This must receive two transforms within the timeout period to
+        /// consider the velocity valid.
+        bool __attribute__((warn_unused_result)) getVelocities(
+            geometry_msgs::Twist& return_velocities);
 
         static void limitUavCommand(iarc7_msgs::OrientationThrottleStamped& uav_command);
 
@@ -67,6 +80,7 @@ namespace Iarc7Motion
         double last_yaw_;
 
         // Holds the last valid velocity reading
+        bool have_last_velocity_stamped_;
         geometry_msgs::TwistStamped last_velocity_stamped_;
 
         // Makes sure that we have a lastTransformStamped before returning a valid velocity
