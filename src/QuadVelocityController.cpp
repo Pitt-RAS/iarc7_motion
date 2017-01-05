@@ -123,7 +123,8 @@ bool QuadVelocityController::getTransformAfterTime(
             {
                 transform = tfBuffer_.lookupTransform("map", "quad", time);
 
-                if (transform.header.stamp > latest_time_allowed)
+                if (latest_time_allowed != ros::Time(0)
+                    && transform.header.stamp > latest_time_allowed)
                 {
                     ROS_ERROR_STREAM(
                         "First available transform came after latest allowed time"
@@ -146,7 +147,8 @@ bool QuadVelocityController::getTransformAfterTime(
                 {
                     transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
 
-                    if (transform.header.stamp > latest_time_allowed)
+                    if (latest_time_allowed != ros::Time(0)
+                        && transform.header.stamp > latest_time_allowed)
                     {
                         ROS_ERROR_STREAM(
                             "First available transform came after latest allowed time"
@@ -199,9 +201,12 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
     }
 
     // Fetch the new transform
-    ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
-                                  + ros::Duration(
-                                        MAX_TRANSFORM_DIFFERENCE_SECONDS);
+    ros::Time latest_time_allowed = ros::Time(0);
+    if (ran_once_)
+    {
+        latest_time_allowed = last_transform_stamped_.header.stamp
+                            + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
+    }
     bool fetched_transform = getTransformAfterTime(time,
                                                    transformStamped,
                                                    latest_time_allowed);
