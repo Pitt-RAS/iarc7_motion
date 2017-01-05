@@ -48,6 +48,13 @@ namespace Iarc7Motion
 
     private:
 
+        /// Waits until a transform is available at time or later, returns
+        /// true on success.
+        bool __attribute__((warn_unused_result)) getTransformAfterTime(
+            const ros::Time& time,
+            geometry_msgs::TransformStamped& transform,
+            const ros::Time& latest_time_allowed);
+
         /// Waits for the next transform to come in, returns true if velocities
         /// are valid.
         ///
