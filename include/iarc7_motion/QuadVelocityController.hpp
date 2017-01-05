@@ -48,6 +48,11 @@ namespace Iarc7Motion
 
     private:
 
+        /// Waits for the next transform to come in, returns true if velocities
+        /// are valid.
+        ///
+        /// This must receive two transforms within the timeout period to
+        /// consider the velocity valid.
         bool __attribute__((warn_unused_result)) getVelocities(
             geometry_msgs::Twist& return_velocities);
 
