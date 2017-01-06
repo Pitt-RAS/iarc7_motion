@@ -53,7 +53,7 @@ namespace Iarc7Motion
         bool __attribute__((warn_unused_result)) getTransformAfterTime(
             const ros::Time& time,
             geometry_msgs::TransformStamped& transform,
-            const ros::Time& latest_time_allowed);
+            const ros::Time& latest_time_allowed = ros::Time(0));
 
         /// Waits for the next transform to come in, returns true if velocities
         /// are valid.
