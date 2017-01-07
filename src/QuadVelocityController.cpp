@@ -6,7 +6,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include <sstream>
+#include <cmath>
 
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
@@ -88,12 +88,20 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
-    // For now publish, should send values to a hard limiter first
     uav_command.header.stamp = time;
     uav_command.throttle = throttle_output + hover_throttle_;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
     uav_command.data.yaw = yaw_output;
+
+    if (!std::isfinite(uav_command.throttle)
+     || !std::isfinite(uav_command.data.pitch)
+     || !std::isfinite(uav_command.data.roll)
+     || !std::isfinite(uav_command.data.yaw)) {
+        ROS_WARN(
+            "Part of command is not finite in QuadVelocityController::update");
+        return false;
+    }
 
     // Print the velocity and throttle information
     ROS_INFO("Vz:       %f Vx:    %f Vy:   %f Vyaw: %f", velocities.linear.z, velocities.linear.x, velocities.linear.y, velocities.angular.z);
