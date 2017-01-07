@@ -6,7 +6,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include <sstream>
+#include <cmath>
 
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
