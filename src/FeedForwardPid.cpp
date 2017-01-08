@@ -32,8 +32,14 @@ FeedForwardPid::FeedForwardPid(double p_gain, double i_gain, double d_gain,
 
 bool FeedForwardPid::update(double current_value, const ros::Time& time, double& response)
 {
-    if (time <= last_time_) {
-        ROS_WARN("Timestamp of 0 passed to FeedForwardPid::update");
+    if (time < last_time_) {
+        ROS_WARN("Time passed in to FeedForwardPid is less than the last time.");
+        return false;
+    }
+
+    if(time == last_time_)
+    {
+        ROS_WARN("Time passed in to FeedForwardPid is equal to the last time.");
         return false;
     }
 

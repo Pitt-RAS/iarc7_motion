@@ -139,6 +139,8 @@ int main(int argc, char **argv)
         ros::spinOnce();
     }
 
+    ros::Time last_time = ros::Time::now();
+
     while (ros::ok())
     {
         // Check the safety client before updating anything
@@ -146,30 +148,35 @@ int main(int argc, char **argv)
 
         ros::Time current_time = ros::Time::now();
 
-        geometry_msgs::TwistStamped target_twist;
-        
-        if(safety_client.isSafetyActive())
+        if(current_time > last_time)
         {
-            // Override whatever the Acceleration Planner wants to do and attempt to land
-            target_twist.twist.linear.z = -0.2; // Try to descend
+            last_time = current_time;
+
+            geometry_msgs::TwistStamped target_twist;
+            
+            if(safety_client.isSafetyActive())
+            {
+                // Override whatever the Acceleration Planner wants to do and attempt to land
+                target_twist.twist.linear.z = -0.2; // Try to descend
+            }
+            else
+            {
+                // If nothing is wrong get a target velocity from the acceleration planner
+                accelerationPlanner.getTargetTwist(current_time, target_twist);
+            }
+
+            quadController.setTargetVelocity(target_twist.twist);
+
+            iarc7_msgs::OrientationThrottleStamped uav_command;
+            bool success = quadController.update(current_time, uav_command);
+            ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
+
+            // Limit the uav command
+            limitUavCommand(limiter, uav_command);
+
+            // Publish the desired angles and throttle
+            uav_control_.publish(uav_command);
         }
-        else
-        {
-            // If nothing is wrong get a target velocity from the acceleration planner
-            accelerationPlanner.getTargetTwist(current_time, target_twist);
-        }
-
-        quadController.setTargetVelocity(target_twist.twist);
-
-        iarc7_msgs::OrientationThrottleStamped uav_command;
-        bool success = quadController.update(current_time, uav_command);
-        ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
-
-        // Limit the uav command
-        limitUavCommand(limiter, uav_command);
-
-        // Publish the desired angles and throttle
-        uav_control_.publish(uav_command);
 
         ros::spinOnce();
     }
