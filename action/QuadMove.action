@@ -1,0 +1,10 @@
+#goal definition
+string movement_type
+
+---
+#result definition
+bool success
+
+---
+#feedback
+float64 completion
