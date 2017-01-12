@@ -1,6 +1,6 @@
 #goal definition
 string movement_type
-
+bool preempt
 ---
 #result definition
 bool success

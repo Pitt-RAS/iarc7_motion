@@ -5,7 +5,7 @@ from iarc7_motion import QuadMove
 
 class ActionHandler:
     def __init__(self):
-        self._action_name = "motionplannerserver"
+        self._action_name = "motion_planner_server"
 
 
         self._as = actionlib.ActionServer(self._action_name,
@@ -23,12 +23,27 @@ class ActionHandler:
     def new_goal(self, goal):
         rospy.loginfo("new_goal: %s", goal.get_goal_id().id)
 
-        movement_type = goal.get_goal()
-        if movement_type == "takeoff" :
-            goal_tasks.append([goal, TakeoffTask()])
+        task_request = goal.get_goal()
+
+        if task_request.movement_type == "takeoff" :
+            new_task = TakeoffTask()
         else:
             rospy.logerror("Goal has invalid movement_type: %s", movement_type)
             goal.set_rejected()
+            return
+
+        # Support simple queue destroying preempting for now
+        if task_request.preempt :
+            if len(goal_tasks) > 0:
+                for goal_task in  goal_tasks:
+                    goal_task[0].set_cancel_requested()
+                    goal_task[0].set_canceled()
+                goal_tasks = []
+            if self.current_goal:
+                self.cancel_requested = True
+                self.current_goal.set_cancel_requested()
+
+        goal_tasks.append([goal, new_task])
 
     def cancel_request(self, cancel):
         rospy.logdebug("cancel_request")
