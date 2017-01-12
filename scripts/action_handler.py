@@ -122,3 +122,7 @@ class ActionHandler:
             self.current_goal.set_accepted()
 
             return self.current_task
+
+    def has_new_task(self):
+        with self.lock:
+            return (len(goal_tasks) > 0)
