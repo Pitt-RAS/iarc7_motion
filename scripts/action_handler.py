@@ -20,96 +20,105 @@ class ActionHandler:
         self.current_goal = None
         self.cancel_requested = False
 
+        self.lock = threading.RLock()
+
     def new_goal(self, goal):
-        rospy.loginfo("new_goal: %s", goal.get_goal_id().id)
+        with self.lock:
+            rospy.loginfo("new_goal: %s", goal.get_goal_id().id)
 
-        task_request = goal.get_goal()
+            task_request = goal.get_goal()
 
-        if task_request.movement_type == "takeoff" :
-            new_task = TakeoffTask()
-        else:
-            rospy.logerror("Goal has invalid movement_type: %s", movement_type)
-            goal.set_rejected()
-            return
-
-        # Support simple queue destroying preempting for now
-        if task_request.preempt :
-            if len(goal_tasks) > 0:
-                for goal_task in  goal_tasks:
-                    goal_task[0].set_cancel_requested()
-                    goal_task[0].set_canceled()
-                goal_tasks = []
-            if self.current_goal:
-                self.cancel_requested = True
-                self.current_goal.set_cancel_requested()
-
-        goal_tasks.append([goal, new_task])
-
-    def cancel_request(self, cancel):
-        rospy.logdebug("cancel_request")
-
-        if cancel == self.current_goal :
-            rospy.logdebug("Cancel requested on current goal")
-            self.current_goal.set_cancel_requested()
-            self.cancel_requested = True
-            return
-
-        for goal_task in goal_tasks:
-            if goal_task[0] == cancel:
-                rospy.logdebug("Cancel requested on queued goal")
-                goal_task[0].set_cancel_requested()
-                goal_task[0].set_canceled()
+            if task_request.movement_type == "takeoff" :
+                new_task = TakeoffTask()
+            else:
+                rospy.logerror("Goal has invalid movement_type: %s", movement_type)
+                goal.set_rejected()
                 return
 
-        rospy.logerror("Attempt to cancel goal but goal did not exist")
+            # Support simple queue destroying preempting for now
+            if task_request.preempt :
+                if len(goal_tasks) > 0:
+                    for goal_task in  goal_tasks:
+                        goal_task[0].set_cancel_requested()
+                        goal_task[0].set_canceled()
+                    goal_tasks = []
+                if self.current_goal:
+                    self.cancel_requested = True
+                    self.current_goal.set_cancel_requested()
+
+            goal_tasks.append([goal, new_task])
+
+    def cancel_request(self, cancel):
+        with self.lock:
+            rospy.logdebug("cancel_request")
+
+            if cancel == self.current_goal :
+                rospy.logdebug("Cancel requested on current goal")
+                self.current_goal.set_cancel_requested()
+                self.cancel_requested = True
+                return
+
+            for goal_task in goal_tasks:
+                if goal_task[0] == cancel:
+                    rospy.logdebug("Cancel requested on queued goal")
+                    goal_task[0].set_cancel_requested()
+                    goal_task[0].set_canceled()
+                    return
+
+            rospy.logerror("Attempt to cancel goal but goal did not exist")
 
     # Function for task runner to use
     def set_succeeded(self):
-        if self.current_goal:
-            rospy.logdebug("Current task succeeded")
-            self.current_goal.set_succeeded()
-        else:
-            rospy.logdebug("There was not task to succeed")
+        with self.lock:
+            if self.current_goal:
+                rospy.logdebug("Current task succeeded")
+                self.current_goal.set_succeeded()
+            else:
+                rospy.logdebug("There was not task to succeed")
 
-        self.current_task = None
-        self.current_goal = None
-        self.cancel_requested = False
+            self.current_task = None
+            self.current_goal = None
+            self.cancel_requested = False
 
     def set_aborted(self):
-        if self.current_goal:
-            rospy.logdebug("Current task aborted")
-            self.current_goal.set_aborted()
-        else:
-            rospy.logdebug("There was not task to abort")
+        with self.lock:
+            if self.current_goal:
+                rospy.logdebug("Current task aborted")
+                self.current_goal.set_aborted()
+            else:
+                rospy.logdebug("There was not task to abort")
 
-        self.current_task = None
-        self.current_goal = None
-        self.cancel_requested = False
+            self.current_task = None
+            self.current_goal = None
+            self.cancel_requested = False
 
     def set_canceled():
-        if self.current_goal :
-            rospy.logdebug("Current task cancelled")
-            self.current_goal.set_canceled()
-        else:
-            rospy.logdebug("There was not a task to cancel")
+        with self.lock:
+            if self.current_goal :
+                rospy.logdebug("Current task cancelled")
+                self.current_goal.set_canceled()
+            else:
+                rospy.logdebug("There was not a task to cancel")
 
-        self.current_task = None
-        self.current_goal = None
-        self.cancel_requested = False
+            self.current_task = None
+            self.current_goal = None
+            self.cancel_requested = False
 
     def is_canceled(self):
-        return self.cancel_requested
+        with self.lock:
+            return self.cancel_requested
 
     def get_new_task(self):
-        if len(goal_tasks) == 0:
-            return None
-        
-        goal_task = goal_tasks.pop(0)
-        self.current_goal = goal_task[0]
-        self.current_task = goal_task[1]
-        self.cancel_requested = False
+        with self.lock:
+            if len(goal_tasks) == 0:
+                return None
+            
+            goal_task = goal_tasks.pop(0)
+            self.current_goal = goal_task[0]
+            self.current_task = goal_task[1]
+            self.cancel_requested = False
 
-        rospy.logdebug("New task accepted")
-        self.current_goal.set_accepted()
+            rospy.logdebug("New task accepted")
+            self.current_goal.set_accepted()
 
-        return self.current_task
+            return self.current_task
