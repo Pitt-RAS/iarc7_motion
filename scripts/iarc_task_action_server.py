@@ -3,7 +3,7 @@ import rospy
 from takeoff_task import TakeoffTask
 from iarc7_motion import QuadMove
 
-class ActionHandler:
+class IarcTaskActionServer:
     def __init__(self):
         self._action_name = "motion_planner_server"
 
