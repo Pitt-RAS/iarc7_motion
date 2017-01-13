@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+import threading
 import rospy
+import actionlib
 from takeoff_task import TakeoffTask
-from iarc7_motion import QuadMove
+from iarc7_motion.msg import QuadMoveAction
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -9,8 +11,8 @@ class IarcTaskActionServer:
 
 
         self.action_server = actionlib.ActionServer(self._action_name,
-                                          QuadMove,
-                                          execute_cb=self.new_goal,
+                                          QuadMoveAction,
+                                          self.new_goal,
                                           cancel_cb=self.cancel_request,
                                           auto_start = False)
         self.goal_tasks = []
@@ -37,16 +39,16 @@ class IarcTaskActionServer:
 
             # Support simple queue destroying preempting for now
             if task_request.preempt :
-                if len(goal_tasks) > 0:
-                    for goal_task in  goal_tasks:
-                        goal_task[0].set_cancel_requested()
-                        goal_task[0].set_canceled()
-                    goal_tasks = []
+                if len(self.goal_tasks) > 0:
+                    for goal, _ in  goal_tasks:
+                        goal.set_cancel_requested()
+                        goal.set_canceled()
+                    self.goal_tasks = []
                 if self.current_goal:
                     self.cancel_requested = True
                     self.current_goal.set_cancel_requested()
 
-            goal_tasks.append([goal, new_task])
+            self.goal_tasks.append([goal, new_task])
 
     # Private method
     def cancel_request(self, cancel):
@@ -59,7 +61,7 @@ class IarcTaskActionServer:
                 self.cancel_requested = True
                 return
 
-            for goal, _ in goal_tasks:
+            for goal, _ in self.goal_tasks:
                 if goal == cancel:
                     rospy.logdebug("Cancel requested on queued goal")
                     goal.set_cancel_requested()
@@ -111,10 +113,10 @@ class IarcTaskActionServer:
 
     def get_new_task(self):
         with self.lock:
-            if len(goal_tasks) == 0:
+            if len(self.goal_tasks) == 0:
                 return None
             
-            self.current_goal, self.current_task= goal_tasks.pop(0)
+            self.current_goal, self.current_task= self.goal_tasks.pop(0)
             self.cancel_requested = False
 
             rospy.logdebug("New task accepted")
@@ -124,4 +126,4 @@ class IarcTaskActionServer:
 
     def has_new_task(self):
         with self.lock:
-            return (len(goal_tasks) > 0)
+            return (len(self.goal_tasks) > 0)
