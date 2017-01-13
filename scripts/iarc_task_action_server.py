@@ -8,20 +8,20 @@ class IarcTaskActionServer:
         self._action_name = "motion_planner_server"
 
 
-        self._as = actionlib.ActionServer(self._action_name,
+        self.action_server = actionlib.ActionServer(self._action_name,
                                           QuadMove,
                                           execute_cb=self.new_goal,
                                           cancel_cb=self.cancel_request,
                                           auto_start = False)
-        self._as.start()
-
         self.goal_tasks = []
         self.current_task = None
         self.current_goal = None
         self.cancel_requested = False
-
         self.lock = threading.RLock()
+        # Start action server last to avoid race condition
+        self.action_server.start()
 
+    # Private method
     def new_goal(self, goal):
         with self.lock:
             rospy.loginfo("new_goal: %s", goal.get_goal_id().id)
@@ -48,6 +48,7 @@ class IarcTaskActionServer:
 
             goal_tasks.append([goal, new_task])
 
+    # Private method
     def cancel_request(self, cancel):
         with self.lock:
             rospy.logdebug("cancel_request")
@@ -58,11 +59,11 @@ class IarcTaskActionServer:
                 self.cancel_requested = True
                 return
 
-            for goal_task in goal_tasks:
-                if goal_task[0] == cancel:
+            for goal, _ in goal_tasks:
+                if goal == cancel:
                     rospy.logdebug("Cancel requested on queued goal")
-                    goal_task[0].set_cancel_requested()
-                    goal_task[0].set_canceled()
+                    goal.set_cancel_requested()
+                    goal.set_canceled()
                     return
 
             rospy.logerror("Attempt to cancel goal but goal did not exist")
@@ -113,9 +114,7 @@ class IarcTaskActionServer:
             if len(goal_tasks) == 0:
                 return None
             
-            goal_task = goal_tasks.pop(0)
-            self.current_goal = goal_task[0]
-            self.current_task = goal_task[1]
+            self.current_goal, self.current_task= goal_tasks.pop(0)
             self.cancel_requested = False
 
             rospy.logdebug("New task accepted")

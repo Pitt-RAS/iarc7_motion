@@ -4,7 +4,7 @@ from abstract_task import AbstractTask
 
 class TakeoffTask(AbstractTask):
 
-    def __init_(self, goal):
+    def __init__(self, goal):
         self.goal = goal
 
     # Abstract method
