@@ -71,7 +71,7 @@ class IarcTaskActionServer:
             rospy.logerror("Attempt to cancel goal but goal did not exist")
 
     # Function for task runner to use
-    def set_succeeded(self):
+    def set_succeeded(self, result=None, text=""):
         with self.lock:
             if self.current_goal:
                 rospy.logdebug("Current task succeeded")
