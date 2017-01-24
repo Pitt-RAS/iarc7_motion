@@ -153,8 +153,9 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
         ROS_ERROR("processVelocityCommand passed a TwistStampedArray with all old timestamps, rejecting");
         return false;
     }
+
     // Check for a twist prior to the first twist that is more than or equal to the current time
-    else if(first_valid_twist != new_twists.begin())
+    if(first_valid_twist != new_twists.begin())
     {
         // There is at least one element with a time less than current time
         // Make sure we get it so as to get a more accurate target interpolation value
@@ -162,7 +163,7 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
     }
     
     // Search through to find where we should start inserting unless its empty
-    else if(!current_twists.empty())
+    if(!current_twists.empty())
     {
         // This is the time after which all velocities in the queue will be discarded
         ros::Time target_time = static_cast<ros::Time>(first_valid_twist->header.stamp);
