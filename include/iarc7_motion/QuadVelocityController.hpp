@@ -57,17 +57,14 @@ namespace Iarc7Motion
         /// Waits until a transform is available at time or later, returns
         /// true on success, returns a transform using the passed in reference to
         /// a transform.
-        bool __attribute__((warn_unused_result)) getTransformAfterTime(
-            const ros::Time& time,
-            geometry_msgs::TransformStamped& transform,
-            const ros::Time& latest_time_allowed = ros::Time(0));
+        bool __attribute__((warn_unused_result)) waitForTransform(geometry_msgs::TransformStamped& transform);
 
         /// Waits for the next transform to come in, returns true if velocities
         /// are valid.
         ///
         /// This must receive two transforms within the timeout period to
         /// consider the velocity valid.
-        bool __attribute__((warn_unused_result)) getVelocities(
+        bool __attribute__((warn_unused_result)) waitForNewVelocities(
             geometry_msgs::Twist& return_velocities);
 
         // Used to store the transform buffer, required for tf2
@@ -86,15 +83,12 @@ namespace Iarc7Motion
 
         // Holds the last transform received to calculate velocities
         geometry_msgs::TransformStamped last_transform_stamped_;
+        
         // Hold the last yaw for calculations
         double last_yaw_;
 
-        // Holds the last valid velocity reading
-        bool have_last_velocity_stamped_;
-        geometry_msgs::TwistStamped last_velocity_stamped_;
-
         // Makes sure that we have a lastTransformStamped before returning a valid velocity
-        bool ran_once_;
+        bool wait_for_velocities_ran_once_;
 
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};

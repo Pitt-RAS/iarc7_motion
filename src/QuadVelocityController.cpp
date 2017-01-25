@@ -29,8 +29,7 @@ roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 last_transform_stamped_(),
 last_yaw_(0.0),
-have_last_velocity_stamped_(false),
-ran_once_(false)
+wait_for_velocities_ran_once_(false)
 {
 
 }
@@ -60,7 +59,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 {
     // Get the current velocity of the quad.
     geometry_msgs::Twist velocities;
-    bool success = getVelocities(velocities);
+    bool success = waitForNewVelocities(velocities);
     if (!success) {
         ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -129,75 +128,36 @@ bool QuadVelocityController::update(const ros::Time& time,
 
 // Get a valid transform, blocks until the transform is received or
 // the request takes too long and times out
-bool QuadVelocityController::getTransformAfterTime(
-        const ros::Time& time,
-        geometry_msgs::TransformStamped& transform,
-        const ros::Time& latest_time_allowed) {
+bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& transform) {
 
     // Catch TransformException exceptions
     try
     {
+        ros::Time time_at_start = ros::Time::now();
+
         // While we aren't supposed to be shutting down
         while (ros::ok())
         {
             // Check for timing out, return failure if so.
-            if (ros::Time::now() > time + ros::Duration(MAX_TRANSFORM_WAIT_SECONDS))
+            if (ros::Time::now() > time_at_start + ros::Duration(MAX_TRANSFORM_WAIT_SECONDS))
             {
                 ROS_ERROR_STREAM("Transform timed out ("
                                  << "current time: " << ros::Time::now() << ", "
-                                 << "request time: " << time
+                                 << "request time: " << time_at_start
                                  << ")");
                 return false;
             }
-            // Check if the transform from map to quad can be made at the requested time
-            else if (tfBuffer_.canTransform("map", "quad", time))
+            
+            // Check if the transform from map to quad can be made right now
+            if(tfBuffer_.canTransform("map", "quad", ros::Time(0)))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("map", "quad", time);
+                transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
 
-                // Make the sure the transform isn't didn't come after the last time
-                // that was acceptable.
-                if (latest_time_allowed != ros::Time(0)
-                    && transform.header.stamp > latest_time_allowed)
-                {
-                    ROS_ERROR_STREAM(
-                        "First available transform came after latest allowed time"
-                        << " (transform time: " << transform.header.stamp
-                        << ", latest allowed time: " << latest_time_allowed
-                        << ")");
-                    return false;
-                }
-                else
+                // Check if the transform is newer or as new as the desired time
+                if(transform.header.stamp >= time_at_start)
                 {
                     return true;
-                }
-            }
-            else
-            {
-                // Check if we can transform at the current time, but not
-                // the original time, which means the requested time was
-                // too old.  If so, we accept this newer transform instead.
-                if (tfBuffer_.canTransform("map", "quad", ros::Time(0)))
-                {
-                    transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
-
-                    // Make the sure the transform isn't didn't come after the last time
-                    // that was acceptable.
-                    if (latest_time_allowed != ros::Time(0)
-                        && transform.header.stamp > latest_time_allowed)
-                    {
-                        ROS_ERROR_STREAM(
-                            "First available transform came after latest allowed time"
-                            << " (transform time: " << transform.header.stamp
-                            << ", latest allowed time: " << latest_time_allowed
-                            << ")");
-                        return false;
-                    }
-
-                    if (transform.header.stamp > time)
-                    {
-                        return true;
-                    }
                 }
             }
 
@@ -213,57 +173,61 @@ bool QuadVelocityController::getTransformAfterTime(
         ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
     }
 
-    // ros::ok() must ahve equaled false, program is exiting.
-    ROS_ERROR("ros::ok false while waiting for transform");
+    ROS_ERROR("Exception or ros::ok was false");
     return false;
 }
 
 // Gets the velocity from the transformation information
 // Blocks while waiting for a new transform to calculate the velocity with
-bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velocities)
+bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_velocities)
 {
 
-    // Get current ROS time
-    ros::Time time = ros::Time::now();
-
-    // Check if we already have a velocity at this time
-    if (have_last_velocity_stamped_ && time == last_velocity_stamped_.header.stamp) {
-        return_velocities = last_velocity_stamped_.twist;
-        return true;
-    }
-
-    // We don't have a velocity at this time yet, so make sure we don't fetch
-    // a transform at the same time as the last one
-    while (ros::ok()
-            && ran_once_
-            && time == last_transform_stamped_.header.stamp) {
+    // Make sure that the current time is more than the last transform stamped time
+    while (wait_for_velocities_ran_once_
+            && ros::Time::now() <= last_transform_stamped_.header.stamp
+            && ros::ok())
+    {
         ros::spinOnce();
     }
 
-    // Calculate the lastest time between transforms that is allowed.
-    ros::Time latest_time_allowed;
-    if (ran_once_)
-    {
-        latest_time_allowed = last_transform_stamped_.header.stamp
-                            + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
-    }
-    else
-    {
-        latest_time_allowed = ros::Time(0);
-    }
-
-    // Get a brand new transform. Blocks until a transform after the current time
-    // is received.
+    // Get a brand new transform. Blocks until able to transform at the current time.
     geometry_msgs::TransformStamped transformStamped;
-    bool fetched_transform = getTransformAfterTime(time,
-                                                   transformStamped,
-                                                   latest_time_allowed);
+    bool fetched_transform = waitForTransform(transformStamped);
+
     // Check if the call failed
     if (!fetched_transform)
     {
         ROS_ERROR("Failed to fetch new transform in QuadVelocityController");
-        ran_once_ = false;
+        wait_for_velocities_ran_once_ = false;
         return false;
+    }
+
+    // Check if the quad velocity controller has not been run once
+    // Update all intermediate values and make a recursive call to waitForNewVelocities
+    // (meaning another transform will be collected) and a valid velocity can be calculated.
+    if(!wait_for_velocities_ran_once_)
+    {
+        wait_for_velocities_ran_once_ = true;
+        last_transform_stamped_ = transformStamped;
+        return waitForNewVelocities(return_velocities);
+    }
+    // If we have ran before make sure the difference between transforms isn't too much
+    else
+    {
+        // Calculate the lastest time between transforms that is allowed.
+        ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
+                    + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
+        // Make the sure the transform isn't didn't come after the last time
+        // that was acceptable.
+        if (transformStamped.header.stamp > latest_time_allowed)
+        {
+            ROS_ERROR_STREAM(
+                "First available transform came after latest allowed time"
+                << " (transform time: " << transformStamped.header.stamp
+                << ", latest allowed time: " << latest_time_allowed
+                << ")");
+            return false;
+        }
     }
 
     // Get the transforms without the stamps for readability
@@ -275,17 +239,6 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
     double t3 = 2.0f * (transform.rotation.w * transform.rotation.z + transform.rotation.x * transform.rotation.y);
     double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);  
     double current_yaw = std::atan2(t3, t4);
-
-    // Check if the quad velocity controller has not been run once
-    // Update all intermediate values and make a recursive call to getVelocities
-    // (meaning another transform will be collected) and a valid velocity can be calculated.
-    if(!ran_once_)
-    {
-        ran_once_ = true;
-        last_transform_stamped_ = transformStamped;
-        last_yaw_ = current_yaw;
-        return getVelocities(return_velocities);
-    }
 
     // Begin calculation of the velocities
 
@@ -324,16 +277,7 @@ bool QuadVelocityController::getVelocities(geometry_msgs::Twist& return_velociti
     // Finally calculate the yaw velocity after correcting for gimbal lock
     return_velocities.angular.z = yaw_difference / delta;
 
-    // Indicate that we currently have a velocity, used in case
-    // this function is called again quickly
-    have_last_velocity_stamped_ = true;
-    
-    // Store the current velocities into the last_velocity_stamped
-    // copy the header as well
-    last_velocity_stamped_.twist = return_velocities;
-    last_velocity_stamped_.header.stamp = transformStamped.header.stamp;
-
-    // Store the old transform as well
+    // Store the old transform
     last_transform_stamped_ = transformStamped;
 
     // Store yaw
