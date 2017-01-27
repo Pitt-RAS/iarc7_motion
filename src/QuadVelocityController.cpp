@@ -134,6 +134,15 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
     try
     {
         ros::Time time_at_start = ros::Time::now();
+        ros::Time last_transform_time;
+        if(wait_for_velocities_ran_once_)
+        {
+            last_transform_time = last_transform_stamped_.header.stamp;
+        }
+        else
+        {
+            last_transform_time = ros::Time::now();
+        }
 
         // While we aren't supposed to be shutting down
         while (ros::ok())
@@ -155,7 +164,7 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
                 transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
 
                 // Check if the transform is newer or as new as the desired time
-                if(transform.header.stamp >= time_at_start)
+                if(transform.header.stamp > last_transform_time)
                 {
                     return true;
                 }
