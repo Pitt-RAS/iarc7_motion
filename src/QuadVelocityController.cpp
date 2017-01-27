@@ -220,23 +220,21 @@ bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_v
         last_transform_stamped_ = transformStamped;
         return waitForNewVelocities(return_velocities);
     }
-    // If we have ran before make sure the difference between transforms isn't too much
-    else
+
+    // Make sure the difference between transforms isn't too much
+    // Calculate the lastest time between transforms that is allowed.
+    ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
+                + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
+    // Make the sure the transform isn't didn't come after the last time
+    // that was acceptable.
+    if (transformStamped.header.stamp > latest_time_allowed)
     {
-        // Calculate the lastest time between transforms that is allowed.
-        ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
-                    + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
-        // Make the sure the transform isn't didn't come after the last time
-        // that was acceptable.
-        if (transformStamped.header.stamp > latest_time_allowed)
-        {
-            ROS_ERROR_STREAM(
-                "First available transform came after latest allowed time"
-                << " (transform time: " << transformStamped.header.stamp
-                << ", latest allowed time: " << latest_time_allowed
-                << ")");
-            return false;
-        }
+        ROS_ERROR_STREAM(
+            "First available transform came after latest allowed time"
+            << " (transform time: " << transformStamped.header.stamp
+            << ", latest allowed time: " << latest_time_allowed
+            << ")");
+        return false;
     }
 
     // Get the transforms without the stamps for readability
