@@ -3,7 +3,8 @@ import threading
 import rospy
 import actionlib
 from takeoff_task import TakeoffTask
-from iarc7_motion.msg import QuadMoveAction
+from test_task import TestTask
+from iarc7_motion.msg import QuadMoveAction, QuadMoveResult
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -26,12 +27,15 @@ class IarcTaskActionServer:
     # Private method
     def new_goal(self, goal):
         with self.lock:
-            rospy.loginfo("new_goal: %s", goal.get_goal_id().id)
+            rospy.logdebug("new_goal: %s", goal.get_goal_id().id)
 
             task_request = goal.get_goal()
 
             if task_request.movement_type == "takeoff" :
-                new_task = TakeoffTask()
+                new_task = TakeoffTask(task_request.takeoff_height)
+            elif task_request.movement_type == "test_task":
+                # Uses the preempt to decide whether or not to test aborting
+                new_task = TestTask(task_request.takeoff_height)
             else:
                 rospy.logerror("Goal has invalid movement_type: %s", movement_type)
                 goal.set_rejected()
@@ -40,9 +44,9 @@ class IarcTaskActionServer:
             # Support simple queue destroying preempting for now
             if task_request.preempt :
                 if len(self.goal_tasks) > 0:
-                    for goal, _ in  goal_tasks:
-                        goal.set_cancel_requested()
-                        goal.set_canceled()
+                    for x, _ in  self.goal_tasks:
+                        x.set_cancel_requested()
+                        x.set_canceled()
                     self.goal_tasks = []
                 if self.current_goal:
                     self.cancel_requested = True
@@ -61,21 +65,30 @@ class IarcTaskActionServer:
                 self.cancel_requested = True
                 return
 
-            for goal, _ in self.goal_tasks:
-                if goal == cancel:
-                    rospy.logdebug("Cancel requested on queued goal")
-                    goal.set_cancel_requested()
-                    goal.set_canceled()
-                    return
+            length = len(self.goal_tasks)
+            self.goal_tasks[:] = [goal_task for goal_task in self.goal_tasks if not self.determine_canceled(goal_task, cancel)]
 
-            rospy.logerror("Attempt to cancel goal but goal did not exist")
+            if len(self.goal_tasks) + 1 == length:
+                rospy.logdebug("Cancel requested on queued goal")
+            else:
+                rospy.logerr("Attempt to cancel goal but goal did not exist or more than one goal was deleted")
+
+    # Private method
+    def determine_canceled(self, goal_task, cancel):
+        goal = goal_task[0]
+        if goal == cancel:
+            goal.set_cancel_requested()
+            goal.set_canceled()
+            return True
+        return False
 
     # Function for task runner to use
-    def set_succeeded(self, result=None, text=""):
+    def set_succeeded(self, success):
         with self.lock:
             if self.current_goal:
                 rospy.logdebug("Current task succeeded")
-                self.current_goal.set_succeeded()
+                reponse = QuadMoveResult(success=success)
+                self.current_goal.set_succeeded(reponse)
             else:
                 rospy.logdebug("There was not task to succeed")
 
@@ -87,7 +100,8 @@ class IarcTaskActionServer:
         with self.lock:
             if self.current_goal:
                 rospy.logdebug("Current task aborted")
-                self.current_goal.set_aborted()
+                response = QuadMoveResult(success=False)
+                self.current_goal.set_aborted(result=response)
             else:
                 rospy.logdebug("There was not task to abort")
 
@@ -95,7 +109,7 @@ class IarcTaskActionServer:
             self.current_goal = None
             self.cancel_requested = False
 
-    def set_canceled():
+    def set_canceled(self):
         with self.lock:
             if self.current_goal :
                 rospy.logdebug("Current task cancelled")

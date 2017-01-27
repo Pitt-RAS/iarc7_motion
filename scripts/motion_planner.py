@@ -7,7 +7,6 @@ class MotionPlanner:
 
     def __init__(self, action_server):
         self.action_server = action_server
-
         self.task = None
 
     def get_velocity_command(self):
@@ -18,16 +17,21 @@ class MotionPlanner:
             if self.action_server.is_canceled():
                 self.task.cancel()
                 self.action_server.set_canceled()
+                self.task = None
 
-            if self.task.done():
-                self.action_server.set_succeeded()
-            elif self.task.aborted():
+            elif self.task.is_done():
+                self.action_server.set_succeeded(self.task.get_result())
+                self.task = None
+
+            elif self.task.is_aborted():
                 self.action_server.set_aborted()
+                self.task = None
+
             else:
                 preferred_twist = self.task.get_preferred_velocity()
 
 if __name__ == '__main__':
-    rospy.init_node('motion_planner', anonymous=True)
+    rospy.init_node('motion_planner')
 
     action_server = IarcTaskActionServer()
 
@@ -38,7 +42,9 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         try:
             motion_planner.get_velocity_command()
-        except:
+        except Exception, e:
             rospy.logfatal("Error in motion planner get velocity command.")
+            rospy.logfatal(str(e))
             rospy.signal_shutdown("Motion Planner shutdown")
+            raise
         rate.sleep()

@@ -1,10 +1,10 @@
 #! /usr/bin/env python
-
-import rospy
 from __future__ import print_function
 
+import rospy
+
 import actionlib
-from iarc7_motion.msg import QuadMoveAction
+from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 
 def motion_planner_client():
     # Creates the SimpleActionClient, passing the type of the action
@@ -15,24 +15,59 @@ def motion_planner_client():
     # listening for goals.
     client.wait_for_server()
 
+    # Test standard send receive
     # Creates a goal to send to the action server.
-    goal = QuadMoveAction(movement_type="takeoff")
-
+    goal = QuadMoveGoal(movement_type="test_task")
     # Sends the goal to the action server.
     client.send_goal(goal)
-
     # Waits for the server to finish performing the action.
     client.wait_for_result()
+    rospy.loginfo("Request/wait for request success: {}".format(client.get_result()))
 
-    # Prints out the result of executing the action
-    return client.get_result()  # A FibonacciResult
+    # Test canceling goal
+    client.send_goal(goal)
+    rospy.sleep(0.5)
+    client.cancel_goal()
+    rospy.loginfo("Goal canceled")
+
+    # Test aborting goal
+    # Creates a goal to send to the action server, uses takeoff_height as a flag
+    goal = QuadMoveGoal(movement_type="test_task", takeoff_height=1.0)
+    client.send_goal(goal)
+    client.wait_for_result()
+    rospy.loginfo("Task aborted result (false is expected): {}".format(client.get_result()))
+
+    # Test queueing then canceling a queued goal
+    # Creates a goal to send to the action server.
+    goal = QuadMoveGoal(movement_type="test_task")
+    # This is improper usage because the simple action client only supports one active goal at a time
+    # But iarc action server will queue multiple requests. By sending multiple goals,  the simple action
+    # client loses the ability to stop or abort the first goal
+    client.send_goal(goal)
+    client.send_goal(goal)
+    rospy.sleep(0.5)
+    client.cancel_goal()
+    # We should call wait_for_result but because the simple action client thinks the task is done
+    # it immediately returns, sleep instead
+    #client.wait_for_result()
+    rospy.sleep(5.0)
+
+    # Test preempting
+    # This is also improper usage....
+    goal = QuadMoveGoal(movement_type="test_task")
+    client.send_goal(goal)
+    client.send_goal(goal)
+    rospy.sleep(0.5)
+    goal = QuadMoveGoal(movement_type="test_task", preempt=True)
+    client.send_goal(goal)
+    client.wait_for_result()
+  
 
 if __name__ == '__main__':
     try:
         # Initializes a rospy node so that the SimpleActionClient can
         # publish and subscribe over ROS.
-        rospy.init_node('fibonacci_client_py')
-        result = fibonacci_client()
-        print("Result:", ', '.join([str(n) for n in result.sequence]))
+        rospy.init_node('test_motion_planner_client_py')
+        motion_planner_client()
     except rospy.ROSInterruptException:
         print("program interrupted before completion", file=sys.stderr)

@@ -12,9 +12,13 @@ class AbstractTask:
         raise NotImplementedError("Subclass must implement abstract method")
 
     # Abstract method
-    def done(self):
+    def is_done(self):
         raise NotImplementedError("Subclass must implement abstract method")
 
     # Abstract method
-    def aborted(self):
+    def is_aborted(self):
+        raise NotImplementedError("Subclass must implement abstract method")
+
+    # Abstract method
+    def get_result(self):
         raise NotImplementedError("Subclass must implement abstract method")
