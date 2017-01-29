@@ -191,14 +191,6 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
 bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_velocities)
 {
 
-    // Make sure that the current time is more than the last transform stamped time
-    while (wait_for_velocities_ran_once_
-            && ros::Time::now() <= last_transform_stamped_.header.stamp
-            && ros::ok())
-    {
-        ros::spinOnce();
-    }
-
     // Get a brand new transform. Blocks until able to transform at the current time.
     geometry_msgs::TransformStamped transformStamped;
     bool fetched_transform = waitForTransform(transformStamped);
