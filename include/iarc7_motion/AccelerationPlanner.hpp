@@ -2,7 +2,9 @@
 //
 // Acceleration Planner
 //
-// Implements receiving twist arrays and the acceleration ramps
+// Stores a queue of velocity commands from a topic. Interpolates
+// between velocities when a velocity is requested. Allows for smooth
+// acceleration.
 //
 ////////////////////////////////////////////////////////////////////////////
 
@@ -22,6 +24,7 @@ using geometry_msgs::TwistStamped;
 namespace Iarc7Motion
 {
 
+// Typdef the vector template to a shorter name for ease of typing
 typedef std::vector<geometry_msgs::TwistStamped> TwistStampedArray;
 
 class AccelerationPlanner
@@ -29,6 +32,7 @@ class AccelerationPlanner
 public:
     AccelerationPlanner() = delete;
 
+    // Require construction with a node handle
     AccelerationPlanner(ros::NodeHandle& nh);
 
     ~AccelerationPlanner() = default;
@@ -37,27 +41,32 @@ public:
     AccelerationPlanner(const AccelerationPlanner& rhs) = delete;
     AccelerationPlanner& operator=(const AccelerationPlanner& rhs) = delete;
 
-    void update();
-
+    // Used to get a twist. If needed the twist is interpolated between a velocity target 
+    // that occurs prior to the requested time and after the requested time
     void getTargetTwist(const ros::Time& current_time, geometry_msgs::TwistStamped& target_twist);
 
 private:
+    // Used to allow unit tests to call private functions
     FRIEND_TEST(AccelerationPlannerTests, testTrimVelocityQueue);
     FRIEND_TEST(AccelerationPlannerTests, testAppendVelocityQueue);
 
+    // Handles incoming velocity command messages
     void processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message);
 
+    // Removes old velocities from the velocity queue
     static bool trimVelocityQueue(TwistStampedArray& twists, const ros::Time& time);
 
+    // Appends new velocities to the velocity queue, overwrites velocities in the  velocity queue if appropriate
     static bool appendVelocityQueue(TwistStampedArray& current_twists, const TwistStampedArray& new_twists, const ros::Time& time);
 
+    // Interpolates between two twists according ax+b
     static bool interpolateTwists(TwistStamped& begin, TwistStamped& end, TwistStamped& interpolated, ros::Time time);
-
-    ros::NodeHandle& nh_;
 
     // Subscriber for uav_arm
     ros::Subscriber velocity_targets_subscriber_;
 
+    // Queue of velocities with timestamps. A velocity with a timestamp is considered
+    // a velocity target.
     TwistStampedArray velocity_targets_;
 };
 

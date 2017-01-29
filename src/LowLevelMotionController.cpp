@@ -2,7 +2,13 @@
 //
 // LowLevelMotionController
 //
-// Class to implement control of the quads movement
+// This is the top level class for the velocity controller.
+// It uses an AccelerationPlanner to get velocities.
+// Sends them to a QuadVelocityController who runs the PID loops that set the angles
+// to output to the flight controller.
+// The angles and throttle values are sent to a TwistLimiter class which limits the
+// min, max, and max rate of change of those values.
+// Finally the processed angles and throttle values are sent out onto a topic.
 //
 ////////////////////////////////////////////////////////////////////////////
 
@@ -21,8 +27,8 @@ using namespace Iarc7Motion;
 using geometry_msgs::TwistStamped;
 using geometry_msgs::Twist;
 
-// This is a helper function that will limit a uav command using the twist limiter
-// It will eventually no longer be needed when the quad velocity controller is converted to use twists
+// This is a helper function that will limit a iarc7_msgs::OrientationThrottleStamped using the twist limiter
+// The twist limiter uses TwistStamped messages to do it's work so this function converts between the data types.
 void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     TwistStamped uav_twist_stamped;
@@ -45,6 +51,7 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
+// Loads the PID parameters from ROS param server into the passed in arrays
 void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5], double yaw_pid[5])
 {
     // Throttle PID settings retrieve
@@ -76,7 +83,8 @@ void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[
     nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
 }
 
-void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
+// Loads the parameters for the TwistLimiter from the ROS paramater server
+void getTwistLimiterParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
 {
     // Throttle Limit settings retrieve
     nh.param("throttle_max", max.linear.z, 0.0);
@@ -99,63 +107,87 @@ void getUavCommandParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& m
     nh.param("yaw_max_rate", max_rate.angular.z, 0.0);
 }
 
+// Main entry point for the low level motion controller
 int main(int argc, char **argv)
 {
+    // Required by ROS before calling many functions
     ros::init(argc, argv, "Low_Level_Motion_Control");
 
     ROS_INFO("Low_Level_Motion_Control begin");
 
+    // Create a node handle for the node
     ros::NodeHandle nh;
+    // This node handle has a specific namespace that allows us to easily encapsulate parameters
     ros::NodeHandle param_nh ("low_level_motion_controller");
 
+    // Form a connection with the node monitor. If no connection can be made assert because we don't
+    // know what's going on with the other nodes.
     ROS_INFO("low_level_motion: Attempting to form safety bond");
     Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion");
     ROS_ASSERT_MSG(safety_client.formBond(), "low_level_motion: Could not form bond with safety client");
 
+    // Get the PID parameters from the ROS parameter server
     double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
     double yaw_pid[5];
     getPidParams(param_nh, throttle_pid, pitch_pid, roll_pid, yaw_pid);
 
+    // Create a quad velocity controller. It will output angles corresponding to our desired velocity
     QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid, yaw_pid);
 
+    // Create an acceleration planner. It handles interpolation between timestamped velocity requests so that
+    // Smooth accelerations are possible.
     AccelerationPlanner accelerationPlanner(nh);
 
+    // Create the publisher to send the processed uav_commands out with (angles, throttle)
     ros::Publisher uav_control_ = nh.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
 
     // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
     // section 1
     ROS_ASSERT_MSG(uav_control_, "Could not create uav_direction_command publisher");
 
+    // Get the parameters for the twist limiter
     Twist min;
     Twist max;
     Twist max_rate;
-    getUavCommandParams(param_nh, min, max, max_rate);
+    getTwistLimiterParams(param_nh, min, max, max_rate);
+
+    // Create the twist limiter, it will limit min value, max value, and max rate of change.
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
+    // Wait for a valid time in case we are using simulated time (not wall time)
     while (ros::ok() && ros::Time::now() == ros::Time(0)) {
         // wait
         ros::spinOnce();
     }
 
+    // Cache the time
     ros::Time last_time = ros::Time::now();
 
+    // Run until ROS says we need to shutdown
     while (ros::ok())
     {
         // Check the safety client before updating anything
+        // If fatal is active the node monitor is telling everyone to shut down immediately
         ROS_ASSERT_MSG(!safety_client.isFatalActive(), "low_level_motion: fatal event from safety");
 
+        // Get the time
         ros::Time current_time = ros::Time::now();
 
+        // Make sure we don't call QuadVelocity controllers update unless we have a new timestamp to give.
+        // This can be a problem with simulated time that does not update with high precision.
         if(current_time > last_time)
         {
             last_time = current_time;
 
+            //  This will contain the target twist or velocity that we want to achieve
             geometry_msgs::TwistStamped target_twist;
             
+            // Check for a safety state in which case we should execute our safety response
             if(safety_client.isSafetyActive())
             {
+                // This is the safety response
                 // Override whatever the Acceleration Planner wants to do and attempt to land
                 target_twist.twist.linear.z = -0.2; // Try to descend
             }
@@ -165,19 +197,22 @@ int main(int argc, char **argv)
                 accelerationPlanner.getTargetTwist(current_time, target_twist);
             }
 
+            // Request the appropriate throttle and angle settings for the desired velocity
             quadController.setTargetVelocity(target_twist.twist);
 
+            // Get the next uav command that is appropriate for the desired velocity
             iarc7_msgs::OrientationThrottleStamped uav_command;
             bool success = quadController.update(current_time, uav_command);
             ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
 
-            // Limit the uav command
+            // Limit the uav command with the twist limiter before sending the uav command
             limitUavCommand(limiter, uav_command);
 
-            // Publish the desired angles and throttle
+            // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);
         }
 
+        // Handle all ROS callbacks
         ros::spinOnce();
     }
 
