@@ -2,6 +2,7 @@
 import sys
 import rospy
 from iarc_task_action_server import IarcTaskActionServer
+from task_state import TaskState
 
 class MotionPlanner:
 
@@ -15,20 +16,25 @@ class MotionPlanner:
 
         if self.task:
             if self.action_server.is_canceled():
+                print("canceling")
                 self.task.cancel()
+
+            (task_state, preferred_twist) = self.task.get_preferred_velocity()
+
+            if task_state == TaskState.canceled:
                 self.action_server.set_canceled()
                 self.task = None
-
-            elif self.task.is_done():
-                self.action_server.set_succeeded(self.task.get_result())
-                self.task = None
-
-            elif self.task.is_aborted():
+            elif task_state == TaskState.aborted:
                 self.action_server.set_aborted()
                 self.task = None
-
+            elif task_state == TaskState.failed:
+                self.action_server.set_succeeded(False)
+                self.task = None
+            elif task_state == TaskState.done:
+                self.action_server.set_succeeded(True)
+                self.task = None
             else:
-                preferred_twist = self.task.get_preferred_velocity()
+                assert task_state == TaskState.running
 
 if __name__ == '__main__':
     rospy.init_node('motion_planner')

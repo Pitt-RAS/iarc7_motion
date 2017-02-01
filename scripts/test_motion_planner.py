@@ -37,6 +37,9 @@ def motion_planner_client():
     client.wait_for_result()
     rospy.loginfo("Task aborted result (false is expected): {}".format(client.get_result()))
 
+    rospy.loginfo("Attempting a cancel on a queued operation")
+    rospy.sleep(3.0)
+
     # Test queueing then canceling a queued goal
     # Creates a goal to send to the action server.
     goal = QuadMoveGoal(movement_type="test_task")
@@ -47,10 +50,12 @@ def motion_planner_client():
     client.send_goal(goal)
     rospy.sleep(0.5)
     client.cancel_goal()
+    
     # We should call wait_for_result but because the simple action client thinks the task is done
     # it immediately returns, sleep instead
     #client.wait_for_result()
-    rospy.sleep(5.0)
+    rospy.loginfo("Attempting a preempt operation")
+    rospy.sleep(3.0)
 
     # Test preempting
     # This is also improper usage....
@@ -61,7 +66,6 @@ def motion_planner_client():
     goal = QuadMoveGoal(movement_type="test_task", preempt=True)
     client.send_goal(goal)
     client.wait_for_result()
-  
 
 if __name__ == '__main__':
     try:

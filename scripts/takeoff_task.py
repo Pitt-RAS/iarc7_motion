@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from abstract_task import AbstractTask
+from task_state import TaskState
 
 class TakeoffTask(AbstractTask):
 
@@ -8,17 +9,8 @@ class TakeoffTask(AbstractTask):
         self.takeoff_height = takeoff_height
 
     def get_preferred_velocity(self):
-        rospy.loginfo("get_preferred_velocity")
-        return 5
+        rospy.loginfo("TakeoffTask get_preferred_velocity")
+        return (TaskState.done, 0.0)
 
     def cancel(self):
-        return True
-
-    def is_done(self):
-        return True
-
-    def is_aborted(self):
-        return False
-
-    def get_result(self):
-        return False
+        rospy.loginfo("TakeoffTask canceled")
