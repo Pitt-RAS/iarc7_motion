@@ -24,6 +24,9 @@ class IarcTaskActionServer:
         # Start action server last to avoid race condition
         self._action_server.start()
 
+        self._task_dict = {'takeoff': TakeoffTask,
+                           'test_task': TestTask}
+
     # Private method
     def _new_goal(self, goal):
         with self._lock:
@@ -31,13 +34,10 @@ class IarcTaskActionServer:
 
             task_request = goal.get_goal()
 
-            if task_request.movement_type == "takeoff" :
-                new_task = TakeoffTask(task_request.takeoff_height)
-            elif task_request.movement_type == "test_task":
-                # Uses the preempt to decide whether or not to test aborting
-                new_task = TestTask(task_request.takeoff_height)
-            else:
-                rospy.logerror("Goal has invalid movement_type: %s", movement_type)
+            try:
+                new_task = self._task_dict[task_request.movement_type](task_request.takeoff_height)
+            except KeyError as e:
+                rospy.logerr("Goal has invalid movement_type: %s", task_request.movement_type)
                 goal.set_rejected()
                 return
 
@@ -52,7 +52,7 @@ class IarcTaskActionServer:
                     self._cancel_requested = True
                     self._current_goal.set_cancel_requested()
 
-            self._goal_tasks.append([goal, new_task])
+            self._goal_tasks.append((goal, new_task))
 
     # Private method
     def _cancel_request(self, cancel):
