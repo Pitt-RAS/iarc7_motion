@@ -1,0 +1,11 @@
+#goal definition
+string movement_type
+bool preempt
+float64 takeoff_height
+---
+#result definition
+bool success
+
+---
+#feedback
+float64 completion
