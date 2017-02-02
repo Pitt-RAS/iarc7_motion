@@ -16,7 +16,6 @@ class MotionPlanner:
 
         if self.task:
             if self._action_server.is_canceled():
-                print("canceling")
                 self.task.cancel()
 
             (task_state, preferred_twist) = self.task.get_preferred_velocity()

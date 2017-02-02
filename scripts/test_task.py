@@ -2,6 +2,7 @@
 import rospy
 from abstract_task import AbstractTask
 from task_state import TaskState
+from geometry_msgs.msg import TwistStamped
 
 class TestTask(AbstractTask):
 
@@ -34,7 +35,7 @@ class TestTask(AbstractTask):
         else:
             rospy.loginfo("TestTask not done")
 
-        return (TaskState.running, result)
+        return (TaskState.running, TwistStamped())
 
     def cancel(self):
         rospy.loginfo("TestTask canceling")
