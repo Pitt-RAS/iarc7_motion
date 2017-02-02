@@ -13,8 +13,8 @@ class IarcTaskActionServer:
 
         self._action_server = actionlib.ActionServer(self._action_name,
                                           QuadMoveAction,
-                                          self.new_goal,
-                                          cancel_cb=self.cancel_request,
+                                          self._new_goal,
+                                          cancel_cb=self._cancel_request,
                                           auto_start = False)
         self._goal_tasks = []
         self._current_task = None
@@ -25,9 +25,9 @@ class IarcTaskActionServer:
         self._action_server.start()
 
     # Private method
-    def new_goal(self, goal):
+    def _new_goal(self, goal):
         with self._lock:
-            rospy.logdebug("new_goal: %s", goal.get_goal_id().id)
+            rospy.logdebug("_new_goal: %s", goal.get_goal_id().id)
 
             task_request = goal.get_goal()
 
@@ -55,7 +55,7 @@ class IarcTaskActionServer:
             self._goal_tasks.append([goal, new_task])
 
     # Private method
-    def cancel_request(self, cancel):
+    def _cancel_request(self, cancel):
         with self._lock:
             rospy.logdebug("cancel_request")
 
@@ -66,7 +66,7 @@ class IarcTaskActionServer:
                 return
 
             length = len(self._goal_tasks)
-            self._goal_tasks[:] = [goal_task for goal_task in self._goal_tasks if not self.determine_canceled(goal_task, cancel)]
+            self._goal_tasks[:] = [goal_task for goal_task in self._goal_tasks if not self._determine_canceled(goal_task, cancel)]
 
             if len(self._goal_tasks) + 1 == length:
                 rospy.logdebug("Cancel requested on queued goal")
@@ -74,7 +74,7 @@ class IarcTaskActionServer:
                 rospy.logerr("Attempt to cancel goal but goal did not exist or more than one goal was deleted")
 
     # Private method
-    def determine_canceled(self, goal_task, cancel):
+    def _determine_canceled(self, goal_task, cancel):
         goal = goal_task[0]
         if goal == cancel:
             goal.set_cancel_requested()
