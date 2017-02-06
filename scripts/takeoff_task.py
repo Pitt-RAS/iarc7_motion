@@ -6,8 +6,8 @@ from geometry_msgs.msg import TwistStamped
 
 class TakeoffTask(AbstractTask):
 
-    def __init__(self, takeoff_height):
-        self.takeoff_height = takeoff_height
+    def __init__(self, actionvalues_dict):
+        self.takeoff_height = actionvalues_dict['takeoff_height']
 
     def get_preferred_velocity(self):
         rospy.loginfo("TakeoffTask get_preferred_velocity")
