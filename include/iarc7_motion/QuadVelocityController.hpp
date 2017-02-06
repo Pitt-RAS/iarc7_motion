@@ -90,6 +90,7 @@ namespace Iarc7Motion
         // Makes sure that we have a lastTransformStamped before returning a valid velocity
         bool wait_for_velocities_ran_once_;
 
+        static constexpr double INITIAL_TRANSFORM_WAIT_SECONDS{10.0};
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
         static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
     };

@@ -148,7 +148,11 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
         while (ros::ok())
         {
             // Check for timing out, return failure if so.
-            if (ros::Time::now() > time_at_start + ros::Duration(MAX_TRANSFORM_WAIT_SECONDS))
+            ros::Duration timeout = wait_for_velocities_ran_once_ ?
+                                    ros::Duration(MAX_TRANSFORM_WAIT_SECONDS) :
+                                    ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS);
+
+            if (ros::Time::now() > time_at_start + timeout)
             {
                 ROS_ERROR_STREAM("Transform timed out ("
                                  << "current time: " << ros::Time::now() << ", "
