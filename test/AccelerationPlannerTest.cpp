@@ -67,11 +67,17 @@ namespace Iarc7Motion
             twists_append.push_back(twist);
         }
 
-        // Make sure a list of old timestamps is rejected
-        EXPECT_FALSE(Planner::appendVelocityQueue(twists_append, twists, current_time + ros::Duration(20.0)));
+        // Make sure a list of old timestamps is rejected except for the last
+        size_t expected_size = twists.size() + 1;
+        ros::Time expected_time = twists_append.back().header.stamp;
+        EXPECT_TRUE(Planner::appendVelocityQueue(twists, twists_append, current_time + ros::Duration(40.0)));
+        EXPECT_EQ(twists.size() , expected_size);
+        EXPECT_EQ(twists.back().header.stamp, expected_time);
+        // Cleanup
+        twists.pop_back();
 
         // See if it will append all at the end as expected
-        size_t expected_size = twists.size() + twists_append.size();
+        expected_size = twists.size() + twists_append.size();
         EXPECT_TRUE(Planner::appendVelocityQueue(twists, twists_append, current_time));
         EXPECT_EQ(twists.size(), expected_size);
 
