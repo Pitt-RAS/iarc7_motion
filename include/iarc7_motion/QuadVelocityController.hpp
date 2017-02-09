@@ -11,7 +11,7 @@
 #define QUAD_VELOCITY_CONTROLLER_H
 
 #include <ros/ros.h>
-#include "iarc7_motion/FeedForwardPid.hpp"
+#include "iarc7_motion/PidController.hpp"
 #include "tf2_ros/transform_listener.h"
 
 #include "geometry_msgs/Transform.h"
@@ -73,10 +73,10 @@ namespace Iarc7Motion
         tf2_ros::TransformListener tfListener_;
 
         // The four PID controllers
-        FeedForwardPid throttle_pid_;
-        FeedForwardPid pitch_pid_;
-        FeedForwardPid roll_pid_;
-        FeedForwardPid yaw_pid_;
+        PidController throttle_pid_;
+        PidController pitch_pid_;
+        PidController roll_pid_;
+        PidController yaw_pid_;
 
         // A fudge feed forward value used for more stable hovering
         static constexpr double hover_throttle_{58.0};

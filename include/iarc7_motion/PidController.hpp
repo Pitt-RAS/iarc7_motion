@@ -1,30 +1,30 @@
-#ifndef FEED_FORWARD_PID_HPP
-#define FEED_FORWARD_PID_HPP
+#ifndef PID_CONTROLLER_HPP
+#define PID_CONTROLLER_HPP
 
 ////////////////////////////////////////////////////////////////////////////
 //
-// FeedForwardPid
+// PidController
 //
-// Class implement a feed forward PID loop
+// Class implement a PID loop
 //
 ////////////////////////////////////////////////////////////////////////////
 
 namespace Iarc7Motion
 {
 
-    class FeedForwardPid
+    class PidController
     {
     public:
 
-        FeedForwardPid(double p_gain, double i_gain, double d_gain,
+        PidController(double p_gain, double i_gain, double d_gain,
                        double i_accumulator_max, double i_accumulator_min);
 
-        FeedForwardPid() = delete;
-        ~FeedForwardPid() = default;
+        PidController() = delete;
+        ~PidController() = default;
 
         // Don't allow the copy constructor or assignment.
-        FeedForwardPid(const FeedForwardPid& rhs) = delete;
-        FeedForwardPid& operator=(const FeedForwardPid& rhs) = delete;
+        PidController(const PidController& rhs) = delete;
+        PidController& operator=(const PidController& rhs) = delete;
 
         void setSetpoint(double setpoint);
 
