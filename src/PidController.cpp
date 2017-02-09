@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// FeedForwardPid
+// PidController
 //
-// Class implement a feed forward PID loop
+// Class implement a PID loop
 //
 ////////////////////////////////////////////////////////////////////////////
 
@@ -10,11 +10,11 @@
 #include <limits>
 #include <ros/ros.h>
 
-#include "iarc7_motion/FeedForwardPid.hpp"
+#include "iarc7_motion/PidController.hpp"
 
 using namespace Iarc7Motion;
 
-FeedForwardPid::FeedForwardPid(double p_gain, double i_gain, double d_gain,
+PidController::PidController(double p_gain, double i_gain, double d_gain,
                                double i_accumulator_max, double i_accumulator_min)
     : p_gain_(p_gain),
       i_gain_(i_gain),
@@ -30,21 +30,21 @@ FeedForwardPid::FeedForwardPid(double p_gain, double i_gain, double d_gain,
     // Nothing to do
 }
 
-bool FeedForwardPid::update(double current_value, const ros::Time& time, double& response)
+bool PidController::update(double current_value, const ros::Time& time, double& response)
 {
     if (time < last_time_) {
-        ROS_WARN("Time passed in to FeedForwardPid is less than the last time.");
+        ROS_WARN("Time passed in to PidController is less than the last time.");
         return false;
     }
 
     if(time == last_time_)
     {
-        ROS_WARN("Time passed in to FeedForwardPid is equal to the last time.");
+        ROS_WARN("Time passed in to PidController is equal to the last time.");
         return false;
     }
 
     if (!std::isfinite(current_value)) {
-        ROS_WARN("Invalid argument to FeedForwardPid::update (current_value = %f)",
+        ROS_WARN("Invalid argument to PidController::update (current_value = %f)",
                  current_value);
         return false;
     }
@@ -74,7 +74,7 @@ bool FeedForwardPid::update(double current_value, const ros::Time& time, double&
     last_time_ = time;
 
     if (!std::isfinite(response)) {
-        ROS_WARN("Invalid result from FeedForwardPid::update (response = %f)",
+        ROS_WARN("Invalid result from PidController::update (response = %f)",
                  response);
         return false;
     } else {
@@ -82,7 +82,7 @@ bool FeedForwardPid::update(double current_value, const ros::Time& time, double&
     }
 }
 
-void FeedForwardPid::setSetpoint(double setpoint)
+void PidController::setSetpoint(double setpoint)
 {
     setpoint_ = setpoint;
 }
