@@ -147,13 +147,6 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
     TwistStampedArray::const_iterator first_valid_twist = std::lower_bound(new_twists.begin(), new_twists.end(), time,
                                                                            [](auto& twist, auto& time) { return twist.header.stamp < time; });
 
-    // Check if there are no twists in the past in list that are older than the time
-    if(first_valid_twist == new_twists.end())
-    {
-        ROS_ERROR("processVelocityCommand passed a TwistStampedArray with all old timestamps, rejecting");
-        return false;
-    }
-
     // Check for a twist prior to the first twist that is more than or equal to the current time
     if(first_valid_twist != new_twists.begin())
     {
