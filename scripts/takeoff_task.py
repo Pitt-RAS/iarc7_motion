@@ -57,9 +57,16 @@ class TakeoffTask(AbstractTask):
         velocity_pub.publish(velocity_msg)
         rospy.loginfo("TakeoffTask get_preferred_velocity")
         
+        # Get the yaw (z axis) rotation from the quanternion
+        current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
+        
+        # Transform current yaw to be between 0 and 2pi because the points are encoded from 0 to 2pi
+        if current_yaw < 0:
+            current_yaw = (2.0 * math.pi) + current_yaw
+        yaw_difference = target[3] - current_yaw
         if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
             if abs(yaw_difference) < 0.15:
-                return (TaskState.done, TwistStamped())
+                return (TaskState.done, velocity)
 
         return (TaskState.running, velocity_msg)
 
