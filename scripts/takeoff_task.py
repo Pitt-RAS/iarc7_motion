@@ -70,6 +70,9 @@ class TakeoffTask(AbstractTask):
 
         return (TaskState.running, velocity_msg)
 
+    def get_takeoff_height(self):
+        return (takeoff_height)
+
     def cancel(self):
         rospy.loginfo("TakeoffTask canceled")
         self.canceled = True
