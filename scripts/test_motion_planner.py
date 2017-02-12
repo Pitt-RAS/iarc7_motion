@@ -8,7 +8,7 @@ from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 
 def motion_planner_client():
     # Creates the SimpleActionClient, passing the type of the action
-    # (FibonacciAction) to the constructor.
+    # (QuadMoveAction) to the constructor. (Look in the action folder)
     client = actionlib.SimpleActionClient("motion_planner_server", QuadMoveAction)
 
     # Waits until the action server has started up and started
@@ -68,6 +68,9 @@ def motion_planner_client():
     client.wait_for_result()
 
     # Test taking off
+    goal = QuadMoveGoal(movement_type="takeoff", takeoff_height = 5.5)
+    client.send_goal(goal)
+    client.wait_for_result()
 
 if __name__ == '__main__':
     try:
