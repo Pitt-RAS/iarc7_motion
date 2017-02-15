@@ -11,7 +11,8 @@ import math
 
 from iarc7_msgs.msg import TwistStampedArrayStamped
 from geometry_msgs.msg import TwistStamped
-from iarc7_safety.SafetyClient import SafetyClient
+
+
 
 
 class TakeoffTask(AbstractTask):
@@ -34,12 +35,17 @@ class TakeoffTask(AbstractTask):
         max_vel = 1
         max_yaw_vel = 2.0 * math.pi / 3 # Max requested yaw is one rev per 3 seconds
 
+
+        (trans, rot) = self.tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
+
         try:
-            (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
+            (trans, rot) = self.tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
         except tf.Exception as ex:
             rospy.logerr(ex.message)
+            rate = rospy.Rate(30)
             rate.sleep()
-            continue
+            
+        target = (0, 0, self.takeoff_height, 0 * math.pi)
 
         velocity = TwistStamped()
         velocity.header.frame_id = 'level_quad'
