@@ -5,80 +5,110 @@ from task_state import TaskState
 from geometry_msgs.msg import TwistStamped
 
 import rospy
-import tf
+import tf2_ros
 
 import math
 
-from iarc7_msgs.msg import TwistStampedArrayStamped
+from iarc7_msgs.msg import FlightControllerStatus
 from geometry_msgs.msg import TwistStamped
 
-
-
+class TakeoffTaskState:
+    init = 0
+    request_arm = 1
+    pause_before_takeoff = 2
+    takeoff = 3
 
 class TakeoffTask(AbstractTask):
 
     def __init__(self, actionvalues_dict):
-        self.takeoff_height = actionvalues_dict['takeoff_height']
-        #self.velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
-        self.tf_listener = tf.TransformListener()
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.canceled = False;
+
+        self.takeoff_height = actionvalues_dict['takeoff_height']
+        try:
+            self.TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
+            self.TAKEOFF_HEIGHT_TOLERANCE = rospy.get_param('~takeoff_height_tolerance')
+            self.DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
+        except KeyError as e:
+            rospy.logerr('Could not lookup a parameter for takeoff task')
+            raise
+        
+        self.fc_status = None
+        self.fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
+        self.state = TakeoffTaskState.init
+
+    def _receive_fc_status(self, data):
+        self.fc_status = data
 
     def get_preferred_velocity(self):
         if self.canceled:
-            return (TaskState.canceled, TwistStamped());
+            return (TaskState.canceled)
 
-        while rospy.Time.now() == 0:
-            pass
+        if self.state == TakeoffTaskState.init:
+            try:
+                trans = self.tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
 
-        kP = 0.5
-        kP_yaw = 0.5
-        max_vel = 1
-        max_yaw_vel = 2.0 * math.pi / 3 # Max requested yaw is one rev per 3 seconds
+                # Should check that we are on the ground
 
+                if self.fc_status != None:
+                    # Check that auto pilot is enabled
+                    if not self.fc_status.auto_pilot:
+                        return (TaskState.failed, 'flight controller not allowing auto pilot')
+                    # Check that the FC is not already armed
+                    #elif self.fc_status.armed:
+                    #    return (TaskState.failed, 'flight controller armed prior to takeoff')
+                    # All is good change state to request arm
+                    else:
+                        self.state = TakeoffTaskState.request_arm
+                else:
+                    return (TaskState.running, 'velocity', TwistStamped())
 
-        (trans, rot) = self.tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
+                rospy.logerr('Takeofftask: Exception when looking up transform')
+                rospy.logerr(ex.message)
+                # Make sure not to leave the init state
+                self.state = TakeoffTaskState.init
+                return (TaskState.aborted, 'Exception when looking up transform')
 
-        try:
-            (trans, rot) = self.tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
-        except tf.Exception as ex:
-            rospy.logerr(ex.message)
-            rate = rospy.Rate(30)
-            rate.sleep()
-            
-        target = (0, 0, self.takeoff_height, 0 * math.pi)
+        # Enter the arming request stage
+        if self.state == TakeoffTaskState.request_arm:
+            # Check that the FC is not already armed
+            if self.fc_status.armed:
+                self.pause_start_time = rospy.Time.now()
+                self.state = TakeoffTaskState.pause_before_takeoff
+            else:
+                return (TaskState.running, 'arm')
 
-        velocity = TwistStamped()
-        velocity.header.frame_id = 'level_quad'
-        velocity.header.stamp = rospy.Time.now() + rospy.Duration(1)
-        if abs(target[0] - trans[0]) >= 0.02:
-            velocity.twist.linear.x = constrain((target[0] - trans[0]) * kP, -max_vel, max_vel)
-        if abs(target[1] - trans[1]) >= 0.02:
-            velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_vel, max_vel)
-        if abs(target[2] - trans[2]) >= 0.02:
-            velocity.twist.linear.z = target[2] - trans[2]
+        # Pause before ramping up the motors
+        if self.state == TakeoffTaskState.pause_before_takeoff:
+            if rospy.Time.now() - self.pause_start_time > rospy.Duration(self.DELAY_BEFORE_TAKEOFF):
+                self.state = TakeoffTaskState.takeoff
+            else:
+                return (TaskState.running, 'velocity', TwistStamped())
 
-        velocity_msg = TwistStampedArrayStamped()
-        velocity_msg.header.stamp = rospy.Time.now()
-        velocity_msg.data = [velocity]
-        velocity_pub.publish(velocity_msg)
-        rospy.loginfo("TakeoffTask get_preferred_velocity")
+        # Enter the takeoff phase
+        if self.state == TakeoffTaskState.takeoff:
+            try:
+                transStamped = self.tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
+                # Check if we reached the target height
+                if(transStamped.transform.translation.z > self.takeoff_height - self.TAKEOFF_HEIGHT_TOLERANCE):
+                    return (TaskState.done, 'velocity', TwistStamped())
+
+                velocity = TwistStamped()
+                velocity.header.frame_id = 'level_quad'
+                velocity.header.stamp = rospy.Time.now()
+                velocity.twist.linear.z = self.TAKEOFF_VELOCITY
+                return (TaskState.running, 'velocity', velocity)
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
+                rospy.logerr('Takeofftask: Exception when looking up transform')
+                rospy.logerr(ex.message)
+                return (TaskState.aborted, 'Exception when looking up transform during takeoff')
         
-        # Get the yaw (z axis) rotation from the quanternion
-        current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
-        
-        # Transform current yaw to be between 0 and 2pi because the points are encoded from 0 to 2pi
-        if current_yaw < 0:
-            current_yaw = (2.0 * math.pi) + current_yaw
-        yaw_difference = target[3] - current_yaw
-        if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
-            if abs(yaw_difference) < 0.15:
-                return (TaskState.done, velocity)
+        # Impossible state reached
+        return (TaskState.aborted, 'Impossible state in takeoff task reached')
 
-        return (TaskState.running, velocity_msg)
-
-    def get_takeoff_height(self):
-        return (takeoff_height)
 
     def cancel(self):
-        rospy.loginfo("TakeoffTask canceled")
+        rospy.loginfo('TakeoffTask canceled')
         self.canceled = True
