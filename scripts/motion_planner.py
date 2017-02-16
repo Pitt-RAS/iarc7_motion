@@ -57,6 +57,7 @@ class MotionPlanner:
                 rospy.logerr('Exception getting tasks preferred velocity')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
+                rospy.logwarn('Motion planner aborted task')
                 self._action_server.set_aborted()
                 self.task = None
                 return ('nop',)
@@ -66,11 +67,11 @@ class MotionPlanner:
                 self._action_server.set_canceled()
                 self.task = None
             elif task_state == TaskState.aborted:
-                rospy.logwarn(task_request[1])
+                rospy.logwarn('Task aborted with: %s', task_request[1])
                 self._action_server.set_aborted()
                 self.task = None
             elif task_state == TaskState.failed:
-                rospy.logwarn(task_request[1])
+                rospy.logwarn('Task failed with: %s', task_request[1])
                 self._action_server.set_succeeded(False)
                 self.task = None
             elif task_state == TaskState.done:
