@@ -6,15 +6,16 @@ from iarc7_msgs.msg import TwistStampedArrayStamped
 from iarc_task_action_server import IarcTaskActionServer
 from task_state import TaskState
 import traceback
+from std_srvs.srv import SetBool
+
 
 class MotionPlanner:
 
     def __init__(self, _action_server):
         self._action_server = _action_server
         self.task = None
-        self.velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
 
-    def get_velocity_command(self):
+    def get_task_command(self):
         if (self.task is None) and self._action_server.has_new_task():
             self.task = self._action_server.get_new_task()
 
@@ -30,7 +31,7 @@ class MotionPlanner:
                 rospy.logerr(traceback.format_exc())
                 self._action_server.set_aborted()
                 self.task = None
-                return
+                return ('nop',)
             
             task_state = task_request[0]
             if task_state == TaskState.canceled:
@@ -49,18 +50,10 @@ class MotionPlanner:
                 self.task = None
             else:
                 assert task_state == TaskState.running
-                if(task_request[1] == 'velocity'):
-                    velocity = task_request[2]
-                    rospy.logwarn(str(velocity))
-                    velocity_msg = TwistStampedArrayStamped()
-                    velocity_msg.header.stamp = rospy.Time.now()
-                    velocity_msg.data = [velocity]
-                    self.velocity_pub.publish(velocity_msg)
-        else:
-            velocity_msg = TwistStampedArrayStamped()
-            velocity_msg.header.stamp = rospy.Time.now()
-            velocity_msg.data = [TwistStamped()]
-            self.velocity_pub.publish(velocity_msg)
+                rospy.logwarn(task_request)
+                return task_request[1:]
+        # No action to take return a nop
+        return ('nop',)
 
 if __name__ == '__main__':
     rospy.init_node('motion_planner')
@@ -69,10 +62,44 @@ if __name__ == '__main__':
     motion_planner = MotionPlanner(action_server)
 
     rate = rospy.Rate(10)
+    
+    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
+    arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+    arm_service.wait_for_service()
 
     while not rospy.is_shutdown():
         try:
-            motion_planner.get_velocity_command()
+            # Tuples could have different lengths so just get the whole tuple
+            task_command = motion_planner.get_task_command()
+            rospy.logwarn(task_command)
+            if(task_command[0] == 'nop'):
+                rospy.logwarn('nop')
+                velocity_msg = TwistStampedArrayStamped()
+                velocity_msg.header.stamp = rospy.Time.now()
+                velocity_msg.data = [TwistStamped()]
+                velocity_pub.publish(velocity_msg)
+            elif(task_command[0] == 'velocity'):
+                rospy.logwarn('velocity')
+                velocity = task_command[1]
+                velocity_msg = TwistStampedArrayStamped()
+                velocity_msg.header.stamp = rospy.Time.now()
+                velocity_msg.data = [velocity]
+                velocity_pub.publish(velocity_msg)
+            elif(task_command[0] == 'arm'):
+                rospy.logwarn('wants to arm')
+                armed = False
+                try:
+                    armed = arm_service(True)
+                except rospy.ServiceException as exc:
+                    print("Could not arm: " + str(exc))
+                task_command[1](armed)
+            else:
+                rospy.logerr('Unkown command request: %s, noping', task_command[0])
+                velocity_msg = TwistStampedArrayStamped()
+                velocity_msg.header.stamp = rospy.Time.now()
+                velocity_msg.data = [TwistStamped()]
+                velocity_pub.publish(velocity_msg)
+
         except Exception, e:
             rospy.logfatal("Error in motion planner get velocity command.")
             rospy.logfatal(str(e))

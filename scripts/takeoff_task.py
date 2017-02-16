@@ -37,9 +37,13 @@ class TakeoffTask(AbstractTask):
         self.fc_status = None
         self.fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self.state = TakeoffTaskState.init
+        self.arm_request_success = False
 
     def _receive_fc_status(self, data):
         self.fc_status = data
+
+    def arm_callback(self, data):
+        self.arm_request_success = data
 
     def get_preferred_velocity(self):
         if self.canceled:
@@ -56,8 +60,8 @@ class TakeoffTask(AbstractTask):
                     if not self.fc_status.auto_pilot:
                         return (TaskState.failed, 'flight controller not allowing auto pilot')
                     # Check that the FC is not already armed
-                    #elif self.fc_status.armed:
-                    #    return (TaskState.failed, 'flight controller armed prior to takeoff')
+                    elif self.fc_status.armed:
+                        return (TaskState.failed, 'flight controller armed prior to takeoff')
                     # All is good change state to request arm
                     else:
                         self.state = TakeoffTaskState.request_arm
@@ -74,11 +78,11 @@ class TakeoffTask(AbstractTask):
         # Enter the arming request stage
         if self.state == TakeoffTaskState.request_arm:
             # Check that the FC is not already armed
-            if self.fc_status.armed:
+            if self.arm_request_success:
                 self.pause_start_time = rospy.Time.now()
                 self.state = TakeoffTaskState.pause_before_takeoff
             else:
-                return (TaskState.running, 'arm')
+                return (TaskState.running, 'arm', self.arm_callback)
 
         # Pause before ramping up the motors
         if self.state == TakeoffTaskState.pause_before_takeoff:
