@@ -20,21 +20,21 @@ class MotionPlanner:
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             # Tuples could have different lengths so just get the whole tuple
-            task_command = self.get_task_command()
+            task_command = self._get_task_command()
             if(task_command[0] == 'velocity'):
-                self.publish_twist(task_command[1])
+                self._publish_twist(task_command[1])
             elif(task_command[0] == 'arm'):
-                task_command[1](self.use_arm_service(True))
+                task_command[1](self._use_arm_service(True))
             elif(task_command[0] == 'disarm'):
-                task_command[1](self.use_arm_service(False))
+                task_command[1](self._use_arm_service(False))
             elif(task_command[0] == 'nop'):
-                self.publish_twist(TwistStamped())
+                self._publish_twist(TwistStamped())
             else:
                 rospy.logerr('Unkown command request: %s, noping', task_command[0])
-                self.publish_twist(TwistStamped())
+                self._publish_twist(TwistStamped())
             rate.sleep()
 
-    def use_arm_service(self, arm):
+    def _use_arm_service(self, arm):
         try:
             armed = self.arm_service(arm)
         except rospy.ServiceException as exc:
@@ -42,13 +42,13 @@ class MotionPlanner:
             armed = False
         return armed
 
-    def publish_twist(self, twist):
+    def _publish_twist(self, twist):
         velocity_msg = TwistStampedArrayStamped()
         velocity_msg.header.stamp = rospy.Time.now()
         velocity_msg.data = [twist]
         self.velocity_pub.publish(velocity_msg)
 
-    def get_task_command(self):
+    def _get_task_command(self):
         if (self.task is None) and self._action_server.has_new_task():
             self.task = self._action_server.get_new_task()
 
