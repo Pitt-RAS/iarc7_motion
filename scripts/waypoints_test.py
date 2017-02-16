@@ -8,6 +8,8 @@ from iarc7_msgs.msg import TwistStampedArrayStamped
 from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
 
+from std_srvs.srv import SetBool
+
 def constrain(x, l, h):
     return min(h, max(x, l))
 
@@ -23,6 +25,14 @@ if __name__ == '__main__':
     while rospy.Time.now() == 0:
         pass
     start_time = rospy.Time.now()
+
+    arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+    armed = False
+    while armed == False :
+        try:
+            armed = arm_service(True)
+        except rospy.ServiceException as exc:
+            print("Could not arm: " + str(exc))
 
     # Target points in global (X, Y, Z) coordinates
     waypoints = [
