@@ -1,4 +1,4 @@
 takeoff_velocity        : 2.0
 takeoff_height_tolerance: 0.1
-delay_before_takeoff: 2.0
+delay_before_takeoff    : 2.0
 max_takeoff_start_height: 0.5

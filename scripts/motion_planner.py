@@ -1,19 +1,47 @@
 #!/usr/bin/env python
 import sys
+import traceback
 import rospy
 from geometry_msgs.msg import TwistStamped
 from iarc7_msgs.msg import TwistStampedArrayStamped
+from std_srvs.srv import SetBool
 from iarc_task_action_server import IarcTaskActionServer
 from task_state import TaskState
-import traceback
-from std_srvs.srv import SetBool
-
 
 class MotionPlanner:
 
     def __init__(self, _action_server):
         self._action_server = _action_server
         self.task = None
+        self.velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
+        self.arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+
+    def run(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            # Tuples could have different lengths so just get the whole tuple
+            task_command = self.get_task_command()
+            if(task_command[0] == 'velocity'):
+                self.publish_twist(task_command[1])
+            elif(task_command[0] == 'arm'):
+                armed = False
+                try:
+                    armed = self.arm_service(True)
+                except rospy.ServiceException as exc:
+                    print("Could not arm: " + str(exc))
+                task_command[1](armed)
+            elif(task_command[0] == 'nop'):
+                self.publish_twist(TwistStamped())
+            else:
+                rospy.logerr('Unkown command request: %s, noping', task_command[0])
+                self.publish_twist(TwistStamped())
+            rate.sleep()
+
+    def publish_twist(self, twist):
+        velocity_msg = TwistStampedArrayStamped()
+        velocity_msg.header.stamp = rospy.Time.now()
+        velocity_msg.data = [twist]
+        self.velocity_pub.publish(velocity_msg)
 
     def get_task_command(self):
         if (self.task is None) and self._action_server.has_new_task():
@@ -54,48 +82,17 @@ class MotionPlanner:
         # No action to take return a nop
         return ('nop',)
 
-def publish_twist(publisher, twist):
-    velocity_msg = TwistStampedArrayStamped()
-    velocity_msg.header.stamp = rospy.Time.now()
-    velocity_msg.data = [twist]
-    publisher.publish(velocity_msg)
-
 if __name__ == '__main__':
     rospy.init_node('motion_planner')
     action_server = IarcTaskActionServer()
 
     motion_planner = MotionPlanner(action_server)
-
-    rate = rospy.Rate(10)
-    
-    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
-    arm_service = rospy.ServiceProxy('uav_arm', SetBool)
-    arm_service.wait_for_service()
-
-    while not rospy.is_shutdown():
-        try:
-            # Tuples could have different lengths so just get the whole tuple
-            task_command = motion_planner.get_task_command()
-            if(task_command[0] == 'velocity'):
-                publish_twist(velocity_pub, task_command[1])
-            elif(task_command[0] == 'arm'):
-                armed = False
-                try:
-                    armed = arm_service(True)
-                except rospy.ServiceException as exc:
-                    print("Could not arm: " + str(exc))
-                task_command[1](armed)
-            elif(task_command[0] == 'nop'):
-                publish_twist(velocity_pub, TwistStamped())
-            else:
-                rospy.logerr('Unkown command request: %s, noping', task_command[0])
-                publish_twist(velocity_pub, TwistStamped())
-
-        except Exception, e:
-            rospy.logfatal("Error in motion planner get velocity command.")
-            rospy.logfatal(str(e))
-            rospy.signal_shutdown("Motion Planner shutdown")
-            raise
-        rate.sleep()
+    try:
+        motion_planner.run()
+    except Exception, e:
+        rospy.logfatal("Error in motion planner get velocity command.")
+        rospy.logfatal(str(e))
+        rospy.signal_shutdown("Motion Planner shutdown")
+        raise
 
     rospy.signal_shutdown("Motion Planner shutdown")
