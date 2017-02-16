@@ -67,11 +67,6 @@ def motion_planner_client():
     client.send_goal(goal)
     client.wait_for_result()
 
-    # Test taking off
-    goal = QuadMoveGoal(movement_type="takeoff", takeoff_height = 5.5)
-    client.send_goal(goal)
-    client.wait_for_result()
-
 if __name__ == '__main__':
     try:
         # Initializes a rospy node so that the SimpleActionClient can

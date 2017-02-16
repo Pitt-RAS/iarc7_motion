@@ -46,7 +46,7 @@ class TakeoffTask(AbstractTask):
     def arm_callback(self, data):
         self.arm_request_success = data
 
-    def get_preferred_velocity(self):
+    def get_desired_command(self):
         if self.canceled:
             return (TaskState.canceled)
 

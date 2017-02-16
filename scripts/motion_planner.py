@@ -52,7 +52,7 @@ class MotionPlanner:
                 self.task.cancel()
 
             try:
-                task_request = self.task.get_preferred_velocity()
+                task_request = self.task.get_desired_command()
             except Exception as e:
                 rospy.logerr('Exception getting tasks preferred velocity')
                 rospy.logerr(str(e))
