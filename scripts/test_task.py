@@ -6,10 +6,10 @@ from geometry_msgs.msg import TwistStamped
 
 class TestTask(AbstractTask):
 
-    def __init__(self, abort):
+    def __init__(self, actionvalues_dict):
         self.target = None
         self.abort_time = None
-        self.abort = abort
+        self.abort = actionvalues_dict['takeoff_height']
         self.aborted = False
         self.canceled = False
 
