@@ -50,7 +50,6 @@ class MotionPlanner:
                 self.task = None
             else:
                 assert task_state == TaskState.running
-                rospy.logwarn(task_request)
                 return task_request[1:]
         # No action to take return a nop
         return ('nop',)
@@ -77,7 +76,6 @@ if __name__ == '__main__':
         try:
             # Tuples could have different lengths so just get the whole tuple
             task_command = motion_planner.get_task_command()
-            rospy.logwarn(task_command)
             if(task_command[0] == 'velocity'):
                 publish_twist(velocity_pub, task_command[1])
             elif(task_command[0] == 'arm'):

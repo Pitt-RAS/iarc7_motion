@@ -30,6 +30,7 @@ class TakeoffTask(AbstractTask):
             self.TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             self.TAKEOFF_HEIGHT_TOLERANCE = rospy.get_param('~takeoff_height_tolerance')
             self.DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
+            self.MAX_TAKEOFF_START_HEIGHT = rospy.get_param('~max_takeoff_start_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
@@ -52,8 +53,8 @@ class TakeoffTask(AbstractTask):
         if self.state == TakeoffTaskState.init:
             try:
                 trans = self.tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
-
-                # Should check that we are on the ground
+                if trans.transform.translation.z > self.MAX_TAKEOFF_START_HEIGHT:
+                    return (TaskState.failed, 'quad is too high to takeoff')
 
                 if self.fc_status != None:
                     # Check that auto pilot is enabled
