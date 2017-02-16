@@ -55,8 +55,6 @@ if __name__ == '__main__':
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
 
-        (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
-
         try:
             (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
         except tf.Exception as ex:
