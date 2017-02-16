@@ -65,6 +65,10 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
+    // Update all the PID loops
+    
+    //hover throttle adjustment for tilting
+    double tilt_throttle;
     // Used to temporarily store throttle and angle outputs from PID loops
     double throttle_output;
     double pitch_output;
@@ -102,9 +106,12 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
 
+    //based on roll and pitch angles we calculate additional throttle to match the level hover_throttle_
+    tilt_throttle = hover_throttle_*(1-cos(roll_output)*cos(pitch_output));
+
     // Simple feedforward using a fixed hover_throttle_ to avoid excessive oscillations from the 
     // PID's I term compensating for there needing to be an  average throttle value at 0 velocity in the z axis.
-    uav_command.throttle = throttle_output + hover_throttle_;
+    uav_command.throttle = throttle_output + hover_throttle_ + tilt_throttle;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
     uav_command.data.yaw = yaw_output;
