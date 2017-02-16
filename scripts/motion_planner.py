@@ -55,6 +55,12 @@ class MotionPlanner:
         # No action to take return a nop
         return ('nop',)
 
+def publish_twist(publisher, twist):
+    velocity_msg = TwistStampedArrayStamped()
+    velocity_msg.header.stamp = rospy.Time.now()
+    velocity_msg.data = [twist]
+    publisher.publish(velocity_msg)
+
 if __name__ == '__main__':
     rospy.init_node('motion_planner')
     action_server = IarcTaskActionServer()
@@ -72,33 +78,20 @@ if __name__ == '__main__':
             # Tuples could have different lengths so just get the whole tuple
             task_command = motion_planner.get_task_command()
             rospy.logwarn(task_command)
-            if(task_command[0] == 'nop'):
-                rospy.logwarn('nop')
-                velocity_msg = TwistStampedArrayStamped()
-                velocity_msg.header.stamp = rospy.Time.now()
-                velocity_msg.data = [TwistStamped()]
-                velocity_pub.publish(velocity_msg)
-            elif(task_command[0] == 'velocity'):
-                rospy.logwarn('velocity')
-                velocity = task_command[1]
-                velocity_msg = TwistStampedArrayStamped()
-                velocity_msg.header.stamp = rospy.Time.now()
-                velocity_msg.data = [velocity]
-                velocity_pub.publish(velocity_msg)
+            if(task_command[0] == 'velocity'):
+                publish_twist(velocity_pub, task_command[1])
             elif(task_command[0] == 'arm'):
-                rospy.logwarn('wants to arm')
                 armed = False
                 try:
                     armed = arm_service(True)
                 except rospy.ServiceException as exc:
                     print("Could not arm: " + str(exc))
                 task_command[1](armed)
+            elif(task_command[0] == 'nop'):
+                publish_twist(velocity_pub, TwistStamped())
             else:
                 rospy.logerr('Unkown command request: %s, noping', task_command[0])
-                velocity_msg = TwistStampedArrayStamped()
-                velocity_msg.header.stamp = rospy.Time.now()
-                velocity_msg.data = [TwistStamped()]
-                velocity_pub.publish(velocity_msg)
+                publish_twist(velocity_pub, TwistStamped())
 
         except Exception, e:
             rospy.logfatal("Error in motion planner get velocity command.")
