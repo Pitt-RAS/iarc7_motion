@@ -44,7 +44,7 @@ class TakeoffTask(AbstractTask):
         self.fc_status = data
 
     def arm_callback(self, data):
-        self.arm_request_success = data
+        self.arm_request_success = data.success
 
     def get_desired_command(self):
         if self.canceled:
