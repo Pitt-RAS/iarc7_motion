@@ -27,6 +27,7 @@ if __name__ == '__main__':
     start_time = rospy.Time.now()
 
     arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+    arm_service.wait_for_service()
     armed = False
     while armed == False :
         try:
