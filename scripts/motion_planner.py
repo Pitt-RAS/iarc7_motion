@@ -24,18 +24,23 @@ class MotionPlanner:
             if(task_command[0] == 'velocity'):
                 self.publish_twist(task_command[1])
             elif(task_command[0] == 'arm'):
-                armed = False
-                try:
-                    armed = self.arm_service(True)
-                except rospy.ServiceException as exc:
-                    print("Could not arm: " + str(exc))
-                task_command[1](armed)
+                task_command[1](self.use_arm_service(True))
+            elif(task_command[0] == 'disarm'):
+                task_command[1](self.use_arm_service(False))
             elif(task_command[0] == 'nop'):
                 self.publish_twist(TwistStamped())
             else:
                 rospy.logerr('Unkown command request: %s, noping', task_command[0])
                 self.publish_twist(TwistStamped())
             rate.sleep()
+
+    def use_arm_service(self, arm):
+        try:
+            armed = self.arm_service(arm)
+        except rospy.ServiceException as exc:
+            rospy.logerr("Could not arm: " + str(exc))
+            armed = False
+        return armed
 
     def publish_twist(self, twist):
         velocity_msg = TwistStampedArrayStamped()

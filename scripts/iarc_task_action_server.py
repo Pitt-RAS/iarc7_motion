@@ -3,6 +3,7 @@ import threading
 import rospy
 import actionlib
 from takeoff_task import TakeoffTask
+from land_task import LandTask
 from test_task import TestTask
 from iarc7_motion.msg import QuadMoveAction, QuadMoveResult
 
@@ -25,6 +26,7 @@ class IarcTaskActionServer:
         self._action_server.start()
 
         self._task_dict = {'takeoff': TakeoffTask,
+                           'land': LandTask,
                            'test_task': TestTask}
 
     # Private method

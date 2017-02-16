@@ -21,7 +21,15 @@ def motion_planner_client():
     client.send_goal(goal)
     # Waits for the server to finish performing the action.
     client.wait_for_result()
-    rospy.loginfo("Request/wait for request success: {}".format(client.get_result()))
+    rospy.logwarn("Takeoff success: {}".format(client.get_result()))
+
+    # Test takeoff
+    goal = QuadMoveGoal(movement_type="land")
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+    rospy.logwarn("Land success: {}".format(client.get_result()))
 
 if __name__ == '__main__':
     try:
