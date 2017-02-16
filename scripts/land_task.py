@@ -58,7 +58,7 @@ class LandTask(AbstractTask):
                 else:
                     self.state = LandTaskState.land
             else:
-                return (TaskState.running, 'nop')
+                return (TaskState.running, 'velocity', TwistStamped())
 
         # Enter the takeoff phase
         if self.state == LandTaskState.land:
