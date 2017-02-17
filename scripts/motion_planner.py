@@ -12,7 +12,7 @@ class MotionPlanner:
 
     def __init__(self, _action_server):
         self._action_server = _action_server
-        self.task = None
+        self._task = None
         self._velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
         self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
 
@@ -51,7 +51,7 @@ class MotionPlanner:
             rospy.logerr(traceback.format_exc())
             rospy.logwarn('Motion planner aborted task')
             self._action_server.set_aborted()
-            self.task = None
+            self._task = None
 
     def _use_arm_service(self, arm):
         try:
@@ -68,48 +68,48 @@ class MotionPlanner:
         self._velocity_pub.publish(velocity_msg)
 
     def _get_task_command(self):
-        if (self.task is None) and self._action_server.has_new_task():
-            self.task = self._action_server.get_new_task()
+        if (self._task is None) and self._action_server.has_new_task():
+            self._task = self._action_server.get_new_task()
 
-        if self.task:
+        if self._task:
             if self._action_server.is_canceled():
                 try:
-                    self.task.cancel()
+                    self._task.cancel()
                 except Exception as e:
                     rospy.logerr('Exception canceling task')
                     rospy.logerr(str(e))
                     rospy.logerr(traceback.format_exc())
                     rospy.logwarn('Motion planner aborted task')
                     self._action_server.set_aborted()
-                    self.task = None
+                    self._task = None
                     return ('nop',)
 
             try:
-                task_request = self.task.get_desired_command()
+                task_request = self._task.get_desired_command()
             except Exception as e:
                 rospy.logerr('Exception getting tasks preferred velocity')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
                 rospy.logwarn('Motion planner aborted task')
                 self._action_server.set_aborted()
-                self.task = None
+                self._task = None
                 return ('nop',)
             
             task_state = task_request[0]
             if task_state == TaskState.canceled:
                 self._action_server.set_canceled()
-                self.task = None
+                self._task = None
             elif task_state == TaskState.aborted:
                 rospy.logwarn('Task aborted with: %s', task_request[1])
                 self._action_server.set_aborted()
-                self.task = None
+                self._task = None
             elif task_state == TaskState.failed:
                 rospy.logwarn('Task failed with: %s', task_request[1])
                 self._action_server.set_succeeded(False)
-                self.task = None
+                self._task = None
             elif task_state == TaskState.done:
                 self._action_server.set_succeeded(True)
-                self.task = None
+                self._task = None
             else:
                 assert task_state == TaskState.running
                 return task_request[1:]
