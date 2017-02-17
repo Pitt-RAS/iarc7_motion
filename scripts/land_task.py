@@ -42,7 +42,7 @@ class LandTask(AbstractTask):
 
     def get_desired_command(self):
         if self._canceled:
-            return (TaskState.canceled)
+            return (TaskState.canceled,)
 
         if self._state == LandTaskState.init:
             # Check if we have a fc status
