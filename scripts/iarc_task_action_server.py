@@ -3,6 +3,7 @@ import threading
 import rospy
 import actionlib
 from takeoff_task import TakeoffTask
+from land_task import LandTask
 from test_task import TestTask
 from iarc7_motion.msg import QuadMoveAction, QuadMoveResult
 
@@ -25,6 +26,7 @@ class IarcTaskActionServer:
         self._action_server.start()
 
         self._task_dict = {'takeoff': TakeoffTask,
+                           'land': LandTask,
                            'test_task': TestTask}
 
     # Private method
@@ -35,12 +37,20 @@ class IarcTaskActionServer:
             task_request = goal.get_goal()
 
             try:
+                new_task_type = self._task_dict[task_request.movement_type]
+            except KeyError as e:
+                rospy.logerr("Goal has invalid movement_type: %s", task_request.movement_type)
+                goal.set_rejected()
+                return
+
+            try:
                 actionvalues_dict = {'takeoff_height': task_request.takeoff_height ,
                                      'preempt': task_request.preempt , 
                                      'movement_type': task_request.movement_type}
-                new_task = self._task_dict[task_request.movement_type](actionvalues_dict)
-            except KeyError as e:
-                rospy.logerr("Goal has invalid movement_type: %s", task_request.movement_type)
+                new_task = new_task_type(actionvalues_dict)
+            except Exception as e:
+                rospy.logerr("Could not construct task: %s", task_request.movement_type)
+                rospy.logerr(str(e))
                 goal.set_rejected()
                 return
 

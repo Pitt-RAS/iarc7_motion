@@ -1,0 +1,7 @@
+<launch>
+    <node name="motion_planner" pkg="iarc7_motion"
+        type="motion_planner.py">
+        <rosparam command="load"
+            file="$(find iarc7_motion)/param/motion_planner.yaml" />
+    </node>
+</launch>

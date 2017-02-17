@@ -6,14 +6,14 @@ from geometry_msgs.msg import TwistStamped
 
 class TestTask(AbstractTask):
 
-    def __init__(self, abort):
+    def __init__(self, actionvalues_dict):
         self.target = None
         self.abort_time = None
-        self.abort = abort
+        self.abort = actionvalues_dict['takeoff_height']
         self.aborted = False
         self.canceled = False
 
-    def get_preferred_velocity(self):
+    def get_desired_command(self):
         if self.target is None:
             self.target = rospy.Time.now() + rospy.Duration(1.5)
             self.abort_time = rospy.Time.now() + rospy.Duration(0.75)
@@ -35,7 +35,7 @@ class TestTask(AbstractTask):
         else:
             rospy.loginfo("TestTask not done")
 
-        return (TaskState.running, TwistStamped())
+        return (TaskState.running, 'nop')
 
     def cancel(self):
         rospy.loginfo("TestTask canceling")
