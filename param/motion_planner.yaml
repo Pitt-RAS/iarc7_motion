@@ -1,6 +1,13 @@
+# Velocity with which to take off with
 takeoff_velocity        : 2.0
+# If we get to this height less than the requested take off height
+# it is counted as take off occuring
 takeoff_height_tolerance: 0.1
+# Delay between arming and taking off
 delay_before_takeoff    : 2.0
+# Maximum height considered valid before taking off
 max_takeoff_start_height: 0.3
+# Velocity with which to land with
 land_velocity           : -1.0
+# Height below which landing is considered finish
 land_height_tolerance   : 0.3

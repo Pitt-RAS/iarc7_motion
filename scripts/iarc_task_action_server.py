@@ -37,16 +37,17 @@ class IarcTaskActionServer:
             task_request = goal.get_goal()
 
             try:
-                actionvalues_dict = {'takeoff_height': task_request.takeoff_height ,
-                                     'preempt': task_request.preempt , 
-                                     'movement_type': task_request.movement_type}
+                new_task_type = self._task_dict[task_request.movement_type]
             except KeyError as e:
                 rospy.logerr("Goal has invalid movement_type: %s", task_request.movement_type)
                 goal.set_rejected()
                 return
 
             try:
-                new_task = self._task_dict[task_request.movement_type](actionvalues_dict)
+                actionvalues_dict = {'takeoff_height': task_request.takeoff_height ,
+                                     'preempt': task_request.preempt , 
+                                     'movement_type': task_request.movement_type}
+                new_task = new_task_type(actionvalues_dict)
             except Exception as e:
                 rospy.logerr("Could not construct task: %s", task_request.movement_type)
                 rospy.logerr(str(e))

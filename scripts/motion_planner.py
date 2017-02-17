@@ -13,8 +13,8 @@ class MotionPlanner:
     def __init__(self, _action_server):
         self._action_server = _action_server
         self.task = None
-        self.velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
-        self.arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+        self._velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
+        self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
 
     def run(self):
         rate = rospy.Rate(10)
@@ -24,19 +24,38 @@ class MotionPlanner:
             if(task_command[0] == 'velocity'):
                 self._publish_twist(task_command[1])
             elif(task_command[0] == 'arm'):
-                task_command[1](self._use_arm_service(True))
+                arm_result = self._use_arm_service(True)
+                self._call_tasks_arm_service_callback(task_command[1], arm_result)
             elif(task_command[0] == 'disarm'):
-                task_command[1](self._use_arm_service(False))
+                arm_result = self._use_arm_service(False)
+                self._call_tasks_arm_service_callback(task_command[1], arm_result)
             elif(task_command[0] == 'nop'):
-                self._publish_twist(TwistStamped())
+                self._request_zero_velocity()
             else:
                 rospy.logerr('Unkown command request: %s, noping', task_command[0])
-                self._publish_twist(TwistStamped())
+                self._request_zero_velocity()
             rate.sleep()
+
+    def _request_zero_velocity(self):
+        velocity = TwistStamped()
+        velocity.header.frame_id = 'level_quad'
+        velocity.header.stamp = rospy.Time.now()
+        self._publish_twist(velocity)
+
+    def _call_tasks_arm_service_callback(self, callback, arm_result):
+        try:
+            callback(arm_result)
+        except Exception as e:
+            rospy.logerr('Exception setting result using an arm callback')
+            rospy.logerr(str(e))
+            rospy.logerr(traceback.format_exc())
+            rospy.logwarn('Motion planner aborted task')
+            self._action_server.set_aborted()
+            self.task = None
 
     def _use_arm_service(self, arm):
         try:
-            armed = self.arm_service(arm)
+            armed = self._arm_service(arm)
         except rospy.ServiceException as exc:
             rospy.logerr("Could not arm: " + str(exc))
             armed = False
@@ -46,7 +65,7 @@ class MotionPlanner:
         velocity_msg = TwistStampedArrayStamped()
         velocity_msg.header.stamp = rospy.Time.now()
         velocity_msg.data = [twist]
-        self.velocity_pub.publish(velocity_msg)
+        self._velocity_pub.publish(velocity_msg)
 
     def _get_task_command(self):
         if (self.task is None) and self._action_server.has_new_task():
@@ -54,7 +73,16 @@ class MotionPlanner:
 
         if self.task:
             if self._action_server.is_canceled():
-                self.task.cancel()
+                try:
+                    self.task.cancel()
+                except Exception as e:
+                    rospy.logerr('Exception canceling task')
+                    rospy.logerr(str(e))
+                    rospy.logerr(traceback.format_exc())
+                    rospy.logwarn('Motion planner aborted task')
+                    self._action_server.set_aborted()
+                    self.task = None
+                    return ('nop',)
 
             try:
                 task_request = self.task.get_desired_command()
@@ -96,9 +124,8 @@ if __name__ == '__main__':
     try:
         motion_planner.run()
     except Exception, e:
-        rospy.logfatal("Error in motion planner get velocity command.")
+        rospy.logfatal("Error in motion planner while running.")
         rospy.logfatal(str(e))
-        rospy.signal_shutdown("Motion Planner shutdown")
         raise
-
-    rospy.signal_shutdown("Motion Planner shutdown")
+    finally:
+        rospy.signal_shutdown("Motion Planner shutdown")
