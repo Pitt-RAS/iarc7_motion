@@ -44,8 +44,10 @@ class MotionPlanner:
             if self._safety_client.is_safety_active() and not self._safety_land_requested:
                 # Request landing
                 goal = QuadMoveGoal(movement_type="land", preempt=True)
-                self._action_client.send_goal(goal, done_cb=self.safety_task_complete)
-                rospy.logwarn('motion planner attempting to execute safety land')
+                self._action_client.send_goal(goal,
+                        done_cb=self._safety_task_complete_callback)
+                rospy.logwarn(
+                        'motion planner attempting to execute safety land')
                 self._safety_land_requested = True
 
             # Tuples could have different lengths so just get the whole tuple
@@ -99,7 +101,7 @@ class MotionPlanner:
         velocity_msg.data = [twist]
         self._velocity_pub.publish(velocity_msg)
 
-    def safety_task_complete(self, status, response):
+    def _safety_task_complete_callback(self, status, response):
         if response.success:
             rospy.logwarn('Motion planner supposedly safely landed the aircraft')
         else:
