@@ -27,7 +27,7 @@ class TestTask(AbstractTask):
 
         if self.canceled:
             rospy.loginfo("TestTask canceled")
-            return (TaskState.canceled, result)
+            return (TaskState.canceled,)
 
         if self.target  < rospy.Time.now():
             rospy.loginfo("TestTask done")

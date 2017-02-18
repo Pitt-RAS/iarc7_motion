@@ -46,7 +46,7 @@ class TakeoffTask(AbstractTask):
 
     def get_desired_command(self):
         if self._canceled:
-            return (TaskState.canceled)
+            return (TaskState.canceled,)
 
         if self._state == TakeoffTaskState.init:
             # Check if we have an fc status
