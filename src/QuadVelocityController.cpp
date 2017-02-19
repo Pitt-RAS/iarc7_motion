@@ -20,7 +20,8 @@ using namespace Iarc7Motion;
 QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
-                                               double yaw_pid[5]) :
+                                               double yaw_pid[5],
+                                               double hover_throttle) :
 tfBuffer_(),
 tfListener_(tfBuffer_),
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
@@ -29,6 +30,7 @@ roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 last_transform_stamped_(),
 last_yaw_(0.0),
+hover_throttle_(hover_throttle),
 wait_for_velocities_ran_once_(false)
 {
 
@@ -66,7 +68,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Update all the PID loops
-    
+
     //hover throttle adjustment for tilting
     double tilt_throttle;
     // Used to temporarily store throttle and angle outputs from PID loops
@@ -109,7 +111,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     //based on roll and pitch angles we calculate additional throttle to match the level hover_throttle_
     tilt_throttle = hover_throttle_*(1-cos(roll_output)*cos(pitch_output));
 
-    // Simple feedforward using a fixed hover_throttle_ to avoid excessive oscillations from the 
+    // Simple feedforward using a fixed hover_throttle_ to avoid excessive oscillations from the
     // PID's I term compensating for there needing to be an  average throttle value at 0 velocity in the z axis.
     uav_command.throttle = throttle_output + hover_throttle_ + tilt_throttle;
     uav_command.data.pitch = pitch_output;
@@ -167,7 +169,7 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
                                  << ")");
                 return false;
             }
-            
+
             // Check if the transform from map to quad can be made right now
             if(tfBuffer_.canTransform("map", "quad", ros::Time(0)))
             {
@@ -247,7 +249,7 @@ bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_v
     // Get the yaw (z axis) rotation from the quanternion
     double ysqr = transform.rotation.y * transform.rotation.y;
     double t3 = 2.0f * (transform.rotation.w * transform.rotation.z + transform.rotation.x * transform.rotation.y);
-    double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);  
+    double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);
     double current_yaw = std::atan2(t3, t4);
 
     // Begin calculation of the velocities
