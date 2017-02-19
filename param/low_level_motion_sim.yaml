@@ -5,6 +5,7 @@ throttle_i: 0.8
 throttle_d: 2.0
 throttle_accumulator_max: 50.0
 throttle_accumulator_min: -50.0
+hover_throttle: 58.0
 
 pitch_p: -0.3
 pitch_i: 0.0

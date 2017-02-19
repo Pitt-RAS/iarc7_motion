@@ -52,7 +52,7 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
 }
 
 // Loads the PID parameters from ROS param server into the passed in arrays
-void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5], double yaw_pid[5])
+void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5], double yaw_pid[5], double &hover_throttle)
 {
     // Throttle PID settings retrieve
     nh.param("throttle_p", throttle_pid[0], 0.0);
@@ -81,6 +81,9 @@ void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[
     nh.param("yaw_d", yaw_pid[2], 0.0);
     nh.param("yaw_accumulator_max", yaw_pid[3], 0.0);
     nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
+
+    // Throttle setting for hovering, to be added to throttle ouput
+    nh.param("hover_throttle", hover_throttle, 0.0);
 }
 
 // Loads the parameters for the TwistLimiter from the ROS paramater server
@@ -131,10 +134,11 @@ int main(int argc, char **argv)
     double pitch_pid[5];
     double roll_pid[5];
     double yaw_pid[5];
-    getPidParams(param_nh, throttle_pid, pitch_pid, roll_pid, yaw_pid);
+    double hover_throttle;
+    getPidParams(param_nh, throttle_pid, pitch_pid, roll_pid, yaw_pid, hover_throttle);
 
     // Create a quad velocity controller. It will output angles corresponding to our desired velocity
-    QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid, yaw_pid);
+    QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid, yaw_pid, hover_throttle);
 
     // Create an acceleration planner. It handles interpolation between timestamped velocity requests so that
     // Smooth accelerations are possible.
@@ -183,7 +187,7 @@ int main(int argc, char **argv)
 
             //  This will contain the target twist or velocity that we want to achieve
             geometry_msgs::TwistStamped target_twist;
-            
+
             // Check for a safety state in which case we should execute our safety response
             if(safety_client.isSafetyActive())
             {

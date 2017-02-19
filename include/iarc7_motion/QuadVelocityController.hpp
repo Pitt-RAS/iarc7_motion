@@ -34,7 +34,8 @@ namespace Iarc7Motion
         QuadVelocityController(double thrust_pid[5],
                                double pitch_pid[5],
                                double roll_pid[5],
-                               double yaw_pid[5]);
+                               double yaw_pid[5],
+                               double hover_throttle);
 
         ~QuadVelocityController() = default;
 
@@ -78,14 +79,14 @@ namespace Iarc7Motion
         PidController roll_pid_;
         PidController yaw_pid_;
 
-        // A fudge feed forward value used for more stable hovering
-        static constexpr double hover_throttle_{58.0};
-
         // Holds the last transform received to calculate velocities
         geometry_msgs::TransformStamped last_transform_stamped_;
-        
+
         // Hold the last yaw for calculations
         double last_yaw_;
+
+        // A fudge feed forward value used for more stable hovering
+        double hover_throttle_;
 
         // Makes sure that we have a lastTransformStamped before returning a valid velocity
         bool wait_for_velocities_ran_once_;
