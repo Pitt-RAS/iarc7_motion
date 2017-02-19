@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import rospy
-from abstract_task import AbstractTask
-from task_state import TaskState
+
 from geometry_msgs.msg import TwistStamped
+
+from .abstract_task import AbstractTask
+from .task_state import TaskState
 
 class TestTask(AbstractTask):
 
