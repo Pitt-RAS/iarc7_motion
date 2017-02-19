@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     ROS_ASSERT_MSG(safety_client.formBond(), "low_level_motion: Could not form bond with safety client");
 
     // Get the PID parameters from the ROS parameter server
-    double throttle_pid[6];
+    double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
     double yaw_pid[5];
