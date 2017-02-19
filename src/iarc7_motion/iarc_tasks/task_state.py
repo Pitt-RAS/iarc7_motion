@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 class TaskState(object):
     running = 0
     done = 1
