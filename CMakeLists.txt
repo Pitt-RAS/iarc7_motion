@@ -9,10 +9,10 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   iarc7_msgs
+  iarc7_safety
   roscpp
   tf2
   tf2_ros
-  iarc7_safety
 )
 
 ## System dependencies are found with CMake's conventions
@@ -72,7 +72,6 @@ add_action_files(
 generate_messages(
   DEPENDENCIES
   actionlib_msgs
-  iarc7_msgs
 )
 
 ################################################
