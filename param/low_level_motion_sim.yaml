@@ -1,11 +1,11 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 8.0
-throttle_i: 0.8
-throttle_d: 2.0
-throttle_accumulator_max: 50.0
-throttle_accumulator_min: -50.0
-hover_throttle: 58.0
+throttle_p: 0.08
+throttle_i: 0.008
+throttle_d: 0.02
+throttle_accumulator_max: 0.5
+throttle_accumulator_min: -0.5
+hover_throttle: 0.58
 
 pitch_p: -0.3
 pitch_i: 0.0
@@ -25,9 +25,9 @@ yaw_d: 0.0
 yaw_accumulator_max: 0.0
 yaw_accumulator_min: 0.0
 
-throttle_max      : 100.0
+throttle_max      : 1.0
 throttle_min      : 0.0
-throttle_max_rate : 100.0
+throttle_max_rate : 1.0
 
 pitch_max         : 20.0
 pitch_min         : -20.0
