@@ -30,10 +30,11 @@ class TakeoffTask(AbstractTask):
             self._TAKEOFF_HEIGHT_TOLERANCE = rospy.get_param('~takeoff_height_tolerance')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._MAX_TAKEOFF_START_HEIGHT = rospy.get_param('~max_takeoff_start_height')
+            self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
-        
+
         self._fc_status = None
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = TakeoffTaskState.init
@@ -61,13 +62,20 @@ class TakeoffTask(AbstractTask):
                 return (TaskState.failed, 'flight controller armed prior to takeoff')
 
             try:
-                trans = self._tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
-                rospy.logerr('Takeofftask: Exception when looking up transform')
+                trans = self._tf_buffer.lookup_transform(
+                            'map',
+                            'quad',
+                            rospy.Time.now(),
+                            rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
+                msg = "Exception when looking up transform to check that we're grounded"
+                rospy.logerr("Takeofftask: {}".format(msg))
                 rospy.logerr(ex.message)
                 # Make sure not to leave the init state
                 self._state = TakeoffTaskState.init
-                return (TaskState.aborted, 'Exception when looking up transform')
+                return (TaskState.aborted, msg)
 
             if trans.transform.translation.z > self._MAX_TAKEOFF_START_HEIGHT:
                 return (TaskState.failed, 'quad is too high to takeoff')
@@ -94,12 +102,19 @@ class TakeoffTask(AbstractTask):
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
             try:
-                transStamped = self._tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
-                rospy.logerr('Takeofftask: Exception when looking up transform')
+                transStamped = self._tf_buffer.lookup_transform(
+                                    'map',
+                                    'quad',
+                                    rospy.Time.now(),
+                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
+                msg = 'Exception when looking up transform during takeoff'
+                rospy.logerr('Takeofftask: {}'.format(msg))
                 rospy.logerr(ex.message)
-                return (TaskState.aborted, 'Exception when looking up transform during takeoff')
-        
+                return (TaskState.aborted, msg)
+
             # Check if we reached the target height
             if(transStamped.transform.translation.z > self._takeoff_height - self._TAKEOFF_HEIGHT_TOLERANCE):
                 return (TaskState.done, 'velocity', TwistStamped())
