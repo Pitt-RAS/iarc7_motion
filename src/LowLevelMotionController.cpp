@@ -123,12 +123,6 @@ int main(int argc, char **argv)
     // This node handle has a specific namespace that allows us to easily encapsulate parameters
     ros::NodeHandle param_nh ("low_level_motion_controller");
 
-    // Form a connection with the node monitor. If no connection can be made assert because we don't
-    // know what's going on with the other nodes.
-    ROS_INFO("low_level_motion: Attempting to form safety bond");
-    Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion");
-    ROS_ASSERT_MSG(safety_client.formBond(), "low_level_motion: Could not form bond with safety client");
-
     // Get the PID parameters from the ROS parameter server
     double throttle_pid[5];
     double pitch_pid[5];
@@ -137,8 +131,27 @@ int main(int argc, char **argv)
     double hover_throttle;
     getPidParams(param_nh, throttle_pid, pitch_pid, roll_pid, yaw_pid, hover_throttle);
 
-    // Create a quad velocity controller. It will output angles corresponding to our desired velocity
-    QuadVelocityController quadController(throttle_pid, pitch_pid, roll_pid, yaw_pid, hover_throttle);
+    // Wait for a valid time in case we are using simulated time (not wall time)
+    while (ros::ok() && ros::Time::now() == ros::Time(0)) {
+        // wait
+        ros::spinOnce();
+    }
+
+    // Create a quad velocity controller. It will output angles corresponding
+    // to our desired velocity
+    double update_frequency;
+    nh.param("update_frequency", update_frequency, 60.0);
+    QuadVelocityController quadController(throttle_pid,
+                                          pitch_pid,
+                                          roll_pid,
+                                          yaw_pid,
+                                          hover_throttle,
+                                          update_frequency);
+    if (!quadController.waitUntilReady())
+    {
+        ROS_ERROR("Failed during initialization of QuadVelocityController");
+        return 1;
+    }
 
     // Create an acceleration planner. It handles interpolation between timestamped velocity requests so that
     // Smooth accelerations are possible.
@@ -160,14 +173,17 @@ int main(int argc, char **argv)
     // Create the twist limiter, it will limit min value, max value, and max rate of change.
     QuadTwistRequestLimiter limiter(min, max, max_rate);
 
-    // Wait for a valid time in case we are using simulated time (not wall time)
-    while (ros::ok() && ros::Time::now() == ros::Time(0)) {
-        // wait
-        ros::spinOnce();
-    }
+    // Form a connection with the node monitor. If no connection can be made
+    // assert because we don't know what's going on with the other nodes.
+    ROS_INFO("low_level_motion: Attempting to form safety bond");
+    Iarc7Safety::SafetyClient safety_client(nh, "low_level_motion");
+    ROS_ASSERT_MSG(safety_client.formBond(),
+                   "low_level_motion: Could not form bond with safety client");
 
     // Cache the time
     ros::Time last_time = ros::Time::now();
+
+    ros::Rate rate (update_frequency);
 
     // Run until ROS says we need to shutdown
     while (ros::ok())
@@ -218,6 +234,7 @@ int main(int argc, char **argv)
 
         // Handle all ROS callbacks
         ros::spinOnce();
+        rate.sleep();
     }
 
     // All is good.

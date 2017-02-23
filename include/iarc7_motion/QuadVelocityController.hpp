@@ -35,13 +35,17 @@ namespace Iarc7Motion
                                double pitch_pid[5],
                                double roll_pid[5],
                                double yaw_pid[5],
-                               double hover_throttle);
+                               double hover_throttle,
+                               double expected_update_frequency);
 
         ~QuadVelocityController() = default;
 
         // Don't allow the copy constructor or assignment.
         QuadVelocityController(const QuadVelocityController& rhs) = delete;
         QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
+
+        // Set a target velocity for the PID loops
+        void setTargetVelocity(geometry_msgs::Twist twist);
 
         // Require checking of the returned value.
         // Used to update all PID loops according to a time delta that is passed in.
@@ -50,23 +54,44 @@ namespace Iarc7Motion
             const ros::Time& time,
             iarc7_msgs::OrientationThrottleStamped& uav_command);
 
-        // Set a target velocity for the PID loops
-        void setTargetVelocity(geometry_msgs::Twist twist);
+        /// Waits until this object is ready to begin normal operation
+        bool __attribute__((warn_unused_result)) waitUntilReady();
 
     private:
 
         /// Waits until a transform is available at time or later, returns
         /// true on success, returns a transform using the passed in reference to
         /// a transform.
-        bool __attribute__((warn_unused_result)) waitForTransform(geometry_msgs::TransformStamped& transform);
+        bool __attribute__((warn_unused_result)) getTransformAtTime(
+                geometry_msgs::TransformStamped& transform,
+                const ros::Time& time,
+                const ros::Duration& timeout) const;
 
-        /// Waits for the next transform to come in, returns true if velocities
+        /// Waits for the transform to come in at the requested time, returns true if velocities
         /// are valid.
         ///
         /// This must receive two transforms within the timeout period to
         /// consider the velocity valid.
-        bool __attribute__((warn_unused_result)) waitForNewVelocities(
-            geometry_msgs::Twist& return_velocities);
+        bool __attribute__((warn_unused_result)) getVelocityAtTime(
+            geometry_msgs::Twist& return_velocities,
+            const ros::Time& time);
+
+        /// Returns a twist representing the velocity extrapolated from
+        /// transform1 and transform2
+        static geometry_msgs::Twist twistFromTransforms(
+                const geometry_msgs::TransformStamped& transform1,
+                const geometry_msgs::TransformStamped& transform2);
+
+        /// Returns the change in yaw between rotation1 and rotation2
+        ///
+        /// Result is always in the interval (-pi, pi]
+        static double yawChangeBetweenOrientations(
+                const geometry_msgs::Quaternion& rotation1,
+                const geometry_msgs::Quaternion& rotation2);
+
+        /// Returns the yaw represented by rotation (in the interval [-pi, pi])
+        static double yawFromQuaternion(
+                const geometry_msgs::Quaternion& rotation);
 
         // Used to store the transform buffer, required for tf2
         tf2_ros::Buffer tfBuffer_;
@@ -82,14 +107,15 @@ namespace Iarc7Motion
         // Holds the last transform received to calculate velocities
         geometry_msgs::TransformStamped last_transform_stamped_;
 
-        // Hold the last yaw for calculations
-        double last_yaw_;
+        // Makes sure that we have a lastTransformStamped before returning a
+        // valid velocity
+        bool have_last_transform_;
 
         // A fudge feed forward value used for more stable hovering
         double hover_throttle_;
 
-        // Makes sure that we have a lastTransformStamped before returning a valid velocity
-        bool wait_for_velocities_ran_once_;
+        // The expected frequency at which we update the control loop
+        const double expected_update_frequency_;
 
         static constexpr double INITIAL_TRANSFORM_WAIT_SECONDS{10.0};
         static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
