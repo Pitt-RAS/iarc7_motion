@@ -27,9 +27,13 @@ using namespace Iarc7Motion;
 using geometry_msgs::TwistStamped;
 using geometry_msgs::Twist;
 
-// This is a helper function that will limit a iarc7_msgs::OrientationThrottleStamped using the twist limiter
-// The twist limiter uses TwistStamped messages to do it's work so this function converts between the data types.
-void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationThrottleStamped& uav_command)
+// This is a helper function that will limit a
+// iarc7_msgs::OrientationThrottleStamped using the twist limiter
+//
+// The twist limiter uses TwistStamped messages to do its work so this
+// function converts between the data types.
+void limitUavCommand(QuadTwistRequestLimiter& limiter,
+                     iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     TwistStamped uav_twist_stamped;
     Twist& uav_twist = uav_twist_stamped.twist;
@@ -51,65 +55,6 @@ void limitUavCommand(QuadTwistRequestLimiter& limiter, iarc7_msgs::OrientationTh
     uav_command.data.yaw     = uav_twist.angular.z;
 }
 
-// Loads the PID parameters from ROS param server into the passed in arrays
-void getPidParams(ros::NodeHandle& nh, double throttle_pid[5], double pitch_pid[5], double roll_pid[5], double yaw_pid[5], double &hover_throttle)
-{
-    // Throttle PID settings retrieve
-    nh.param("throttle_p", throttle_pid[0], 0.0);
-    nh.param("throttle_i", throttle_pid[1], 0.0);
-    nh.param("throttle_d", throttle_pid[2], 0.0);
-    nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
-    nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
-
-    // Pitch PID settings retrieve
-    nh.param("pitch_p", pitch_pid[0], 0.0);
-    nh.param("pitch_i", pitch_pid[1], 0.0);
-    nh.param("pitch_d", pitch_pid[2], 0.0);
-    nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
-    nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
-
-    // Roll PID settings retrieve
-    nh.param("roll_p", roll_pid[0], 0.0);
-    nh.param("roll_i", roll_pid[1], 0.0);
-    nh.param("roll_d", roll_pid[2], 0.0);
-    nh.param("roll_accumulator_max", roll_pid[3], 0.0);
-    nh.param("roll_accumulator_min", roll_pid[4], 0.0);
-
-    // Yaw PID settings retrieve
-    nh.param("yaw_p", yaw_pid[0], 0.0);
-    nh.param("yaw_i", yaw_pid[1], 0.0);
-    nh.param("yaw_d", yaw_pid[2], 0.0);
-    nh.param("yaw_accumulator_max", yaw_pid[3], 0.0);
-    nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
-
-    // Throttle setting for hovering, to be added to throttle ouput
-    nh.param("hover_throttle", hover_throttle, 0.0);
-}
-
-// Loads the parameters for the TwistLimiter from the ROS paramater server
-void getTwistLimiterParams(ros::NodeHandle& nh, Twist& min,  Twist& max,  Twist& max_rate)
-{
-    // Throttle Limit settings retrieve
-    nh.param("throttle_max", max.linear.z, 0.0);
-    nh.param("throttle_min", min.linear.z, 0.0);
-    nh.param("throttle_max_rate", max_rate.linear.z, 0.0);
-
-    // Pitch Limit settings retrieve
-    nh.param("pitch_max", max.angular.y, 0.0);
-    nh.param("pitch_min", min.angular.y, 0.0);
-    nh.param("pitch_max_rate", max_rate.angular.y, 0.0);
-
-    // Roll Limit settings retrieve
-    nh.param("roll_max", max.angular.x, 0.0);
-    nh.param("roll_min", min.angular.x, 0.0);
-    nh.param("roll_max_rate", max_rate.angular.x, 0.0);
-
-    // Yaw Limit settings retrieve
-    nh.param("yaw_max", max.angular.z, 0.0);
-    nh.param("yaw_min", min.angular.z, 0.0);
-    nh.param("yaw_max_rate", max_rate.angular.z, 0.0);
-}
-
 // Main entry point for the low level motion controller
 int main(int argc, char **argv)
 {
@@ -120,16 +65,72 @@ int main(int argc, char **argv)
 
     // Create a node handle for the node
     ros::NodeHandle nh;
-    // This node handle has a specific namespace that allows us to easily encapsulate parameters
-    ros::NodeHandle param_nh ("low_level_motion_controller");
+    // This node handle has a specific namespace that allows us to easily
+    // encapsulate parameters
+    ros::NodeHandle private_nh ("~");
 
-    // Get the PID parameters from the ROS parameter server
+    // LOAD PARAMETERS
     double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
     double yaw_pid[5];
     double hover_throttle;
-    getPidParams(param_nh, throttle_pid, pitch_pid, roll_pid, yaw_pid, hover_throttle);
+    Twist min_velocity, max_velocity, max_velocity_slew_rate;
+    double update_frequency;
+
+    // Throttle PID settings retrieve
+    private_nh.param("throttle_p", throttle_pid[0], 0.0);
+    private_nh.param("throttle_i", throttle_pid[1], 0.0);
+    private_nh.param("throttle_d", throttle_pid[2], 0.0);
+    private_nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
+    private_nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
+
+    // Pitch PID settings retrieve
+    private_nh.param("pitch_p", pitch_pid[0], 0.0);
+    private_nh.param("pitch_i", pitch_pid[1], 0.0);
+    private_nh.param("pitch_d", pitch_pid[2], 0.0);
+    private_nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
+    private_nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
+
+    // Roll PID settings retrieve
+    private_nh.param("roll_p", roll_pid[0], 0.0);
+    private_nh.param("roll_i", roll_pid[1], 0.0);
+    private_nh.param("roll_d", roll_pid[2], 0.0);
+    private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
+    private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
+
+    // Yaw PID settings retrieve
+    private_nh.param("yaw_p", yaw_pid[0], 0.0);
+    private_nh.param("yaw_i", yaw_pid[1], 0.0);
+    private_nh.param("yaw_d", yaw_pid[2], 0.0);
+    private_nh.param("yaw_accumulator_max", yaw_pid[3], 0.0);
+    private_nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
+
+    // Throttle setting for hovering, to be added to throttle ouput
+    private_nh.param("hover_throttle", hover_throttle, 0.0);
+
+    // Throttle Limit settings retrieve
+    private_nh.param("throttle_max", max_velocity.linear.z, 0.0);
+    private_nh.param("throttle_min", min_velocity.linear.z, 0.0);
+    private_nh.param("throttle_max_rate", max_velocity_slew_rate.linear.z, 0.0);
+
+    // Pitch Limit settings retrieve
+    private_nh.param("pitch_max", max_velocity.angular.y, 0.0);
+    private_nh.param("pitch_min", min_velocity.angular.y, 0.0);
+    private_nh.param("pitch_max_rate", max_velocity_slew_rate.angular.y, 0.0);
+
+    // Roll Limit settings retrieve
+    private_nh.param("roll_max", max_velocity.angular.x, 0.0);
+    private_nh.param("roll_min", min_velocity.angular.x, 0.0);
+    private_nh.param("roll_max_rate", max_velocity_slew_rate.angular.x, 0.0);
+
+    // Yaw Limit settings retrieve
+    private_nh.param("yaw_max", max_velocity.angular.z, 0.0);
+    private_nh.param("yaw_min", min_velocity.angular.z, 0.0);
+    private_nh.param("yaw_max_rate", max_velocity_slew_rate.angular.z, 0.0);
+
+    // Update frequency retrieve
+    private_nh.param("update_frequency", update_frequency, 60.0);
 
     // Wait for a valid time in case we are using simulated time (not wall time)
     while (ros::ok() && ros::Time::now() == ros::Time(0)) {
@@ -139,8 +140,6 @@ int main(int argc, char **argv)
 
     // Create a quad velocity controller. It will output angles corresponding
     // to our desired velocity
-    double update_frequency;
-    nh.param("update_frequency", update_frequency, 60.0);
     QuadVelocityController quadController(throttle_pid,
                                           pitch_pid,
                                           roll_pid,
@@ -153,25 +152,27 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // Create an acceleration planner. It handles interpolation between timestamped velocity requests so that
-    // Smooth accelerations are possible.
+    // Create an acceleration planner. It handles interpolation between
+    // timestamped velocity requests so that smooth accelerations are possible.
     AccelerationPlanner accelerationPlanner(nh);
 
-    // Create the publisher to send the processed uav_commands out with (angles, throttle)
-    ros::Publisher uav_control_ = nh.advertise<iarc7_msgs::OrientationThrottleStamped>("uav_direction_command", 50);
+    // Create the publisher to send the processed uav_commands out with
+    // (angles, throttle)
+    ros::Publisher uav_control_
+        = nh.advertise<iarc7_msgs::OrientationThrottleStamped>(
+                "uav_direction_command", 50);
 
-    // Check for empty uav_control_ as per http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
+    // Check for empty uav_control_ as per
+    // http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
     // section 1
-    ROS_ASSERT_MSG(uav_control_, "Could not create uav_direction_command publisher");
+    ROS_ASSERT_MSG(uav_control_,
+                   "Could not create uav_direction_command publisher");
 
-    // Get the parameters for the twist limiter
-    Twist min;
-    Twist max;
-    Twist max_rate;
-    getTwistLimiterParams(param_nh, min, max, max_rate);
-
-    // Create the twist limiter, it will limit min value, max value, and max rate of change.
-    QuadTwistRequestLimiter limiter(min, max, max_rate);
+    // Create the twist limiter, it will limit min value, max value, and max
+    // rate of change.
+    QuadTwistRequestLimiter limiter(min_velocity,
+                                    max_velocity,
+                                    max_velocity_slew_rate);
 
     // Form a connection with the node monitor. If no connection can be made
     // assert because we don't know what's going on with the other nodes.
@@ -189,14 +190,18 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         // Check the safety client before updating anything
-        // If fatal is active the node monitor is telling everyone to shut down immediately
-        ROS_ASSERT_MSG(!safety_client.isFatalActive(), "low_level_motion: fatal event from safety");
+        //
+        // If fatal is active the node monitor is telling everyone to shut
+        // down immediately
+        ROS_ASSERT_MSG(!safety_client.isFatalActive(),
+                       "low_level_motion: fatal event from safety");
 
         // Get the time
         ros::Time current_time = ros::Time::now();
 
-        // Make sure we don't call QuadVelocity controllers update unless we have a new timestamp to give.
-        // This can be a problem with simulated time that does not update with high precision.
+        // Make sure we don't call QuadVelocity controllers update unless we
+        // have a new timestamp to give. This can be a problem with simulated
+        // time that does not update with high precision.
         if(current_time > last_time)
         {
             last_time = current_time;
