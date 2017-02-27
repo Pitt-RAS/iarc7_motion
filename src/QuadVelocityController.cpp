@@ -21,7 +21,8 @@ QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
                                                double yaw_pid[5],
-                                               double hover_throttle) :
+                                               double hover_throttle,
+                                               double expected_update_frequency) :
 tfBuffer_(),
 tfListener_(tfBuffer_),
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
@@ -29,9 +30,9 @@ pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4])
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
 yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
 last_transform_stamped_(),
-last_yaw_(0.0),
+have_last_transform_(false),
 hover_throttle_(hover_throttle),
-wait_for_velocities_ran_once_(false)
+expected_update_frequency_(expected_update_frequency)
 {
 
 }
@@ -46,12 +47,19 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
     throttle_pid_.setSetpoint(twist.linear.z);
     yaw_pid_.setSetpoint(twist.angular.z);
 
-    // Pitch and roll velocities are transformed according to the last_yaw_ angle because the incoming
-    // target velocities do not take the current yaw into account
-    pitch_pid_.setSetpoint(twist.linear.x * std::cos(last_yaw_) + twist.linear.y * std::sin(last_yaw_));
+    double last_yaw
+        = yawFromQuaternion(last_transform_stamped_.transform.rotation);
 
-    // Note: Roll is inverted because a positive y velocity means a negative roll by the right hand rule
-    roll_pid_.setSetpoint(-(twist.linear.x * -std::sin(last_yaw_) + twist.linear.y * std::cos(last_yaw_)));
+    // Pitch and roll velocities are transformed according to the last_yaw
+    // angle because the incoming target velocities do not take the current yaw
+    // into account
+    pitch_pid_.setSetpoint(twist.linear.x * std::cos(last_yaw)
+                         + twist.linear.y * std::sin(last_yaw));
+
+    // Note: Roll is inverted because a positive y velocity means a negative
+    // roll by the right hand rule
+    roll_pid_.setSetpoint(-(twist.linear.x * -std::sin(last_yaw)
+                          + twist.linear.y * std::cos(last_yaw)));
 }
 
 // Main update, runs all PID calculations and returns a desired uav_command
@@ -60,8 +68,8 @@ bool QuadVelocityController::update(const ros::Time& time,
                                     iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
     // Get the current velocity of the quad.
-    geometry_msgs::Twist velocities;
-    bool success = waitForNewVelocities(velocities);
+    geometry_msgs::Twist velocity;
+    bool success = getVelocityAtTime(velocity, time);
     if (!success) {
         ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -78,28 +86,28 @@ bool QuadVelocityController::update(const ros::Time& time,
     double yaw_output;
 
     // Update throttle PID loop
-    success = throttle_pid_.update(velocities.linear.z, time, throttle_output);
+    success = throttle_pid_.update(velocity.linear.z, time, throttle_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update pitch PID loop
-    success = pitch_pid_.update(velocities.linear.x, time, pitch_output);
+    success = pitch_pid_.update(velocity.linear.x, time, pitch_output);
     if (!success) {
         ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update roll PID loop
-    success = roll_pid_.update(-velocities.linear.y, time, roll_output);
+    success = roll_pid_.update(-velocity.linear.y, time, roll_output);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update yaw PID loop
-    success = yaw_pid_.update(velocities.angular.z, time, yaw_output);
+    success = yaw_pid_.update(velocity.angular.z, time, yaw_output);
     if (!success) {
         ROS_WARN("Yaw PID update failed in QuadVelocityController::update");
         return false;
@@ -129,58 +137,65 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Print the velocity and throttle information
-    ROS_INFO("Vz:       %f Vx:    %f Vy:   %f Vyaw: %f", velocities.linear.z, velocities.linear.x, velocities.linear.y, velocities.angular.z);
-    ROS_INFO("Throttle: %f Pitch: %f Roll: %f Yaw:  %f", uav_command.throttle, uav_command.data.pitch, uav_command.data.roll, uav_command.data.yaw);
+    ROS_INFO("Vz: %f Vx: %f Vy: %f Vyaw: %f",
+             velocity.linear.z,
+             velocity.linear.x,
+             velocity.linear.y,
+             velocity.angular.z);
+    ROS_INFO("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
+             uav_command.throttle,
+             uav_command.data.pitch,
+             uav_command.data.roll,
+             uav_command.data.yaw);
 
     return true;
 }
 
+bool QuadVelocityController::waitUntilReady()
+{
+    geometry_msgs::TransformStamped transform;
+    bool success = getTransformAtTime(
+                       transform,
+                       ros::Time(0),
+                       ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS));
+    if (!success)
+    {
+        ROS_ERROR("Failed to fetch initial transform");
+    }
+
+    return success;
+}
+
 // Get a valid transform, blocks until the transform is received or
 // the request takes too long and times out
-bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& transform) {
+bool QuadVelocityController::getTransformAtTime(
+        geometry_msgs::TransformStamped& transform,
+        const ros::Time& time,
+        const ros::Duration& timeout) const
+{
+    const ros::Time start_time = ros::Time::now();
 
     // Catch TransformException exceptions
     try
     {
-        ros::Time time_at_start = ros::Time::now();
-        ros::Time last_transform_time;
-        if(wait_for_velocities_ran_once_)
-        {
-            last_transform_time = last_transform_stamped_.header.stamp;
-        }
-        else
-        {
-            last_transform_time = ros::Time::now();
-        }
-
         // While we aren't supposed to be shutting down
         while (ros::ok())
         {
-            // Check for timing out, return failure if so.
-            ros::Duration timeout = wait_for_velocities_ran_once_ ?
-                                    ros::Duration(MAX_TRANSFORM_WAIT_SECONDS) :
-                                    ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS);
-
-            if (ros::Time::now() > time_at_start + timeout)
+            if (ros::Time::now() > start_time + timeout)
             {
                 ROS_ERROR_STREAM("Transform timed out ("
-                                 << "current time: " << ros::Time::now() << ", "
-                                 << "request time: " << time_at_start
-                                 << ")");
+                              << "current time: " << ros::Time::now() << ", "
+                              << "request time: " << start_time
+                              << ")");
                 return false;
             }
 
             // Check if the transform from map to quad can be made right now
-            if(tfBuffer_.canTransform("map", "quad", ros::Time(0)))
+            if (tfBuffer_.canTransform("map", "quad", time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("map", "quad", ros::Time(0));
-
-                // Check if the transform is newer or as new as the desired time
-                if(transform.header.stamp > last_transform_time)
-                {
-                    return true;
-                }
+                transform = tfBuffer_.lookupTransform("map", "quad", time);
+                return true;
             }
 
             // Handle callbacks and sleep for a small amount of time
@@ -192,7 +207,7 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
     // Catch any exceptions that might happen while transforming
     catch (tf2::TransformException& ex)
     {
-        ROS_ERROR("Could not transform map to level_quad: %s",ex.what());
+        ROS_ERROR("Exception transforming map to level_quad: %s", ex.what());
     }
 
     ROS_ERROR("Exception or ros::ok was false");
@@ -201,82 +216,130 @@ bool QuadVelocityController::waitForTransform(geometry_msgs::TransformStamped& t
 
 // Gets the velocity from the transformation information
 // Blocks while waiting for a new transform to calculate the velocity with
-bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_velocities)
+bool QuadVelocityController::getVelocityAtTime(
+        geometry_msgs::Twist& return_velocities,
+        const ros::Time& time)
 {
+    const ros::Duration timeout = ros::Duration(MAX_TRANSFORM_WAIT_SECONDS);
 
-    // Get a brand new transform. Blocks until able to transform at the current time.
-    geometry_msgs::TransformStamped transformStamped;
-    bool fetched_transform = waitForTransform(transformStamped);
+    // Check if the quad velocity controller has not been run once
+    if (!have_last_transform_)
+    {
+        ros::Time last_time = time
+                            - ros::Duration(1.0 / expected_update_frequency_);
+
+        // Get a brand new transform
+        // Blocks until able to transform at the requested time
+        bool fetched_transform = getTransformAtTime(last_transform_stamped_,
+                                                    last_time,
+                                                    timeout);
+
+        // Check if the call failed
+        if (!fetched_transform)
+        {
+            ROS_ERROR("Failed to fetch first transform in QuadVelocityController");
+            have_last_transform_ = false;
+            return false;
+        }
+
+        have_last_transform_ = true;
+    }
+
+    // Get a brand new transform
+    // Blocks until able to transform at the requested time
+    geometry_msgs::TransformStamped transform_stamped;
+    bool fetched_transform = getTransformAtTime(transform_stamped,
+                                                time,
+                                                timeout);
 
     // Check if the call failed
     if (!fetched_transform)
     {
         ROS_ERROR("Failed to fetch new transform in QuadVelocityController");
-        wait_for_velocities_ran_once_ = false;
+        have_last_transform_ = false;
         return false;
-    }
-
-    // Check if the quad velocity controller has not been run once
-    // Update all intermediate values and make a recursive call to waitForNewVelocities
-    // (meaning another transform will be collected) and a valid velocity can be calculated.
-    if(!wait_for_velocities_ran_once_)
-    {
-        wait_for_velocities_ran_once_ = true;
-        last_transform_stamped_ = transformStamped;
-        return waitForNewVelocities(return_velocities);
     }
 
     // Make sure the difference between transforms isn't too much
     // Calculate the lastest time between transforms that is allowed.
     ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
                 + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
-    // Make the sure the transform isn't didn't come after the last time
+    // Make the sure the transform didn't come after the last time
     // that was acceptable.
-    if (transformStamped.header.stamp > latest_time_allowed)
+    if (transform_stamped.header.stamp > latest_time_allowed)
     {
         ROS_ERROR_STREAM(
-            "First available transform came after latest allowed time"
-            << " (transform time: " << transformStamped.header.stamp
-            << ", latest allowed time: " << latest_time_allowed
-            << ")");
+            "First available transform came after latest allowed time ("
+         << "transform time: " << transform_stamped.header.stamp << ", "
+         << "latest allowed time: " << latest_time_allowed
+         << ")");
         return false;
     }
 
-    // Get the transforms without the stamps for readability
-    geometry_msgs::Transform& transform = transformStamped.transform;
-    geometry_msgs::Transform& oldTransform = last_transform_stamped_.transform;
+    return_velocities = twistFromTransforms(transform_stamped,
+                                            last_transform_stamped_);
 
-    // Get the yaw (z axis) rotation from the quanternion
-    double ysqr = transform.rotation.y * transform.rotation.y;
-    double t3 = 2.0f * (transform.rotation.w * transform.rotation.z + transform.rotation.x * transform.rotation.y);
-    double t4 = 1.0f - 2.0f * (ysqr + transform.rotation.z * transform.rotation.z);
-    double current_yaw = std::atan2(t3, t4);
+    // Store the old transform
+    last_transform_stamped_ = transform_stamped;
 
-    // Begin calculation of the velocities
+    return true;
+}
+
+geometry_msgs::Twist QuadVelocityController::twistFromTransforms(
+        const geometry_msgs::TransformStamped& transform1,
+        const geometry_msgs::TransformStamped& transform2)
+{
+    geometry_msgs::Twist result;
 
     // Get the time between the two transforms
-    ros::Duration delta_seconds = transformStamped.header.stamp - last_transform_stamped_.header.stamp;
+    ros::Duration dt = transform2.header.stamp - transform1.header.stamp;
+    double delta_seconds = dt.toSec();
 
     // Calculate world_x and world_y velocities
-    double delta = delta_seconds.toSec();
-    double world_x_vel = ((transform.translation.x - oldTransform.translation.x) / delta);
-    double world_y_vel = ((transform.translation.y - oldTransform.translation.y) / delta);
+    double world_x_vel = (transform2.transform.translation.x
+                        - transform1.transform.translation.x) / delta_seconds;
+    double world_y_vel = (transform2.transform.translation.y
+                        - transform1.transform.translation.y) / delta_seconds;
 
-    // Transform the world_x and world_y velocities according to the quads current heading
-    return_velocities.linear.x = world_x_vel * std::cos(current_yaw) + world_y_vel * std::sin(current_yaw);
-    return_velocities.linear.y = world_x_vel * -std::sin(current_yaw) + world_y_vel * std::cos(current_yaw);
+    double current_yaw = yawFromQuaternion(transform2.transform.rotation);
+
+    // Transform the world_x and world_y velocities according to the quads
+    // current heading
+    result.linear.x = world_x_vel * std::cos(current_yaw)
+                    + world_y_vel * std::sin(current_yaw);
+    result.linear.y = world_x_vel * -std::sin(current_yaw)
+                    + world_y_vel * std::cos(current_yaw);
 
     // Calculate the world_z velocity, no transform is needed
-    return_velocities.linear.z = (transform.translation.z - oldTransform.translation.z) / delta;
+    result.linear.z = (transform2.transform.translation.z
+                     - transform1.transform.translation.z) / delta_seconds;
+
+    result.angular.z = yawChangeBetweenOrientations(
+                            transform1.transform.rotation,
+                            transform2.transform.rotation)
+                     / delta_seconds;
+
+    return result;
+}
+
+double QuadVelocityController::yawChangeBetweenOrientations(
+        const geometry_msgs::Quaternion& rotation1,
+        const geometry_msgs::Quaternion& rotation2)
+{
+    // Get the yaw (z axis) rotation from the quanternion
+    double current_yaw = yawFromQuaternion(rotation2);
+    double last_yaw = yawFromQuaternion(rotation1);
 
     // Find the difference in yaw
-    double yaw_difference = current_yaw - last_yaw_;
+    double yaw_difference = current_yaw - last_yaw;
 
-    // The next two if statements handle if the yaw_difference is large due to gimbal lock
-    // Assumes that we don't have a yaw_difference more than 2pi. We won't since we get all the angles
-    // from an atan2 which only return -pi to pi
+    // The next two if statements handle if the yaw_difference is large
+    //
+    // Assumes that we don't have a yaw_difference more than 2pi. We won't
+    // since we get all the angles from an atan2 which only return -pi to pi
+    //
     // Also assumes that we won't have a rotation difference more than pi
-    if(yaw_difference > M_PI)
+    if (yaw_difference > M_PI)
     {
         yaw_difference = yaw_difference - 2 * M_PI;
     }
@@ -286,14 +349,15 @@ bool QuadVelocityController::waitForNewVelocities(geometry_msgs::Twist& return_v
         yaw_difference = yaw_difference + 2 * M_PI;
     }
 
-    // Finally calculate the yaw velocity after correcting for gimbal lock
-    return_velocities.angular.z = yaw_difference / delta;
+    // Finally calculate the yaw change
+    return yaw_difference;
+}
 
-    // Store the old transform
-    last_transform_stamped_ = transformStamped;
-
-    // Store yaw
-    last_yaw_ = current_yaw;
-
-    return true;
+double QuadVelocityController::yawFromQuaternion(
+        const geometry_msgs::Quaternion& rotation)
+{
+    double ysqr = std::pow(rotation.y, 2);
+    double t3 = 2.0 * (rotation.w * rotation.z + rotation.x * rotation.y);
+    double t4 = 1.0 - 2.0 * (ysqr + std::pow(rotation.z, 2));
+    return std::atan2(t3, t4);
 }

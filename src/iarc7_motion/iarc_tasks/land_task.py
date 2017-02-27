@@ -26,10 +26,11 @@ class LandTask(AbstractTask):
         try:
             self._LAND_VELOCITY = rospy.get_param('~land_velocity')
             self._LAND_HEIGHT_TOLERANCE = rospy.get_param('~land_height_tolerance')
+            self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for land task')
             raise
-        
+
         self._fc_status = None
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = LandTaskState.init
@@ -61,8 +62,14 @@ class LandTask(AbstractTask):
         # Enter the takeoff phase
         if self._state == LandTaskState.land:
             try:
-                transStamped = self._tf_buffer.lookup_transform('map', 'quad', rospy.Time(0))
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
+                transStamped = self._tf_buffer.lookup_transform(
+                                    'map',
+                                    'quad',
+                                    rospy.Time.now(),
+                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
                 rospy.logerr('LandTask: Exception when looking up transform')
                 rospy.logerr(ex.message)
                 return (TaskState.aborted, 'Exception when looking up transform during landing')

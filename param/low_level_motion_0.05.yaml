@@ -40,3 +40,5 @@ roll_max_rate     : 1.0
 yaw_max           : 3.0
 yaw_min           : -3.0
 yaw_max_rate      : 600.0
+
+update_frequency: 60.0
