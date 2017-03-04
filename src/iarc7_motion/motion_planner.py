@@ -19,8 +19,9 @@ import iarc_tasks.task_commands as task_commands
 
 class MotionPlanner:
 
-    def __init__(self, _action_server):
+    def __init__(self, _action_server, update_rate):
         self._action_server = _action_server
+        self._update_rate = update_rate
         self._task = None
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',   
                                              TwistStampedArrayStamped,
@@ -41,7 +42,7 @@ class MotionPlanner:
             }
 
     def run(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(self._update_rate)
 
         rospy.logwarn('trying to form bond')
         if not self._safety_client.form_bond():
@@ -174,7 +175,9 @@ if __name__ == '__main__':
     rospy.init_node('motion_planner')
     action_server = IarcTaskActionServer()
 
-    motion_planner = MotionPlanner(action_server)
+    update_rate = rospy.get_param('~update_rate', False)
+
+    motion_planner = MotionPlanner(action_server, update_rate)
     try:
         motion_planner.run()
     except Exception, e:

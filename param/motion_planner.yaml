@@ -13,3 +13,7 @@ land_velocity           : -1.0
 land_height_tolerance   : 0.3
 # Timeout for transforms
 transform_timeout       : 0.2
+# Minimum height for any XY translationanl maneuvers
+min_maneuver_height     : 0.5
+# Update rate in hz
+update_rate             : 10
