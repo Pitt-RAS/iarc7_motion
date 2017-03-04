@@ -9,7 +9,8 @@ from geometry_msgs.msg import TwistStamped
 from iarc7_msgs.msg import FlightControllerStatus
 
 from .abstract_task import AbstractTask
-from .task_state import TaskState
+from .task_states import *
+from .task_commands import *
 
 class TakeoffTaskState:
     init = 0
@@ -48,18 +49,18 @@ class TakeoffTask(AbstractTask):
 
     def get_desired_command(self):
         if self._canceled:
-            return (TaskState.canceled,)
+            return (TaskCanceled(),)
 
         if self._state == TakeoffTaskState.init:
             # Check if we have an fc status
             if self._fc_status is None:
-                return (TaskState.running, 'velocity', TwistStamped())
+                return (TaskRunning(), VelocityCommand())
             # Check that auto pilot is enabled
             if not self._fc_status.auto_pilot:
-                return (TaskState.failed, 'flight controller not allowing auto pilot')
+                return (TaskFailed(msg='flight controller not allowing auto pilot'),)
             # Check that the FC is not already armed
             if self._fc_status.armed:
-                return (TaskState.failed, 'flight controller armed prior to takeoff')
+                return (TaskFailed(msg='flight controller armed prior to takeoff'),)
 
             try:
                 trans = self._tf_buffer.lookup_transform(
@@ -75,10 +76,10 @@ class TakeoffTask(AbstractTask):
                 rospy.logerr(ex.message)
                 # Make sure not to leave the init state
                 self._state = TakeoffTaskState.init
-                return (TaskState.aborted, msg)
+                return (TaskAborted(msg=msg),)
 
             if trans.transform.translation.z > self._MAX_TAKEOFF_START_HEIGHT:
-                return (TaskState.failed, 'quad is too high to takeoff')
+                return (TaskFailed(msg='quad is too high to takeoff'),)
 
             # All is good change state to request arm
             self._state = TakeoffTaskState.request_arm
@@ -90,14 +91,14 @@ class TakeoffTask(AbstractTask):
                 self.pause_start_time = rospy.Time.now()
                 self._state = TakeoffTaskState.pause_before_takeoff
             else:
-                return (TaskState.running, 'arm', self.arm_callback)
+                return (TaskRunning(), ArmCommand(True, self.arm_callback))
 
         # Pause before ramping up the motors
         if self._state == TakeoffTaskState.pause_before_takeoff:
             if rospy.Time.now() - self.pause_start_time > rospy.Duration(self._DELAY_BEFORE_TAKEOFF):
                 self._state = TakeoffTaskState.takeoff
             else:
-                return (TaskState.running, 'velocity', TwistStamped())
+                return (TaskRunning(), VelocityCommand())
 
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
@@ -113,20 +114,20 @@ class TakeoffTask(AbstractTask):
                 msg = 'Exception when looking up transform during takeoff'
                 rospy.logerr('Takeofftask: {}'.format(msg))
                 rospy.logerr(ex.message)
-                return (TaskState.aborted, msg)
+                return (TaskAborted(msg=msg),)
 
             # Check if we reached the target height
             if(transStamped.transform.translation.z > self._takeoff_height - self._TAKEOFF_HEIGHT_TOLERANCE):
-                return (TaskState.done, 'velocity', TwistStamped())
+                return (TaskDone(), VelocityCommand())
 
             velocity = TwistStamped()
             velocity.header.frame_id = 'level_quad'
             velocity.header.stamp = rospy.Time.now()
             velocity.twist.linear.z = self._TAKEOFF_VELOCITY
-            return (TaskState.running, 'velocity', velocity)
+            return (TaskRunning(), VelocityCommand(velocity))
 
         # Impossible state reached
-        return (TaskState.aborted, 'Impossible state in takeoff task reached')
+        return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
 
     def cancel(self):

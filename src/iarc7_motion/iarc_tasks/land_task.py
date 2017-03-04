@@ -9,7 +9,8 @@ from geometry_msgs.msg import TwistStamped
 from iarc7_msgs.msg import FlightControllerStatus
 
 from .abstract_task import AbstractTask
-from .task_state import TaskState
+from .task_states import *
+from .task_commands import *
 
 class LandTaskState:
     init = 0
@@ -44,18 +45,18 @@ class LandTask(AbstractTask):
 
     def get_desired_command(self):
         if self._canceled:
-            return (TaskState.canceled,)
+            return (TaskCanceled(),)
 
         if self._state == LandTaskState.init:
             # Check if we have a fc status
             if self._fc_status is None:
-                return (TaskState.running, 'velocity', TwistStamped())
+                return (TaskRunning(), VelocityCommand())
             # Check that auto pilot is enabled
             if not self._fc_status.auto_pilot:
-                return (TaskState.failed, 'flight controller not allowing auto pilot')
+                return (TaskFailed(msg='flight controller not allowing auto pilot'),)
             # Check that the FC is not already armed
             if not self._fc_status.armed:
-                return (TaskState.failed, 'flight controller is not armed, how are we in the air??')
+                return (TaskFailed(msg='flight controller is not armed, how are we in the air??'),)
             # All is good change state to land
             self._state = LandTaskState.land
 
@@ -72,7 +73,7 @@ class LandTask(AbstractTask):
                     tf2_ros.ExtrapolationException) as ex:
                 rospy.logerr('LandTask: Exception when looking up transform')
                 rospy.logerr(ex.message)
-                return (TaskState.aborted, 'Exception when looking up transform during landing')
+                return (TaskAborted(msg='Exception when looking up transform during landing'),)
 
             # Check if we reached the target height
             if(transStamped.transform.translation.z < self._LAND_HEIGHT_TOLERANCE):
@@ -82,18 +83,18 @@ class LandTask(AbstractTask):
                 velocity.header.frame_id = 'level_quad'
                 velocity.header.stamp = rospy.Time.now()
                 velocity.twist.linear.z = self._LAND_VELOCITY
-                return (TaskState.running, 'velocity', velocity)
+                return (TaskRunning(), VelocityCommand(velocity))
 
         # Enter the disarming request stage
         if self._state == LandTaskState.disarm:
             # Check if disarm succeeded
             if self._disarm_request_success:
-                return (TaskState.done, 'nop')
+                return (TaskDone(), NopCommand())
             else:
-                return (TaskState.running, 'disarm', self.disarm_callback)
+                return (TaskRunning(), ArmCommand(False, self.disarm_callback))
 
         # Impossible state reached
-        return (TaskState.aborted, 'Impossible state in takeoff task reached')
+        return (TaskAborted(msg='Impossible state in takeoff task reached'))
 
     def cancel(self):
         rospy.loginfo('TakeoffTask canceled')
