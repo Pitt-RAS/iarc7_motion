@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# A collection of helper functions that allow tasks to hold desired
-# position or path relative to an axis
+# A helper class for a task that will spit out a velocity that's appropriate
+# to reach and hold a desired position
 
 import math
 import threading
@@ -22,6 +22,7 @@ class PositionHolder():
         self._hold_y = y
         self._max_acceleration = rospy.get_param('~max_translation_acceleration', 0.0)
         self._max_speed = rospy.get_param('~max_translation_speed', 0.0)
+        self._position_tolerance = rospy.get_param('~translation_position_hold_tolerance', 0.0)
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
                                               self._current_velocity_callback)
@@ -77,16 +78,31 @@ class PositionHolder():
 
         current_angle = math.atan2(y, x)
 
-        target_twist = TwistStamped()
-        target_twist.header.stamp = rospy.Time.now()
-        target_twist.twist.linear.x = current_twist.twist.linear.x + \
-                                      (target_acceleration * \
-                                       self._update_period * \
-                                       -math.cos(current_angle))
-        target_twist.twist.linear.y = current_twist.twist.linear.y + \
-                                      (target_acceleration * \
-                                       self._update_period * \
-                                       -math.sin(current_angle))
+        if distance > self._position_tolerance:
+
+            target_twist = TwistStamped()
+            target_twist.header.stamp = rospy.Time.now()
+            target_twist.twist.linear.x = current_twist.twist.linear.x + \
+                                          (target_acceleration * \
+                                           self._update_period * \
+                                           -math.cos(current_angle))
+            target_twist.twist.linear.y = current_twist.twist.linear.y + \
+                                          (target_acceleration * \
+                                           self._update_period * \
+                                           -math.sin(current_angle))
+        else:
+            target_twist = TwistStamped()
+            target_twist.header.stamp = rospy.Time.now()
+            target_twist.twist.linear.x = 0.0
+            target_twist.twist.linear.y = 0.0
+            rospy.logdebug('tolerance hit')
+
+        rospy.logdebug('ta %s current angle %s', target_acceleration, current_angle)
+        rospy.logdebug('dx %s dy %s dvx %s dvy %s vx %s vy %s', x, y,
+         target_acceleration * self._update_period * -math.cos(current_angle),
+         target_acceleration * self._update_period * -math.sin(current_angle),
+         target_twist.twist.linear.x, target_twist.twist.linear.y)
+
         if z_velocity is not None:
             target_twist.twist.linear.z = z_velocity
 
