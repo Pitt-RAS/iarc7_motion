@@ -17,7 +17,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand, 
                                       ArmCommand,
                                       NopCommand)
-from path_hold_helpers import PositionHolder
+from position_holder import PositionHolder
 
 class TakeoffTaskState:
     init = 0
@@ -48,7 +48,7 @@ class TakeoffTask(AbstractTask):
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = TakeoffTaskState.init
         self._arm_request_success = False
-        self._path_holder = PositionHolder(2, 2)
+        self._path_holder = PositionHolder()
 
     def _receive_fc_status(self, data):
         self._fc_status = data
@@ -131,14 +131,11 @@ class TakeoffTask(AbstractTask):
 
             # Check if we are above maneuver height
             if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                hold_twists = self._path_holder.get_xy_hold_response(transStamped.transform.translation.x,
+                hold_twist = self._path_holder.get_xy_hold_response(transStamped.transform.translation.x,
                                                                     transStamped.transform.translation.y,
                                                                     z_velocity=self._TAKEOFF_VELOCITY)
-                for hold_twist in hold_twists:
-                    hold_twist.header.frame_id = 'level_quad'
-                rospy.logerr("x %s y %s", hold_twists[1].twist.linear.x, hold_twists[1].twist.linear.x)
-                #return (TaskRunning(), VelocityCommand(hold_twists[0]), VelocityCommand(hold_twists[1]))
-                return (TaskRunning(), VelocityCommand(hold_twists[1]))
+                hold_twist.header.frame_id = 'level_quad'
+                return (TaskRunning(), VelocityCommand(hold_twist))
             else:
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
