@@ -14,7 +14,8 @@ from nav_msgs.msg import Odometry
 class PositionHolder():
     def __init__(self, x=None, y=None):
         update_rate = rospy.get_param('~update_rate', False)
-        self._update_period = 1.0/update_rate
+        #self._update_period = 1.0/update_rate
+        self._update_period = 0.1
         self._lock = threading.RLock()
         self._odometry = None
         self._hold_x = x
@@ -28,8 +29,8 @@ class PositionHolder():
     def get_xy_hold_response(self, current_x, current_y, z_velocity=None):
         with self._lock:
             if self._odometry is not None:
-                delta_x = self._hold_x - current_x
-                delta_y = self._hold_y - current_y
+                delta_x = current_x - self._hold_x
+                delta_y = current_y - self._hold_y
                 response = self._get_next_acceleration_target_trapezoidal(delta_x,
                                                                           delta_y,
                                                                           self._odometry.twist,
@@ -50,7 +51,11 @@ class PositionHolder():
 
     def _calculate_trapezoidal_acceleration(self, distance, speed):
         # Check if we can decelerate in time
-        target_acceleration = (speed**2)/(2*distance)
+        try:
+            target_acceleration = (speed**2)/(2*distance)
+        except ZeroDivisionError:
+            # We are at the target point, no need to accelerate anywhere
+            return 0.0
 
         if target_acceleration < self._max_acceleration:
             if speed < self._max_speed:
@@ -70,19 +75,23 @@ class PositionHolder():
 
         target_acceleration = self._calculate_trapezoidal_acceleration(distance, speed)
 
-        current_angle = math.atan2(x, y)
+        current_angle = math.atan2(y, x)
 
         target_twist = TwistStamped()
-        target_twist.header.stamp = rospy.Time.now() + rospy.Duration(self._update_period)
+        target_twist.header.stamp = rospy.Time.now()# + rospy.Duration(self._update_period)
         target_twist.twist.linear.x = current_twist.twist.linear.x + \
                                       (target_acceleration * \
                                        self._update_period * \
-                                       math.cos(current_angle))
+                                       -math.cos(current_angle))
         target_twist.twist.linear.y = current_twist.twist.linear.y + \
                                       (target_acceleration * \
                                        self._update_period * \
-                                       math.sin(current_angle))
-        
+                                       -math.sin(current_angle))
+        rospy.logerr('ta %s current angle %s', target_acceleration, current_angle)
+        rospy.logerr('dx %s dy %s dvx %s dvy %s vx %s vy %s', x, y,
+         target_acceleration * self._update_period * -math.cos(current_angle),
+         target_acceleration * self._update_period * -math.sin(current_angle),
+         target_twist.twist.linear.x, target_twist.twist.linear.y)
         if z_velocity is not None:
             target_twist.twist.linear.z = z_velocity
 
