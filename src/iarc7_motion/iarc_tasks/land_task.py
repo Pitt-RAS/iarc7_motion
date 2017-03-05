@@ -17,6 +17,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand, 
                                       ArmCommand,
                                       NopCommand)
+from position_holder import PositionHolder
 
 class LandTaskState:
     init = 0
@@ -34,6 +35,7 @@ class LandTask(AbstractTask):
             self._LAND_VELOCITY = rospy.get_param('~land_velocity')
             self._LAND_HEIGHT_TOLERANCE = rospy.get_param('~land_height_tolerance')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
+            self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for land task')
             raise
@@ -42,6 +44,7 @@ class LandTask(AbstractTask):
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = LandTaskState.init
         self._disarm_request_success = False
+        self._path_holder = PositionHolder()
 
     def _receive_fc_status(self, data):
         self._fc_status = data
@@ -85,11 +88,19 @@ class LandTask(AbstractTask):
             if(transStamped.transform.translation.z < self._LAND_HEIGHT_TOLERANCE):
                 self._state = LandTaskState.disarm
             else:
-                velocity = TwistStamped()
-                velocity.header.frame_id = 'level_quad'
-                velocity.header.stamp = rospy.Time.now()
-                velocity.twist.linear.z = self._LAND_VELOCITY
-                return (TaskRunning(), VelocityCommand(velocity))
+                # Check if we are above maneuver height
+                if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
+                    hold_twist = self._path_holder.get_xy_hold_response(transStamped.transform.translation.x,
+                                                                        transStamped.transform.translation.y,
+                                                                        z_velocity=self._LAND_VELOCITY)
+                    hold_twist.header.frame_id = 'level_quad'
+                    return (TaskRunning(), VelocityCommand(hold_twist))
+                else:
+                    velocity = TwistStamped()
+                    velocity.header.frame_id = 'level_quad'
+                    velocity.header.stamp = rospy.Time.now()
+                    velocity.twist.linear.z = self._LAND_VELOCITY
+                    return (TaskRunning(), VelocityCommand(velocity))
 
         # Enter the disarming request stage
         if self._state == LandTaskState.disarm:
