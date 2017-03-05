@@ -78,7 +78,7 @@ class PositionHolder():
         current_angle = math.atan2(y, x)
 
         target_twist = TwistStamped()
-        target_twist.header.stamp = rospy.Time.now()# + rospy.Duration(self._update_period)
+        target_twist.header.stamp = rospy.Time.now()
         target_twist.twist.linear.x = current_twist.twist.linear.x + \
                                       (target_acceleration * \
                                        self._update_period * \
@@ -87,11 +87,6 @@ class PositionHolder():
                                       (target_acceleration * \
                                        self._update_period * \
                                        -math.sin(current_angle))
-        rospy.logerr('ta %s current angle %s', target_acceleration, current_angle)
-        rospy.logerr('dx %s dy %s dvx %s dvy %s vx %s vy %s', x, y,
-         target_acceleration * self._update_period * -math.cos(current_angle),
-         target_acceleration * self._update_period * -math.sin(current_angle),
-         target_twist.twist.linear.x, target_twist.twist.linear.y)
         if z_velocity is not None:
             target_twist.twist.linear.z = z_velocity
 
