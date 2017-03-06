@@ -1,7 +1,13 @@
 <launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+    <arg name="safety_priority" />
+
     <node name="motion_planner" pkg="iarc7_motion"
         type="motion_planner.py">
         <rosparam command="load"
             file="$(find iarc7_motion)/param/motion_planner.yaml" />
     </node>
+
+    <param name="$(arg bond_id_namespace)/motion_planner"
+        value="$(arg safety_priority)" />
 </launch>
