@@ -9,8 +9,14 @@ from geometry_msgs.msg import TwistStamped
 from iarc7_msgs.msg import FlightControllerStatus
 
 from .abstract_task import AbstractTask
-from .task_states import *
-from .task_commands import *
+from iarc_tasks.task_states import (TaskRunning,
+                                    TaskDone,
+                                    TaskCanceled,
+                                    TaskAborted,
+                                    TaskFailed)
+from iarc_tasks.task_commands import (VelocityCommand, 
+                                      ArmCommand,
+                                      NopCommand)
 
 class TakeoffTaskState:
     init = 0

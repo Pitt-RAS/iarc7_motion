@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-import actionlib
-import rospy
 import sys
 import traceback
+import actionlib
+import rospy
 
 from geometry_msgs.msg import TwistStamped
 from std_srvs.srv import SetBool
@@ -13,25 +13,32 @@ from iarc7_msgs.msg import TwistStampedArrayStamped
 from iarc7_safety.SafetyClient import SafetyClient
 
 from iarc_task_action_server import IarcTaskActionServer
-from iarc_tasks.task_states import *
-from iarc_tasks.task_commands import *
+
+import iarc_tasks.task_states as task_states
+import iarc_tasks.task_commands as task_commands
 
 class MotionPlanner:
 
     def __init__(self, _action_server):
         self._action_server = _action_server
         self._task = None
-        self._velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
+        self._velocity_pub = rospy.Publisher('movement_velocity_targets',   
+                                             TwistStampedArrayStamped,
+                                             queue_size=0)
         self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
         self._safety_client = SafetyClient('motion_planner')
         self._safety_land_complete = False
         self._safety_land_requested = False
         # Create action client to request a landing
-        self._action_client = actionlib.SimpleActionClient("motion_planner_server", QuadMoveAction)
+        self._action_client = actionlib.SimpleActionClient(
+                                        "motion_planner_server",
+                                        QuadMoveAction)
 
-        self._command_implementations = {VelocityCommand: self._handle_velocity_command,
-                                         ArmCommand: self._handle_arm_command,
-                                         NopCommand: self._handle_nop_command}
+        self._command_implementations = {
+            task_commands.VelocityCommand: self._handle_velocity_command,
+            task_commands.ArmCommand: self._handle_arm_command,
+            task_commands.NopCommand: self._handle_nop_command
+            }
 
     def run(self):
         rate = rospy.Rate(10)
@@ -129,7 +136,7 @@ class MotionPlanner:
                     rospy.logwarn('Motion planner aborted task')
                     self._action_server.set_aborted()
                     self._task = None
-                    return (NopCommand(),)
+                    return (task_commands.NopCommand(),)
 
             try:
                 task_request = self._task.get_desired_command()
@@ -140,28 +147,28 @@ class MotionPlanner:
                 rospy.logwarn('Motion planner aborted task')
                 self._action_server.set_aborted()
                 self._task = None
-                return (NopCommand(),)
+                return (task_commands.NopCommand(),)
             
             task_state = task_request[0]
-            if isinstance(task_state, TaskCanceled):
+            if isinstance(task_state, task_states.TaskCanceled):
                 self._action_server.set_canceled()
                 self._task = None
-            elif isinstance(task_state, TaskAborted):
+            elif isinstance(task_state, task_states.TaskAborted):
                 rospy.logwarn('Task aborted with: %s', task_state.msg)
                 self._action_server.set_aborted()
                 self._task = None
-            elif isinstance(task_state, TaskFailed):
+            elif isinstance(task_state, task_states.TaskFailed):
                 rospy.logwarn('Task failed with: %s', task_state.msg)
                 self._action_server.set_succeeded(False)
                 self._task = None
-            elif isinstance(task_state, TaskDone):
+            elif isinstance(task_state, task_states.TaskDone):
                 self._action_server.set_succeeded(True)
                 self._task = None
             else:
-                assert isinstance(task_state, TaskRunning)
+                assert isinstance(task_state, task_states.TaskRunning)
                 return task_request[1:]
         # No action to take return a nop
-        return (NopCommand(),)
+        return (task_commands.NopCommand(),)
 
 if __name__ == '__main__':
     rospy.init_node('motion_planner')
