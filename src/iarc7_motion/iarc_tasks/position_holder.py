@@ -14,8 +14,7 @@ from nav_msgs.msg import Odometry
 class PositionHolder():
     def __init__(self, x=None, y=None):
         update_rate = rospy.get_param('~update_rate', False)
-        #self._update_period = 1.0/update_rate
-        self._update_period = 0.1
+        self._update_period = 1.0/update_rate
         self._lock = threading.RLock()
         self._odometry = None
         self._hold_x = x
@@ -38,6 +37,9 @@ class PositionHolder():
                                                                           z_velocity=z_velocity)
             else:
                 rospy.logerr('get_xy_hold_response called before odometry published')
+                response = TwistStamped()
+                response.header.stamp = rospy.Time.now()
+                response.header.frame_id = 'level_quad'
 
             return response
 
@@ -49,6 +51,8 @@ class PositionHolder():
                     self._hold_x = odometry.pose.pose.position.x
                 if self._hold_y is None:
                     self._hold_y = odometry.pose.pose.position.y
+            else:
+                rospy.logwarn('Received odometry message with incorrect frame and child frames')
 
     def _calculate_trapezoidal_acceleration(self, distance, speed):
         # Check if we can decelerate in time
@@ -62,7 +66,7 @@ class PositionHolder():
             if speed < self._max_speed:
                 target_acceleration = self._max_acceleration
             else:
-                target_acceleration = 0
+                target_acceleration = 0.0
         else:
             target_acceleration = -self._max_acceleration
 

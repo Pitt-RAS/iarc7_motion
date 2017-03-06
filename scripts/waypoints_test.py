@@ -79,8 +79,6 @@ if __name__ == '__main__':
             velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_vel, max_vel)
         if abs(target[2] - trans[2]) >= 0.02:
             velocity.twist.linear.z = target[2] - trans[2]
-
-        rospy.logerr('vx %s vy %s x %s y %s', velocity.twist.linear.x, velocity.twist.linear.y, trans[0], trans[1])
         
         # Get the yaw (z axis) rotation from the quanternion
         current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
