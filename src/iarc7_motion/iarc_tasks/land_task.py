@@ -93,7 +93,6 @@ class LandTask(AbstractTask):
                     hold_twist = self._path_holder.get_xy_hold_response(transStamped.transform.translation.x,
                                                                         transStamped.transform.translation.y,
                                                                         z_velocity=self._LAND_VELOCITY)
-                    hold_twist.header.frame_id = 'level_quad'
                     return (TaskRunning(), VelocityCommand(hold_twist))
                 else:
                     velocity = TwistStamped()

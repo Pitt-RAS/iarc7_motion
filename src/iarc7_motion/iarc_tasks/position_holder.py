@@ -78,21 +78,20 @@ class PositionHolder():
 
         current_angle = math.atan2(y, x)
 
-        if distance > self._position_tolerance:
+        target_twist = TwistStamped()
+        target_twist.header.stamp = rospy.Time.now()
+        target_twist.header.frame_id = 'level_quad'
 
-            target_twist = TwistStamped()
-            target_twist.header.stamp = rospy.Time.now()
-            target_twist.twist.linear.x = current_twist.twist.linear.x + \
-                                          (target_acceleration * \
-                                           self._update_period * \
-                                           -math.cos(current_angle))
-            target_twist.twist.linear.y = current_twist.twist.linear.y + \
-                                          (target_acceleration * \
-                                           self._update_period * \
-                                           -math.sin(current_angle))
+        if distance > self._position_tolerance:
+            target_twist.twist.linear.x = (current_twist.twist.linear.x
+                                          + (target_acceleration
+                                          *  self._update_period
+                                          * -math.cos(current_angle)))
+            target_twist.twist.linear.y = (current_twist.twist.linear.y
+                                          + (target_acceleration
+                                          * self._update_period
+                                          * -math.sin(current_angle)))
         else:
-            target_twist = TwistStamped()
-            target_twist.header.stamp = rospy.Time.now()
             target_twist.twist.linear.x = 0.0
             target_twist.twist.linear.y = 0.0
             rospy.logdebug('tolerance hit')
