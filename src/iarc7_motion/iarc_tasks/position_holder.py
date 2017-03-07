@@ -47,7 +47,8 @@ class PositionHolder():
 
     def _current_velocity_callback(self, odometry):
         with self._lock:
-            if odometry.header.frame_id == 'map' and odometry.child_frame_id == 'level_quad':
+            if (odometry.header.frame_id == 'map' 
+                and odometry.child_frame_id == 'level_quad'):
                 self._odometry = odometry
                 if self._hold_x is None:
                     self._hold_x = odometry.pose.pose.position.x
@@ -58,22 +59,32 @@ class PositionHolder():
                 if self._last_vel_y is None:
                     self._last_vel_y = odometry.twist.twist.linear.y
                 if self._last_speed is None:
-                    self._last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2)
+                    self._last_speed = (
+                        math.sqrt(odometry.twist.twist.linear.x**2 
+                                  + odometry.twist.twist.linear.y**2))
             else:
                 rospy.logwarn('Received odometry message with incorrect frame and child frames')
 
-    def _calculate_trapezoidal_acceleration(self, distance, speed, speed_towards_target):
-        
+    def _calculate_trapezoidal_acceleration(self, x, y, distance):
+        try:
+            # Compute a dot product to find our current speed towards a target
+            # The z term can be discarded since we aren't concerned with the z velocity
+            speed_towards_target = ((self._last_vel_x * x + self._last_vel_y * y)
+                                    / self._last_speed)
+        except ZeroDivisionError:
+            # Last speed was zero therefore the last speed to the target was 0
+            speed_towards_target = 0
+
         if speed_towards_target > 0:
             # Check if we can decelerate in time
             try:
-                target_acceleration = (speed**2)/(2*distance)
+                target_acceleration = (self._last_speed**2)/(2*distance)
             except ZeroDivisionError:
                 # We are at the target point, no need to accelerate anywhere
                 return 0.0
 
             if target_acceleration < self._max_acceleration:
-                if speed < self._max_speed:
+                if self._last_speed < self._max_speed:
                     target_acceleration = self._max_acceleration
                 else:
                     target_acceleration = 0.0
@@ -83,26 +94,17 @@ class PositionHolder():
             return target_acceleration
         else:
             # speed is less than zero or zero
-            if speed < self._max_speed:
+            if self._last_speed < self._max_speed:
                 return self._max_acceleration
             else:
                 return 0.0
 
     def _get_next_acceleration_target_trapezoidal(self, x, y, z_velocity=None):
-        # calculate current straight line velocity
-        last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2)
-
-        try:
-            speed_towards_target = ((self._last_vel_x * x + self._last_vel_y * y)
-                                    / last_speed)
-        except ZeroDivisionError:
-            # Last speed was zero therefore the last speed to the target was 0
-            speed_towards_target = 0
-
         # calculate straight line distance
         distance = math.sqrt(x**2 + y**2)
 
-        target_acceleration = self._calculate_trapezoidal_acceleration(distance, last_speed, speed_towards_target)
+        target_acceleration = self._calculate_trapezoidal_acceleration(x, y,
+                                                              distance)
 
         current_angle = math.atan2(y, x)
 
@@ -111,11 +113,11 @@ class PositionHolder():
         target_twist.header.frame_id = 'level_quad'
 
         if distance > self._position_tolerance:
-            target_twist.twist.linear.x = ((last_speed
+            target_twist.twist.linear.x = ((self._last_speed
                                           + (target_acceleration
                                           *  self._update_period))
                                           * math.cos(current_angle))
-            target_twist.twist.linear.y = ((last_speed
+            target_twist.twist.linear.y = ((self._last_speed
                                           + (target_acceleration
                                           * self._update_period))
                                           * math.sin(current_angle))
@@ -126,8 +128,11 @@ class PositionHolder():
 
         self._last_vel_x = target_twist.twist.linear.x
         self._last_vel_y = target_twist.twist.linear.y
+        self._last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2)
 
-        rospy.logdebug('ta %s current angle %s', target_acceleration, current_angle)
+        rospy.logdebug('ta %s current angle %s',
+                        target_acceleration,
+                        current_angle)
         rospy.logdebug('dx %s dy %s dvx %s dvy %s vx %s vy %s', x, y,
          target_acceleration * self._update_period * -math.cos(current_angle),
          target_acceleration * self._update_period * -math.sin(current_angle),
