@@ -70,7 +70,7 @@ class PositionHolder():
             # Compute a dot product to find our current speed towards a target
             # The z term can be discarded since we aren't concerned with the z velocity
             speed_towards_target = ((self._last_vel_x * x + self._last_vel_y * y)
-                                    / self._last_speed)
+                                    / distance)
         except ZeroDivisionError:
             # Last speed was zero therefore the last speed to the target was 0
             speed_towards_target = 0
@@ -78,7 +78,7 @@ class PositionHolder():
         if speed_towards_target > 0:
             # Check if we can decelerate in time
             try:
-                target_acceleration = (self._last_speed**2)/(2*distance)
+                target_acceleration = (speed_towards_target**2)/(2*distance)
             except ZeroDivisionError:
                 # We are at the target point, no need to accelerate anywhere
                 return 0.0
@@ -105,7 +105,6 @@ class PositionHolder():
 
         target_acceleration = self._calculate_trapezoidal_acceleration(x, y,
                                                               distance)
-
         current_angle = math.atan2(y, x)
 
         target_twist = TwistStamped()
