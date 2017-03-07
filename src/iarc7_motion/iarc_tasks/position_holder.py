@@ -78,20 +78,19 @@ class PositionHolder():
         if speed_towards_target > 0:
             # Check if we can decelerate in time
             try:
-                target_acceleration = (speed_towards_target**2)/(2*distance)
+                required_deceleration = (speed_towards_target**2)/(2*distance)
             except ZeroDivisionError:
                 # We are at the target point, no need to accelerate anywhere
                 return 0.0
 
-            if target_acceleration < self._max_acceleration:
+            if required_deceleration < self._max_acceleration:
                 if self._last_speed < self._max_speed:
-                    target_acceleration = self._max_acceleration
+                    return self._max_acceleration
                 else:
-                    target_acceleration = 0.0
+                    return 0.0
             else:
-                target_acceleration = -self._max_acceleration
+                return -self._max_acceleration
 
-            return target_acceleration
         else:
             # speed is less than zero or zero
             if self._last_speed < self._max_speed:
