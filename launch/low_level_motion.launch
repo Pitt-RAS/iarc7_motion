@@ -1,9 +1,13 @@
 <launch>
     <arg name="platform" default="0.05" />
+    <arg name="bond_id_namespace" default="safety_bonds" />
 
     <node name="low_level_motion_controller" pkg="iarc7_motion"
         type="low_level_motion_controller">
         <rosparam command="load"
             file="$(find iarc7_motion)/param/low_level_motion_$(arg platform).yaml" />
     </node>
+
+    <param name="$(arg bond_id_namespace)/low_level_motion/form_bond"
+        value="true" />
 </launch>
