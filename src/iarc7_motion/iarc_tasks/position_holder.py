@@ -25,15 +25,17 @@ class PositionHolder():
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
                                               self._current_velocity_callback)
+        self._last_vel_x = None
+        self._last_vel_y = None
+        self._last_speed = None
 
-    def get_xy_hold_response(self, current_x, current_y, z_velocity=None):
+    def get_xy_hold_response(self, z_velocity=None):
         with self._lock:
             if self._odometry is not None:
-                delta_x = current_x - self._hold_x
-                delta_y = current_y - self._hold_y
+                delta_x = self._hold_x - self._odometry.pose.pose.position.x
+                delta_y = self._hold_y - self._odometry.pose.pose.position.y
                 response = self._get_next_acceleration_target_trapezoidal(delta_x,
                                                                           delta_y,
-                                                                          self._odometry.twist,
                                                                           z_velocity=z_velocity)
             else:
                 rospy.logerr('get_xy_hold_response called before odometry published')
@@ -51,34 +53,56 @@ class PositionHolder():
                     self._hold_x = odometry.pose.pose.position.x
                 if self._hold_y is None:
                     self._hold_y = odometry.pose.pose.position.y
+                if self._last_vel_x is None:
+                    self._last_vel_x = odometry.twist.twist.linear.x
+                if self._last_vel_y is None:
+                    self._last_vel_y = odometry.twist.twist.linear.y
+                if self._last_speed is None:
+                    self._last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2)
             else:
                 rospy.logwarn('Received odometry message with incorrect frame and child frames')
 
-    def _calculate_trapezoidal_acceleration(self, distance, speed):
-        # Check if we can decelerate in time
-        try:
-            target_acceleration = (speed**2)/(2*distance)
-        except ZeroDivisionError:
-            # We are at the target point, no need to accelerate anywhere
-            return 0.0
+    def _calculate_trapezoidal_acceleration(self, distance, speed, speed_towards_target):
+        
+        if speed_towards_target > 0:
+            # Check if we can decelerate in time
+            try:
+                target_acceleration = (speed**2)/(2*distance)
+            except ZeroDivisionError:
+                # We are at the target point, no need to accelerate anywhere
+                return 0.0
 
-        if target_acceleration < self._max_acceleration:
-            if speed < self._max_speed:
-                target_acceleration = self._max_acceleration
+            if target_acceleration < self._max_acceleration:
+                if speed < self._max_speed:
+                    target_acceleration = self._max_acceleration
+                else:
+                    target_acceleration = 0.0
             else:
-                target_acceleration = 0.0
+                target_acceleration = -self._max_acceleration
+
+            return target_acceleration
         else:
-            target_acceleration = -self._max_acceleration
+            # speed is less than zero or zero
+            if speed < self._max_speed:
+                return self._max_acceleration
+            else:
+                return 0.0
 
-        return target_acceleration
-
-    def _get_next_acceleration_target_trapezoidal(self, x, y, current_twist, z_velocity=None):
+    def _get_next_acceleration_target_trapezoidal(self, x, y, z_velocity=None):
         # calculate current straight line velocity
-        speed = math.sqrt(current_twist.twist.linear.x**2 + current_twist.twist.linear.y**2)
+        last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2)
+
+        try:
+            speed_towards_target = ((self._last_vel_x * x + self._last_vel_y * y)
+                                    / last_speed)
+        except ZeroDivisionError:
+            # Last speed was zero therefore the last speed to the target was 0
+            speed_towards_target = 0
+
         # calculate straight line distance
         distance = math.sqrt(x**2 + y**2)
 
-        target_acceleration = self._calculate_trapezoidal_acceleration(distance, speed)
+        target_acceleration = self._calculate_trapezoidal_acceleration(distance, last_speed, speed_towards_target)
 
         current_angle = math.atan2(y, x)
 
@@ -87,18 +111,21 @@ class PositionHolder():
         target_twist.header.frame_id = 'level_quad'
 
         if distance > self._position_tolerance:
-            target_twist.twist.linear.x = (current_twist.twist.linear.x
+            target_twist.twist.linear.x = ((last_speed
                                           + (target_acceleration
-                                          *  self._update_period
-                                          * -math.cos(current_angle)))
-            target_twist.twist.linear.y = (current_twist.twist.linear.y
+                                          *  self._update_period))
+                                          * math.cos(current_angle))
+            target_twist.twist.linear.y = ((last_speed
                                           + (target_acceleration
-                                          * self._update_period
-                                          * -math.sin(current_angle)))
+                                          * self._update_period))
+                                          * math.sin(current_angle))
         else:
             target_twist.twist.linear.x = 0.0
             target_twist.twist.linear.y = 0.0
             rospy.logdebug('tolerance hit')
+
+        self._last_vel_x = target_twist.twist.linear.x
+        self._last_vel_y = target_twist.twist.linear.y
 
         rospy.logdebug('ta %s current angle %s', target_acceleration, current_angle)
         rospy.logdebug('dx %s dy %s dvx %s dvy %s vx %s vy %s', x, y,

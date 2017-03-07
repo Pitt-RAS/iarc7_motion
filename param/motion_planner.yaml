@@ -18,7 +18,7 @@ min_maneuver_height     : 0.5
 # Update rate in hz
 update_rate             : 10
 # Max acceleration in the xy plane in m/s^2
-max_translation_acceleration: 1.0
+max_translation_acceleration: 0.3
 # Max translation speed in the xy plane in m/s
 max_translation_speed: 1.5
 # Tolerance for a position hold in meters

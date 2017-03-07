@@ -90,9 +90,7 @@ class LandTask(AbstractTask):
             else:
                 # Check if we are above maneuver height
                 if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                    hold_twist = self._path_holder.get_xy_hold_response(transStamped.transform.translation.x,
-                                                                        transStamped.transform.translation.y,
-                                                                        z_velocity=self._LAND_VELOCITY)
+                    hold_twist = self._path_holder.get_xy_hold_response(z_velocity=self._LAND_VELOCITY)
                     return (TaskRunning(), VelocityCommand(hold_twist))
                 else:
                     velocity = TwistStamped()
