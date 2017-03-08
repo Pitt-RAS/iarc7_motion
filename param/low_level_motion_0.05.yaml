@@ -21,7 +21,7 @@ roll_accumulator_min: 0.0
 
 throttle_max      : 1.0
 throttle_min      : 0.0
-throttle_max_rate : 200.0
+throttle_max_rate : 2.0
 
 pitch_max         : 0.25
 pitch_min         : -0.25
