@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   iarc7_msgs
   iarc7_safety
+  nav_msgs
   roscpp
   tf2
   tf2_ros

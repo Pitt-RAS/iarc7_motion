@@ -21,6 +21,7 @@
 #include "geometry_msgs/Vector3Stamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
+#include "nav_msgs/Odometry.h"
 
 namespace Iarc7Motion
 {
@@ -34,9 +35,9 @@ namespace Iarc7Motion
         QuadVelocityController(double thrust_pid[5],
                                double pitch_pid[5],
                                double roll_pid[5],
-                               double yaw_pid[5],
                                double hover_throttle,
-                               double expected_update_frequency);
+                               ros::NodeHandle& nh,
+                               ros::NodeHandle& private_nh);
 
         ~QuadVelocityController() = default;
 
@@ -67,61 +68,77 @@ namespace Iarc7Motion
                 const ros::Time& time,
                 const ros::Duration& timeout) const;
 
-        /// Waits for the transform to come in at the requested time, returns true if velocities
-        /// are valid.
-        ///
-        /// This must receive two transforms within the timeout period to
-        /// consider the velocity valid.
+        /// Blocks waiting for a message to come in at the requested time,
+        /// returns true if velocities are valid.  The returned velocity is in
+        /// the level_quad frame.
         bool __attribute__((warn_unused_result)) getVelocityAtTime(
-            geometry_msgs::Twist& return_velocities,
-            const ros::Time& time);
+                geometry_msgs::Vector3& velocity,
+                const ros::Time& time,
+                const ros::Duration& timeout);
 
-        /// Returns a twist representing the velocity extrapolated from
-        /// transform1 and transform2
-        static geometry_msgs::Twist twistFromTransforms(
-                const geometry_msgs::TransformStamped& transform1,
-                const geometry_msgs::TransformStamped& transform2);
+        /// Callback to handle messages on odometry/filtered
+        void odometryCallback(const nav_msgs::Odometry& msg);
 
-        /// Returns the change in yaw between rotation1 and rotation2
+        /// Comparator that compares a message by its timestamp
+        template<class MsgType>
+        static bool timeVsMsgStampedComparator(const ros::Time& time,
+                                               const MsgType& msg)
+        {
+            return time < msg.header.stamp;
+        }
+
+        /// Looks at setpoint_ and sets our pid controller setpoints accordinly
+        /// based on our current yaw
+        void updatePidSetpoints(double current_yaw);
+
+        /// Blocks while waiting until we have an odometry message at time
+        /// or both before and after time
         ///
-        /// Result is always in the interval (-pi, pi]
-        static double yawChangeBetweenOrientations(
-                const geometry_msgs::Quaternion& rotation1,
-                const geometry_msgs::Quaternion& rotation2);
+        /// Returns false if the operation times out or we get a message after
+        /// time but not before time
+        ///
+        /// Precondition: odometry_msg_queue_ must contain a message with
+        /// msg.header.stamp < time
+        ///
+        /// Postcondition: odometry_msg_queue_ will contain a message with
+        /// msg.header.stamp >= time and a message with
+        /// msg.header.stamp <= time
+        bool __attribute__((warn_unused_result)) waitForOdometryAtTime(
+                const ros::Time& time,
+                const ros::Duration& timeout);
 
-        /// Returns the yaw represented by rotation (in the interval [-pi, pi])
-        static double yawFromQuaternion(
-                const geometry_msgs::Quaternion& rotation);
+        double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
-        // Used to store the transform buffer, required for tf2
-        tf2_ros::Buffer tfBuffer_;
-        // Used to store the transform listener, required for tf2
-        tf2_ros::TransformListener tfListener_;
-
-        // The four PID controllers
+        // The three PID controllers
         PidController throttle_pid_;
         PidController pitch_pid_;
         PidController roll_pid_;
-        PidController yaw_pid_;
 
-        // Holds the last transform received to calculate velocities
-        geometry_msgs::TransformStamped last_transform_stamped_;
+        // TF listener objects
+        tf2_ros::Buffer tfBuffer_;
+        const tf2_ros::TransformListener tfListener_;
 
-        // Makes sure that we have a lastTransformStamped before returning a
-        // valid velocity
-        bool have_last_transform_;
+        // The subscriber for /odometry/filtered
+        const ros::Subscriber odometry_subscriber_;
+
+        // Queue of received odometry messages
+        std::vector<nav_msgs::Odometry> odometry_msg_queue_;
+
+        // The current setpoint
+        geometry_msgs::Twist setpoint_;
 
         // A fudge feed forward value used for more stable hovering
         double hover_throttle_;
 
-        // The expected frequency at which we update the control loop
-        const double expected_update_frequency_;
+        // Last time an update was successful
+        ros::Time last_update_time_;
 
-        static constexpr double INITIAL_TRANSFORM_WAIT_SECONDS{10.0};
-        static constexpr double MAX_TRANSFORM_WAIT_SECONDS{1.0};
-        static constexpr double MAX_TRANSFORM_DIFFERENCE_SECONDS{0.3};
+        // Max allowed timeout waiting for first velocity and transform
+        const ros::Duration max_initial_wait_;
+
+        // Max allowed timeout waiting for velocities and transforms
+        const ros::Duration max_wait_;
     };
-
 }
 
 #endif // QUAD_VELOCITY_CONTROLLER_H
