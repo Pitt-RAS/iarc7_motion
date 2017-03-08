@@ -19,12 +19,6 @@ roll_d: 0.0
 roll_accumulator_max: 2.0
 roll_accumulator_min: -2.0
 
-yaw_p: -1.0
-yaw_i: 0.0
-yaw_d: 0.0
-yaw_accumulator_max: 0.0
-yaw_accumulator_min: 0.0
-
 throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 1000.0
@@ -42,3 +36,5 @@ yaw_min           : -3.5
 yaw_max_rate      : 1000.0
 
 update_frequency: 60.0
+max_initial_wait_seconds: 10.0
+max_wait_seconds: 0.1
