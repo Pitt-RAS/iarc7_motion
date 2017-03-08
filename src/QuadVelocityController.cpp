@@ -12,6 +12,11 @@
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
 
+// ROS Headers
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
 // ROS message headers
 
 using namespace Iarc7Motion;
@@ -158,6 +163,9 @@ bool QuadVelocityController::waitUntilReady()
                        transform,
                        ros::Time(0),
                        ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS));
+
+    last_transform_stamped_ = transform;
+
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
@@ -194,7 +202,7 @@ bool QuadVelocityController::getTransformAtTime(
             if (tfBuffer_.canTransform("map", "quad", time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("map", "quad", time);
+                transform = tfBuffer_.lookupTransform("map", "level_quad", time);
                 return true;
             }
 
@@ -276,8 +284,8 @@ bool QuadVelocityController::getVelocityAtTime(
         return false;
     }
 
-    return_velocities = twistFromTransforms(transform_stamped,
-                                            last_transform_stamped_);
+    return_velocities = twistFromTransforms(last_transform_stamped_,
+                                            transform_stamped);
 
     // Store the old transform
     last_transform_stamped_ = transform_stamped;
@@ -356,8 +364,14 @@ double QuadVelocityController::yawChangeBetweenOrientations(
 double QuadVelocityController::yawFromQuaternion(
         const geometry_msgs::Quaternion& rotation)
 {
-    double ysqr = std::pow(rotation.y, 2);
-    double t3 = 2.0 * (rotation.w * rotation.z + rotation.x * rotation.y);
-    double t4 = 1.0 - 2.0 * (ysqr + std::pow(rotation.z, 2));
-    return std::atan2(t3, t4);
+    tf2::Quaternion quaternion;
+    tf2::convert(rotation, quaternion);
+    
+    tf2::Matrix3x3 matrix;
+    matrix.setRotation(quaternion);
+
+    double y, p, r;
+    matrix.getEulerYPR(y, p, r);
+
+    return y;
 }

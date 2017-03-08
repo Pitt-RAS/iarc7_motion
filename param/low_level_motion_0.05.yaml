@@ -25,7 +25,7 @@ yaw_d: 0.0
 yaw_accumulator_max: 0.0
 yaw_accumulator_min: 0.0
 
-throttle_max      : 100.0
+throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 200.0
 
