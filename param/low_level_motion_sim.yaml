@@ -7,17 +7,17 @@ throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 hover_throttle: 0.58
 
-pitch_p: -0.3
-pitch_i: 0.0
+pitch_p: -0.4
+pitch_i: -0.15
 pitch_d: 0.0
-pitch_accumulator_max: 0.0
-pitch_accumulator_min: 0.0
+pitch_accumulator_max: 2.0
+pitch_accumulator_min: -2.0
 
-roll_p: -0.3
-roll_i: 0.0
+roll_p: -0.4
+roll_i: -0.15
 roll_d: 0.0
-roll_accumulator_max: 0.0
-roll_accumulator_min: 0.0
+roll_accumulator_max: 2.0
+roll_accumulator_min: -2.0
 
 yaw_p: -1.0
 yaw_i: 0.0
