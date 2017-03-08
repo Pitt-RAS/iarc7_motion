@@ -163,6 +163,9 @@ bool QuadVelocityController::waitUntilReady()
                        transform,
                        ros::Time(0),
                        ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS));
+
+    last_transform_stamped_ = transform;
+
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
@@ -365,9 +368,10 @@ double QuadVelocityController::yawFromQuaternion(
     tf2::convert(rotation, quaternion);
     
     tf2::Matrix3x3 matrix;
-    matrix.getRotation(quaternion);
+    matrix.setRotation(quaternion);
 
-    double r, p, y;
-    matrix.getRPY(r, p, y);
+    double y, p, r;
+    matrix.getEulerYPR(y, p, r);
+
     return y;
 }
