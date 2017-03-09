@@ -5,7 +5,7 @@ throttle_i: 0.05
 throttle_d: 0.00
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
-hover_throttle: 0.58
+hover_throttle: 0.55
 
 pitch_p: -0.4
 pitch_i: -0.15
@@ -19,22 +19,16 @@ roll_d: 0.0
 roll_accumulator_max: 2.0
 roll_accumulator_min: -2.0
 
-yaw_p: -1.0
-yaw_i: 0.0
-yaw_d: 0.0
-yaw_accumulator_max: 0.0
-yaw_accumulator_min: 0.0
-
 throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 1000.0
 
-pitch_max         : 3.5
-pitch_min         : -3.5
+pitch_max         : 0.5
+pitch_min         : -0.5
 pitch_max_rate    : 1000.0
 
-roll_max          : 3.5
-roll_min          : -3.5
+roll_max          : 0.5
+roll_min          : -0.5
 roll_max_rate     : 1000.0
 
 yaw_max           : 3.5
@@ -42,3 +36,5 @@ yaw_min           : -3.5
 yaw_max_rate      : 1000.0
 
 update_frequency: 60.0
+startup_timeout: 10.0
+update_timeout: 0.1

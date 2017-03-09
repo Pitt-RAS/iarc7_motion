@@ -143,9 +143,9 @@ int main(int argc, char **argv)
     QuadVelocityController quadController(throttle_pid,
                                           pitch_pid,
                                           roll_pid,
-                                          yaw_pid,
                                           hover_throttle,
-                                          update_frequency);
+                                          nh,
+                                          private_nh);
     if (!quadController.waitUntilReady())
     {
         ROS_ERROR("Failed during initialization of QuadVelocityController");

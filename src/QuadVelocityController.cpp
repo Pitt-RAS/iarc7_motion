@@ -21,25 +21,39 @@
 
 using namespace Iarc7Motion;
 
+template<typename T>
+static T getParam(ros::NodeHandle& nh, const std::string& name)
+{
+    T val;
+    ROS_ASSERT_MSG(nh.getParam(name, val),
+                   "Failed to retrieve parameter: %s",
+                   name.c_str());
+    return val;
+}
+
 // Create QuadVelocityController, copy PID settings, initialize all other variables
 QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
-                                               double yaw_pid[5],
                                                double hover_throttle,
-                                               double expected_update_frequency) :
-tfBuffer_(),
-tfListener_(tfBuffer_),
+                                               ros::NodeHandle& nh,
+                                               ros::NodeHandle& private_nh) :
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
-yaw_pid_(yaw_pid[0], yaw_pid[1], yaw_pid[2], yaw_pid[3], yaw_pid[4]),
-last_transform_stamped_(),
-have_last_transform_(false),
+tfBuffer_(),
+tfListener_(tfBuffer_),
+odometry_subscriber_(nh.subscribe(
+                         "odometry/filtered",
+                         100,
+                         &QuadVelocityController::odometryCallback,
+                         this)),
+odometry_msg_queue_(),
+setpoint_(),
 hover_throttle_(hover_throttle),
-expected_update_frequency_(expected_update_frequency)
+startup_timeout_(getParam<double>(private_nh, "startup_timeout")),
+update_timeout_(getParam<double>(private_nh, "update_timeout"))
 {
-
 }
 
 // Take in a target velocity that does not take into account the quads current heading
@@ -47,24 +61,7 @@ expected_update_frequency_(expected_update_frequency)
 // Set the PID's set points accordingly
 void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 {
-    // Throttle and yaw_pid need no correction.
-    // Remember these are velocities.
-    throttle_pid_.setSetpoint(twist.linear.z);
-    yaw_pid_.setSetpoint(twist.angular.z);
-
-    double last_yaw
-        = yawFromQuaternion(last_transform_stamped_.transform.rotation);
-
-    // Pitch and roll velocities are transformed according to the last_yaw
-    // angle because the incoming target velocities do not take the current yaw
-    // into account
-    pitch_pid_.setSetpoint(twist.linear.x * std::cos(last_yaw)
-                         + twist.linear.y * std::sin(last_yaw));
-
-    // Note: Roll is inverted because a positive y velocity means a negative
-    // roll by the right hand rule
-    roll_pid_.setSetpoint(-(twist.linear.x * -std::sin(last_yaw)
-                          + twist.linear.y * std::cos(last_yaw)));
+    setpoint_ = twist;
 }
 
 // Main update, runs all PID calculations and returns a desired uav_command
@@ -72,13 +69,32 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 bool QuadVelocityController::update(const ros::Time& time,
                                     iarc7_msgs::OrientationThrottleStamped& uav_command)
 {
+    if (time < last_update_time_) {
+        ROS_ERROR("Tried to update QuadVelocityController with time before last update");
+        return false;
+    }
+
     // Get the current velocity of the quad.
-    geometry_msgs::Twist velocity;
-    bool success = getVelocityAtTime(velocity, time);
+    geometry_msgs::Vector3 velocity;
+    bool success = getVelocityAtTime(velocity, time, update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
         return false;
     }
+
+    // Get the current transform (rotation) of the quad
+    geometry_msgs::TransformStamped transform;
+    success = getTransformAtTime(transform, time, update_timeout_);
+    if (!success) {
+        ROS_WARN("Failed to get current transform in QuadVelocityController::update");
+        return false;
+    }
+
+    // Get current yaw from the transform
+    double current_yaw = yawFromQuaternion(transform.transform.rotation);
+
+    // Update setpoints on PID controllers
+    updatePidSetpoints(current_yaw);
 
     // Update all the PID loops
 
@@ -88,33 +104,31 @@ bool QuadVelocityController::update(const ros::Time& time,
     double throttle_output;
     double pitch_output;
     double roll_output;
-    double yaw_output;
 
     // Update throttle PID loop
-    success = throttle_pid_.update(velocity.linear.z, time, throttle_output);
+    success = throttle_pid_.update(velocity.z, time, throttle_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
     }
 
+    // Calculate local frame velocities
+    double local_x_velocity = std::cos(current_yaw) * velocity.x
+                            + std::sin(current_yaw) * velocity.y;
+    double local_y_velocity = -std::sin(current_yaw) * velocity.x
+                            +  std::cos(current_yaw) * velocity.y;
+
     // Update pitch PID loop
-    success = pitch_pid_.update(velocity.linear.x, time, pitch_output);
+    success = pitch_pid_.update(local_x_velocity, time, pitch_output);
     if (!success) {
         ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update roll PID loop
-    success = roll_pid_.update(-velocity.linear.y, time, roll_output);
+    success = roll_pid_.update(-local_y_velocity, time, roll_output);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
-        return false;
-    }
-
-    // Update yaw PID loop
-    success = yaw_pid_.update(velocity.angular.z, time, yaw_output);
-    if (!success) {
-        ROS_WARN("Yaw PID update failed in QuadVelocityController::update");
         return false;
     }
 
@@ -124,12 +138,16 @@ bool QuadVelocityController::update(const ros::Time& time,
     //based on roll and pitch angles we calculate additional throttle to match the level hover_throttle_
     tilt_throttle = hover_throttle_*(1-cos(roll_output)*cos(pitch_output));
 
-    // Simple feedforward using a fixed hover_throttle_ to avoid excessive oscillations from the
-    // PID's I term compensating for there needing to be an  average throttle value at 0 velocity in the z axis.
+    // Simple feedforward using a fixed hover_throttle_ to avoid excessive
+    // oscillations from the PID's I term compensating for there needing to be
+    // an average throttle value at 0 velocity in the z axis.
     uav_command.throttle = throttle_output + hover_throttle_ + tilt_throttle;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
-    uav_command.data.yaw = yaw_output;
+
+    // Yaw rate needs no correction because the input and output are both
+    // velocities
+    uav_command.data.yaw = -setpoint_.angular.z;
 
     // Check that the PID loops did not return invalid values before returning
     if (!std::isfinite(uav_command.throttle)
@@ -142,36 +160,53 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Print the velocity and throttle information
-    ROS_INFO("Vz: %f Vx: %f Vy: %f Vyaw: %f",
-             velocity.linear.z,
-             velocity.linear.x,
-             velocity.linear.y,
-             velocity.angular.z);
+    ROS_INFO("Vz: %f Vx: %f Vy: %f",
+             velocity.z,
+             velocity.x,
+             velocity.y);
     ROS_INFO("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
              uav_command.throttle,
              uav_command.data.pitch,
              uav_command.data.roll,
              uav_command.data.yaw);
 
+    last_update_time_ = time;
     return true;
 }
 
 bool QuadVelocityController::waitUntilReady()
 {
-    geometry_msgs::TransformStamped transform;
-    bool success = getTransformAtTime(
-                       transform,
-                       ros::Time(0),
-                       ros::Duration(INITIAL_TRANSFORM_WAIT_SECONDS));
+    const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && odometry_msg_queue_.empty()
+           && ros::Time::now() < start_time + startup_timeout_) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
 
-    last_transform_stamped_ = transform;
+    if (odometry_msg_queue_.empty()) {
+        ROS_ERROR("Failed to fetch initial velocity");
+        return false;
+    }
+
+    geometry_msgs::TransformStamped transform;
+    bool success = getTransformAtTime(transform,
+                                      ros::Time(0),
+                                      startup_timeout_);
 
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
+        return false;
     }
-
-    return success;
+    else
+    {
+        // Mark the last update time as 1ns later than the odometry message,
+        // because we should always have a message older than the last update
+        last_update_time_ = odometry_msg_queue_.front().header.stamp
+                          + ros::Duration(0, 1);
+        return true;
+    }
 }
 
 // Get a valid transform, blocks until the transform is received or
@@ -199,10 +234,10 @@ bool QuadVelocityController::getTransformAtTime(
             }
 
             // Check if the transform from map to quad can be made right now
-            if (tfBuffer_.canTransform("map", "quad", time))
+            if (tfBuffer_.canTransform("level_quad", "quad", time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("map", "quad", time);
+                transform = tfBuffer_.lookupTransform("level_quad", "quad", time);
                 return true;
             }
 
@@ -215,150 +250,118 @@ bool QuadVelocityController::getTransformAtTime(
     // Catch any exceptions that might happen while transforming
     catch (tf2::TransformException& ex)
     {
-        ROS_ERROR("Exception transforming map to level_quad: %s", ex.what());
+        ROS_ERROR("Exception transforming level_quad to quad: %s", ex.what());
     }
 
     ROS_ERROR("Exception or ros::ok was false");
     return false;
 }
 
-// Gets the velocity from the transformation information
-// Blocks while waiting for a new transform to calculate the velocity with
 bool QuadVelocityController::getVelocityAtTime(
-        geometry_msgs::Twist& return_velocities,
-        const ros::Time& time)
+        geometry_msgs::Vector3& velocity,
+        const ros::Time& time,
+        const ros::Duration& timeout)
 {
-    const ros::Duration timeout = ros::Duration(MAX_TRANSFORM_WAIT_SECONDS);
-
-    // Check if the quad velocity controller has not been run once
-    if (!have_last_transform_)
+    // Wait until there's a message with stamp >= time
+    if (!waitForOdometryAtTime(time, timeout))
     {
-        ros::Time last_time = time
-                            - ros::Duration(1.0 / expected_update_frequency_);
-
-        // Get a brand new transform
-        // Blocks until able to transform at the requested time
-        bool fetched_transform = getTransformAtTime(last_transform_stamped_,
-                                                    last_time,
-                                                    timeout);
-
-        // Check if the call failed
-        if (!fetched_transform)
-        {
-            ROS_ERROR("Failed to fetch first transform in QuadVelocityController");
-            have_last_transform_ = false;
-            return false;
-        }
-
-        have_last_transform_ = true;
-    }
-
-    // Get a brand new transform
-    // Blocks until able to transform at the requested time
-    geometry_msgs::TransformStamped transform_stamped;
-    bool fetched_transform = getTransformAtTime(transform_stamped,
-                                                time,
-                                                timeout);
-
-    // Check if the call failed
-    if (!fetched_transform)
-    {
-        ROS_ERROR("Failed to fetch new transform in QuadVelocityController");
-        have_last_transform_ = false;
+        ROS_ERROR("Timed out waiting for odometry message in getVelocityAtTime");
         return false;
     }
 
-    // Make sure the difference between transforms isn't too much
-    // Calculate the lastest time between transforms that is allowed.
-    ros::Time latest_time_allowed = last_transform_stamped_.header.stamp
-                + ros::Duration(MAX_TRANSFORM_DIFFERENCE_SECONDS);
-    // Make the sure the transform didn't come after the last time
-    // that was acceptable.
-    if (transform_stamped.header.stamp > latest_time_allowed)
-    {
-        ROS_ERROR_STREAM(
-            "First available transform came after latest allowed time ("
-         << "transform time: " << transform_stamped.header.stamp << ", "
-         << "latest allowed time: " << latest_time_allowed
-         << ")");
-        return false;
-    }
+    // Get first msg that is >= the requested time
+    std::vector<nav_msgs::Odometry>::iterator geq_msg
+        = std::lower_bound(odometry_msg_queue_.begin(),
+                           odometry_msg_queue_.end(),
+                           time,
+                           &QuadVelocityController::timeVsMsgStampedComparator
+                                <nav_msgs::Odometry>);
 
-    return_velocities = twistFromTransforms(last_transform_stamped_,
-                                            transform_stamped);
+    ROS_ERROR_COND(geq_msg <= odometry_msg_queue_.begin(),
+                   "geq_msg - 1 out of bounds");
+    ROS_ERROR_COND(geq_msg >= odometry_msg_queue_.end(),
+                   "geq_msg out of bounds");
 
-    // Store the old transform
-    last_transform_stamped_ = transform_stamped;
+    // Linear interpolation between next_odom and last_odom
+    const nav_msgs::Odometry& next_odom = *geq_msg;
+    const nav_msgs::Odometry& last_odom = *(geq_msg - 1);
 
+    const geometry_msgs::Vector3& next_vel = next_odom.twist.twist.linear;
+    const geometry_msgs::Vector3& last_vel = last_odom.twist.twist.linear;
+
+    double dt = (next_odom.header.stamp - last_odom.header.stamp).toSec();
+
+    velocity.x = ((time - last_odom.header.stamp).toSec() / dt) * next_vel.x
+               + ((next_odom.header.stamp - time).toSec() / dt) * last_vel.x;
+    velocity.y = ((time - last_odom.header.stamp).toSec() / dt) * next_vel.y
+               + ((next_odom.header.stamp - time).toSec() / dt) * last_vel.y;
+    velocity.z = ((time - last_odom.header.stamp).toSec() / dt) * next_vel.z
+               + ((next_odom.header.stamp - time).toSec() / dt) * last_vel.z;
     return true;
 }
 
-geometry_msgs::Twist QuadVelocityController::twistFromTransforms(
-        const geometry_msgs::TransformStamped& transform1,
-        const geometry_msgs::TransformStamped& transform2)
+void QuadVelocityController::updatePidSetpoints(double current_yaw)
 {
-    geometry_msgs::Twist result;
+    throttle_pid_.setSetpoint(setpoint_.linear.z);
 
-    // Get the time between the two transforms
-    ros::Duration dt = transform2.header.stamp - transform1.header.stamp;
-    double delta_seconds = dt.toSec();
+    // Pitch and roll velocities are transformed according to the last yaw
+    // angle because the incoming target velocities are in the map frame
+    double local_x_velocity = setpoint_.linear.x * std::cos(current_yaw)
+                            + setpoint_.linear.y * std::sin(current_yaw);
+    double local_y_velocity = setpoint_.linear.x * -std::sin(current_yaw)
+                            + setpoint_.linear.y *  std::cos(current_yaw);
 
-    // Calculate world_x and world_y velocities
-    double world_x_vel = (transform2.transform.translation.x
-                        - transform1.transform.translation.x) / delta_seconds;
-    double world_y_vel = (transform2.transform.translation.y
-                        - transform1.transform.translation.y) / delta_seconds;
+    pitch_pid_.setSetpoint(local_x_velocity);
 
-    double current_yaw = yawFromQuaternion(transform2.transform.rotation);
-
-    // Transform the world_x and world_y velocities according to the quads
-    // current heading
-    result.linear.x = world_x_vel * std::cos(current_yaw)
-                    + world_y_vel * std::sin(current_yaw);
-    result.linear.y = world_x_vel * -std::sin(current_yaw)
-                    + world_y_vel * std::cos(current_yaw);
-
-    // Calculate the world_z velocity, no transform is needed
-    result.linear.z = (transform2.transform.translation.z
-                     - transform1.transform.translation.z) / delta_seconds;
-
-    result.angular.z = yawChangeBetweenOrientations(
-                            transform1.transform.rotation,
-                            transform2.transform.rotation)
-                     / delta_seconds;
-
-    return result;
+    // Note: Roll is inverted because a positive y velocity means a negative
+    // roll by the right hand rule
+    roll_pid_.setSetpoint(-local_y_velocity);
 }
 
-double QuadVelocityController::yawChangeBetweenOrientations(
-        const geometry_msgs::Quaternion& rotation1,
-        const geometry_msgs::Quaternion& rotation2)
+bool QuadVelocityController::waitForOdometryAtTime(
+        const ros::Time& time,
+        const ros::Duration& timeout)
 {
-    // Get the yaw (z axis) rotation from the quanternion
-    double current_yaw = yawFromQuaternion(rotation2);
-    double last_yaw = yawFromQuaternion(rotation1);
-
-    // Find the difference in yaw
-    double yaw_difference = current_yaw - last_yaw;
-
-    // The next two if statements handle if the yaw_difference is large
-    //
-    // Assumes that we don't have a yaw_difference more than 2pi. We won't
-    // since we get all the angles from an atan2 which only return -pi to pi
-    //
-    // Also assumes that we won't have a rotation difference more than pi
-    if (yaw_difference > M_PI)
-    {
-        yaw_difference = yaw_difference - 2 * M_PI;
+    if (odometry_msg_queue_.front().header.stamp >= time) {
+        ROS_ERROR("Class invariant false: odometry_msg_queue_ does not contain a message older than the requested time");
+        return false;
     }
 
-    if(yaw_difference < -M_PI)
-    {
-        yaw_difference = yaw_difference + 2 * M_PI;
+    const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && odometry_msg_queue_.back().header.stamp < time
+           && ros::Time::now() < start_time + timeout) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
     }
 
-    // Finally calculate the yaw change
-    return yaw_difference;
+    return (odometry_msg_queue_.back().header.stamp >= time);
+}
+
+void QuadVelocityController::odometryCallback(const nav_msgs::Odometry& msg)
+{
+    if (!odometry_msg_queue_.empty()
+          && msg.header.stamp < odometry_msg_queue_.back().header.stamp) {
+        ROS_ERROR_STREAM("Ignoring odometry message with timestamp of "
+                      << msg.header.stamp
+                      << " because the queue already has a message with stamp "
+                      << odometry_msg_queue_.back().header.stamp);
+        return;
+    }
+
+    odometry_msg_queue_.push_back(msg);
+
+    // Keep only one message older than the last update time
+    std::vector<nav_msgs::Odometry>::const_iterator first_geq_time
+        = std::lower_bound(odometry_msg_queue_.begin(),
+                           odometry_msg_queue_.end(),
+                           last_update_time_,
+                           &QuadVelocityController::timeVsMsgStampedComparator
+                                <nav_msgs::Odometry>);
+    if (first_geq_time - 1 > odometry_msg_queue_.begin()) {
+        odometry_msg_queue_.erase(odometry_msg_queue_.begin(),
+                                  first_geq_time - 1);
+    }
 }
 
 double QuadVelocityController::yawFromQuaternion(
@@ -366,7 +369,7 @@ double QuadVelocityController::yawFromQuaternion(
 {
     tf2::Quaternion quaternion;
     tf2::convert(rotation, quaternion);
-    
+
     tf2::Matrix3x3 matrix;
     matrix.setRotation(quaternion);
 
