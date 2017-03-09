@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 
     // Create the publisher to send the current intended velocity target
     ros::Publisher uav_velocity_target_
-        = nh.advertise<geometry_msgs::TwistStamped>(
+        = nh.advertise<geometry_msgs::Twist>(
                 "cmd_vel", 50);
 
     // Check for empty uav_control_ as per
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
             uav_control_.publish(uav_command);
 
             // Publish the current target velocity
-            //uav_velocity_target_.publish(target_twist);
+            uav_velocity_target_.publish(target_twist.twist);
         }
 
         // Handle all ROS callbacks
