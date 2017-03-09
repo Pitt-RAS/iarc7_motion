@@ -114,9 +114,9 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Calculate local frame velocities
     double local_x_velocity = std::cos(current_yaw) * velocity.x
-                            - std::sin(current_yaw) * velocity.y;
-    double local_y_velocity = std::sin(current_yaw) * velocity.x
-                            - std::cos(current_yaw) * velocity.y;
+                            + std::sin(current_yaw) * velocity.y;
+    double local_y_velocity = -std::sin(current_yaw) * velocity.x
+                            +  std::cos(current_yaw) * velocity.y;
 
     // Update pitch PID loop
     success = pitch_pid_.update(local_x_velocity, time, pitch_output);
@@ -126,7 +126,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Update roll PID loop
-    success = roll_pid_.update(local_y_velocity, time, roll_output);
+    success = roll_pid_.update(-local_y_velocity, time, roll_output);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
         return false;
