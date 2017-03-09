@@ -94,15 +94,15 @@ namespace Iarc7Motion
         /// Blocks while waiting until we have an odometry message at time
         /// or both before and after time
         ///
-        /// Returns false if the operation times out or we get a message after
-        /// time but not before time
+        /// Returns false if the operation times out or the precondition is not
+        /// satisfied
         ///
         /// Precondition: odometry_msg_queue_ must contain a message with
         /// msg.header.stamp < time
         ///
         /// Postcondition: odometry_msg_queue_ will contain a message with
         /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp <= time
+        /// msg.header.stamp < time
         bool __attribute__((warn_unused_result)) waitForOdometryAtTime(
                 const ros::Time& time,
                 const ros::Duration& timeout);
@@ -122,6 +122,9 @@ namespace Iarc7Motion
         const ros::Subscriber odometry_subscriber_;
 
         // Queue of received odometry messages
+        //
+        // This will always (after waitUntilReady is called) contain at least one
+        // velocity older than the last update time
         std::vector<nav_msgs::Odometry> odometry_msg_queue_;
 
         // The current setpoint
@@ -134,10 +137,10 @@ namespace Iarc7Motion
         ros::Time last_update_time_;
 
         // Max allowed timeout waiting for first velocity and transform
-        const ros::Duration max_initial_wait_;
+        const ros::Duration startup_timeout_;
 
         // Max allowed timeout waiting for velocities and transforms
-        const ros::Duration max_wait_;
+        const ros::Duration update_timeout_;
     };
 }
 

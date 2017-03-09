@@ -36,5 +36,5 @@ yaw_min           : -3.5
 yaw_max_rate      : 1000.0
 
 update_frequency: 60.0
-max_initial_wait_seconds: 10.0
-max_wait_seconds: 0.1
+startup_timeout: 10.0
+update_timeout: 0.1

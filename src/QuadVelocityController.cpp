@@ -51,8 +51,8 @@ odometry_subscriber_(nh.subscribe(
 odometry_msg_queue_(),
 setpoint_(),
 hover_throttle_(hover_throttle),
-max_initial_wait_(getParam<double>(private_nh, "max_initial_wait_seconds")),
-max_wait_(getParam<double>(private_nh, "max_wait_seconds"))
+startup_timeout_(getParam<double>(private_nh, "startup_timeout")),
+update_timeout_(getParam<double>(private_nh, "update_timeout"))
 {
 }
 
@@ -76,7 +76,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current velocity of the quad.
     geometry_msgs::Vector3 velocity;
-    bool success = getVelocityAtTime(velocity, time, max_wait_);
+    bool success = getVelocityAtTime(velocity, time, update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -84,7 +84,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
-    success = getTransformAtTime(transform, time, max_wait_);
+    success = getTransformAtTime(transform, time, update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -112,21 +112,21 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
+    // Calculate local frame velocities
+    double local_x_velocity = std::cos(current_yaw) * velocity.x
+                            - std::sin(current_yaw) * velocity.y;
+    double local_y_velocity = std::sin(current_yaw) * velocity.x
+                            - std::cos(current_yaw) * velocity.y;
+
     // Update pitch PID loop
-    success = pitch_pid_.update(std::cos(current_yaw) * velocity.x
-                              - std::sin(current_yaw) * velocity.y,
-                                time,
-                                pitch_output);
+    success = pitch_pid_.update(local_x_velocity, time, pitch_output);
     if (!success) {
         ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update roll PID loop
-    success = roll_pid_.update(std::sin(current_yaw) * velocity.x
-                             - std::cos(current_yaw) * velocity.y,
-                               time,
-                               roll_output);
+    success = roll_pid_.update(local_y_velocity, time, roll_output);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
         return false;
@@ -179,9 +179,9 @@ bool QuadVelocityController::waitUntilReady()
     const ros::Time start_time = ros::Time::now();
     while (ros::ok()
            && odometry_msg_queue_.empty()
-           && ros::Time::now() < start_time + max_initial_wait_) {
+           && ros::Time::now() < start_time + startup_timeout_) {
         ros::spinOnce();
-        ros::Duration(0.001).sleep();
+        ros::Duration(0.005).sleep();
     }
 
     if (odometry_msg_queue_.empty()) {
@@ -192,7 +192,7 @@ bool QuadVelocityController::waitUntilReady()
     geometry_msgs::TransformStamped transform;
     bool success = getTransformAtTime(transform,
                                       ros::Time(0),
-                                      max_initial_wait_);
+                                      startup_timeout_);
 
     if (!success)
     {
@@ -301,13 +301,16 @@ void QuadVelocityController::updatePidSetpoints(double current_yaw)
 
     // Pitch and roll velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
-    pitch_pid_.setSetpoint(setpoint_.linear.x * std::cos(current_yaw)
-                         + setpoint_.linear.y * std::sin(current_yaw));
+    double local_x_velocity = setpoint_.linear.x * std::cos(current_yaw)
+                            + setpoint_.linear.y * std::sin(current_yaw);
+    double local_y_velocity = setpoint_.linear.x * -std::sin(current_yaw)
+                            + setpoint_.linear.y *  std::cos(current_yaw);
+
+    pitch_pid_.setSetpoint(local_x_velocity);
 
     // Note: Roll is inverted because a positive y velocity means a negative
     // roll by the right hand rule
-    roll_pid_.setSetpoint(-(setpoint_.linear.x * -std::sin(current_yaw)
-                          + setpoint_.linear.y * std::cos(current_yaw)));
+    roll_pid_.setSetpoint(-local_y_velocity);
 }
 
 bool QuadVelocityController::waitForOdometryAtTime(
@@ -319,7 +322,7 @@ bool QuadVelocityController::waitForOdometryAtTime(
            && odometry_msg_queue_.back().header.stamp < time
            && ros::Time::now() < start_time + timeout) {
         ros::spinOnce();
-        ros::WallDuration(0.001).sleep();
+        ros::Duration(0.005).sleep();
     }
 
     return (odometry_msg_queue_.back().header.stamp >= time);
@@ -354,7 +357,7 @@ double QuadVelocityController::yawFromQuaternion(
 {
     tf2::Quaternion quaternion;
     tf2::convert(rotation, quaternion);
-    
+
     tf2::Matrix3x3 matrix;
     matrix.setRotation(quaternion);
 
