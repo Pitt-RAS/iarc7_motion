@@ -162,6 +162,11 @@ int main(int argc, char **argv)
         = nh.advertise<iarc7_msgs::OrientationThrottleStamped>(
                 "uav_direction_command", 50);
 
+    // Create the publisher to send the current intended velocity target
+    ros::Publisher uav_velocity_target_
+        = nh.advertise<geometry_msgs::TwistStamped>(
+                "cmd_vel", 50);
+
     // Check for empty uav_control_ as per
     // http://wiki.ros.org/roscpp/Overview/Publishers%20and%20Subscribers
     // section 1
@@ -235,6 +240,9 @@ int main(int argc, char **argv)
 
             // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);
+
+            // Publish the current target velocity
+            //uav_velocity_target_.publish(target_twist);
         }
 
         // Handle all ROS callbacks
