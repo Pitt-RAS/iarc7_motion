@@ -202,7 +202,7 @@ bool QuadVelocityController::getTransformAtTime(
             if (tfBuffer_.canTransform("map", "quad", time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("map", "level_quad", time);
+                transform = tfBuffer_.lookupTransform("map", "quad", time);
                 return true;
             }
 
