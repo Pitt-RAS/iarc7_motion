@@ -271,11 +271,16 @@ bool QuadVelocityController::getVelocityAtTime(
 
     // Get first msg that is >= the requested time
     std::vector<nav_msgs::Odometry>::iterator geq_msg
-        = std::upper_bound(odometry_msg_queue_.begin(),
+        = std::lower_bound(odometry_msg_queue_.begin(),
                            odometry_msg_queue_.end(),
                            time,
                            &QuadVelocityController::timeVsMsgStampedComparator
                                 <nav_msgs::Odometry>);
+
+    ROS_ERROR_COND(geq_msg <= odometry_msg_queue_.begin(),
+                   "geq_msg - 1 out of bounds");
+    ROS_ERROR_COND(geq_msg >= odometry_msg_queue_.end(),
+                   "geq_msg out of bounds");
 
     // Linear interpolation between next_odom and last_odom
     const nav_msgs::Odometry& next_odom = *geq_msg;
@@ -317,6 +322,11 @@ bool QuadVelocityController::waitForOdometryAtTime(
         const ros::Time& time,
         const ros::Duration& timeout)
 {
+    if (odometry_msg_queue_.front().header.stamp >= time) {
+        ROS_ERROR("Class invariant false: odometry_msg_queue_ does not contain a message older than the requested time");
+        return false;
+    }
+
     const ros::Time start_time = ros::Time::now();
     while (ros::ok()
            && odometry_msg_queue_.back().header.stamp < time
@@ -342,14 +352,16 @@ void QuadVelocityController::odometryCallback(const nav_msgs::Odometry& msg)
     odometry_msg_queue_.push_back(msg);
 
     // Keep only one message older than the last update time
-    std::vector<nav_msgs::Odometry>::const_iterator location_to_delete
-        = std::upper_bound(odometry_msg_queue_.begin(),
+    std::vector<nav_msgs::Odometry>::const_iterator first_geq_time
+        = std::lower_bound(odometry_msg_queue_.begin(),
                            odometry_msg_queue_.end(),
                            last_update_time_,
                            &QuadVelocityController::timeVsMsgStampedComparator
                                 <nav_msgs::Odometry>);
-    odometry_msg_queue_.erase(odometry_msg_queue_.begin(),
-                              location_to_delete);
+    if (first_geq_time - 1 > odometry_msg_queue_.begin()) {
+        odometry_msg_queue_.erase(odometry_msg_queue_.begin(),
+                                  first_geq_time - 1);
+    }
 }
 
 double QuadVelocityController::yawFromQuaternion(

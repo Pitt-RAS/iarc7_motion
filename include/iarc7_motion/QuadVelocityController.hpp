@@ -81,10 +81,10 @@ namespace Iarc7Motion
 
         /// Comparator that compares a message by its timestamp
         template<class MsgType>
-        static bool timeVsMsgStampedComparator(const ros::Time& time,
-                                               const MsgType& msg)
+        static bool timeVsMsgStampedComparator(const MsgType& msg,
+                                               const ros::Time& time)
         {
-            return time < msg.header.stamp;
+            return msg.header.stamp < time;
         }
 
         /// Looks at setpoint_ and sets our pid controller setpoints accordinly
