@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 
     // Create the publisher to send the current intended velocity target
     ros::Publisher uav_velocity_target_
-        = nh.advertise<geometry_msgs::Twist>(
+        = nh.advertise<geometry_msgs::TwistStamped>(
                 "cmd_vel", 50);
 
     // Check for empty uav_control_ as per
@@ -227,6 +227,9 @@ int main(int argc, char **argv)
                 accelerationPlanner.getTargetTwist(current_time, target_twist);
             }
 
+            // Publish the current target velocity
+            uav_velocity_target_.publish(target_twist);
+
             // Request the appropriate throttle and angle settings for the desired velocity
             quadController.setTargetVelocity(target_twist.twist);
 
@@ -240,9 +243,6 @@ int main(int argc, char **argv)
 
             // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);
-
-            // Publish the current target velocity
-            uav_velocity_target_.publish(target_twist.twist);
         }
 
         // Handle all ROS callbacks
