@@ -48,7 +48,7 @@ namespace Iarc7Motion
             }
             double C0 = thrust / v_poly / (1 + A_ge * std::exp(-height / d0));
             double discriminant = std::pow(throttle_b, 2) - 4*(throttle_c-C0);
-            return 0.5 * (-1 + std::sqrt(discriminant));
+            return 0.5 * (-throttle_b + std::sqrt(discriminant));
         }
     };
 
