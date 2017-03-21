@@ -7,15 +7,12 @@ throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 
 thrust_model:
-    quadcopter_mass: 1.678
-    A_ge: 0.132650296655
-    d0: 0.495494309272
-    voltage_polynomial: [-1.57654378e+03,
-                         4.89006633e+05,
-                         7.52602249e-06,
-                         -2.45908253e-04]
-    throttle_b: 2.71177316e-03
-    throttle_c: -9.82297860e-03
+    quadcopter_mass: 3
+    A_ge: 0
+    d0: 1
+    voltage_polynomial: [0, 0, 0, 1]
+    throttle_b: 1
+    throttle_c: 0
 
 pitch_p: -0.4
 pitch_i: -0.15
