@@ -101,6 +101,8 @@ int main(int argc, char **argv)
     // Thrust model settings retrieve
     ROS_ASSERT(private_nh.getParam("thrust_model/quadcopter_mass",
                                    thrust_model.quadcopter_mass));
+    ROS_ASSERT(private_nh.getParam("thrust_model/thrust_scale_factor",
+                                   thrust_model.thrust_scale_factor));
     ROS_ASSERT(private_nh.getParam("thrust_model/A_ge", thrust_model.A_ge));
     ROS_ASSERT(private_nh.getParam("thrust_model/d0", thrust_model.d0));
     std::vector<double> voltage_polynomial;

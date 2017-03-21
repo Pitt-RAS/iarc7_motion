@@ -30,6 +30,7 @@ namespace Iarc7Motion
     struct ThrustModel
     {
         double quadcopter_mass;
+        double thrust_scale_factor;
         double A_ge;
         double d0;
         static constexpr const size_t VOLTAGE_POLYNOMIAL_DEGREE = 3;
@@ -40,7 +41,7 @@ namespace Iarc7Motion
         double throttleFromAccel(double accel,
                                  double voltage,
                                  double height) {
-            double thrust = accel * quadcopter_mass;
+            double thrust = accel * quadcopter_mass * thrust_scale_factor;
             double v_poly = 0;
             for (size_t i = 0; i <= VOLTAGE_POLYNOMIAL_DEGREE; i++) {
                 size_t pow = VOLTAGE_POLYNOMIAL_DEGREE - i;
