@@ -73,7 +73,6 @@ int main(int argc, char **argv)
     double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
-    double yaw_pid[5];
     double hover_throttle;
     ThrustModel thrust_model;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
@@ -100,16 +99,9 @@ int main(int argc, char **argv)
     private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
 
-    // Yaw PID settings retrieve
-    private_nh.param("yaw_p", yaw_pid[0], 0.0);
-    private_nh.param("yaw_i", yaw_pid[1], 0.0);
-    private_nh.param("yaw_d", yaw_pid[2], 0.0);
-    private_nh.param("yaw_accumulator_max", yaw_pid[3], 0.0);
-    private_nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
 
     // Throttle setting for hovering, to be added to throttle ouput
     private_nh.param("hover_throttle", hover_throttle, 0.0);
-
     // Thrust model settings retrieve
     private_nh.param("thrust_model/quadcopter_mass",
                      thrust_model.quadcopter_mass,
