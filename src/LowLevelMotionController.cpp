@@ -75,6 +75,7 @@ int main(int argc, char **argv)
     double roll_pid[5];
     double yaw_pid[5];
     double hover_throttle;
+    ThrustModel thrust_model;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
 
@@ -108,6 +109,20 @@ int main(int argc, char **argv)
 
     // Throttle setting for hovering, to be added to throttle ouput
     private_nh.param("hover_throttle", hover_throttle, 0.0);
+
+    // Thrust model settings retrieve
+    private_nh.param("thrust_model/quadcopter_mass",
+                     thrust_model.quadcopter_mass,
+                     0.0);
+    private_nh.param("thrust_model/A_ge", thrust_model.A_ge, 0.0);
+    private_nh.param("thrust_model/d0", thrust_model.d0, 0.0);
+    std::vector<double> voltage_polynomial;
+    private_nh.param("thrust_model/voltage_polynomial", voltage_polynomial);
+    ROS_ASSERT_MSG(voltage_polynomial.size()
+                == ThrustModel::VOLTAGE_POLYNOMIAL_DEGREE,
+                   "Voltage polynomial param is wrong length");
+    private_nh.param("thrust_model/throttle_b", thrust_model.throttle_b, 0.0);
+    private_nh.param("thrust_model/throttle_c", thrust_model.throttle_c, 0.0);
 
     // Throttle Limit settings retrieve
     private_nh.param("throttle_max", max_velocity.linear.z, 0.0);
@@ -144,6 +159,7 @@ int main(int argc, char **argv)
                                           pitch_pid,
                                           roll_pid,
                                           hover_throttle,
+                                          thrust_model,
                                           nh,
                                           private_nh);
     if (!quadController.waitUntilReady())

@@ -26,6 +26,31 @@
 namespace Iarc7Motion
 {
 
+    struct ThrustModel
+    {
+        double quadcopter_mass;
+        double A_ge;
+        double d0;
+        static constexpr const size_t VOLTAGE_POLYNOMIAL_DEGREE = 3;
+        double voltage_polynomial[VOLTAGE_POLYNOMIAL_DEGREE + 1];
+        double throttle_b;
+        double throttle_c;
+
+        double throttleFromAccel(double accel,
+                                 double voltage,
+                                 double height) {
+            double thrust = accel * quadcopter_mass;
+            double v_poly = 0;
+            for (size_t i = 0; i <= VOLTAGE_POLYNOMIAL_DEGREE; i++) {
+                size_t pow = VOLTAGE_POLYNOMIAL_DEGREE - i;
+                v_poly += voltage_polynomial[i] * std::pow(voltage, pow);
+            }
+            double C0 = thrust / v_poly / (1 + A_ge * std::exp(-height / d0));
+            double discriminant = std::pow(throttle_b, 2) - 4*(throttle_c-C0);
+            return 0.5 * (-1 + std::sqrt(discriminant));
+        }
+    };
+
     class QuadVelocityController
     {
     public:
@@ -35,7 +60,7 @@ namespace Iarc7Motion
         QuadVelocityController(double thrust_pid[5],
                                double pitch_pid[5],
                                double roll_pid[5],
-                               double hover_throttle,
+                               const ThrustModel& thrust_model,
                                ros::NodeHandle& nh,
                                ros::NodeHandle& private_nh);
 
@@ -113,6 +138,8 @@ namespace Iarc7Motion
         PidController throttle_pid_;
         PidController pitch_pid_;
         PidController roll_pid_;
+
+        ThrustModel thrust_model_;
 
         // TF listener objects
         tf2_ros::Buffer tfBuffer_;

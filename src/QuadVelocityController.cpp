@@ -36,11 +36,13 @@ QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
                                                double hover_throttle,
+                                               const ThrustModel& thrust_model,
                                                ros::NodeHandle& nh,
                                                ros::NodeHandle& private_nh) :
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
+thrust_model_(thrust_model),
 tfBuffer_(),
 tfListener_(tfBuffer_),
 odometry_subscriber_(nh.subscribe(
