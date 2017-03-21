@@ -90,6 +90,8 @@ namespace Iarc7Motion
         /// a transform.
         bool __attribute__((warn_unused_result)) getTransformAtTime(
                 geometry_msgs::TransformStamped& transform,
+                const std::string& target_frame,
+                const std::string& source_frame,
                 const ros::Time& time,
                 const ros::Duration& timeout) const;
 

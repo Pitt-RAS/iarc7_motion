@@ -86,7 +86,11 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
-    success = getTransformAtTime(transform, time, update_timeout_);
+    success = getTransformAtTime(transform,
+                                 "quad",
+                                 "level_quad",
+                                 time,
+                                 update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -193,8 +197,15 @@ bool QuadVelocityController::waitUntilReady()
 
     geometry_msgs::TransformStamped transform;
     bool success = getTransformAtTime(transform,
+                                      "quad",
+                                      "level_quad",
                                       ros::Time(0),
                                       startup_timeout_);
+    if (!success)
+    {
+        ROS_ERROR("Failed to fetch initial transform");
+        return false;
+    }
 
     if (!success)
     {
@@ -215,6 +226,8 @@ bool QuadVelocityController::waitUntilReady()
 // the request takes too long and times out
 bool QuadVelocityController::getTransformAtTime(
         geometry_msgs::TransformStamped& transform,
+        const std::string& target_frame,
+        const std::string& source_frame,
         const ros::Time& time,
         const ros::Duration& timeout) const
 {
@@ -236,10 +249,10 @@ bool QuadVelocityController::getTransformAtTime(
             }
 
             // Check if the transform from map to quad can be made right now
-            if (tfBuffer_.canTransform("level_quad", "quad", time))
+            if (tfBuffer_.canTransform(source_frame, target_frame, time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("level_quad", "quad", time);
+                transform = tfBuffer_.lookupTransform(source_frame, target_frame, time);
                 return true;
             }
 
@@ -252,7 +265,10 @@ bool QuadVelocityController::getTransformAtTime(
     // Catch any exceptions that might happen while transforming
     catch (tf2::TransformException& ex)
     {
-        ROS_ERROR("Exception transforming level_quad to quad: %s", ex.what());
+        ROS_ERROR("Exception transforming %s to %s: %s",
+                  target_frame.c_str(),
+                  source_frame.c_str(),
+                  ex.what());
     }
 
     ROS_ERROR("Exception or ros::ok was false");
