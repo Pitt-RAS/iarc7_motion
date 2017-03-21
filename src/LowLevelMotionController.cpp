@@ -99,18 +99,23 @@ int main(int argc, char **argv)
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
 
     // Thrust model settings retrieve
-    private_nh.param("thrust_model/quadcopter_mass",
-                     thrust_model.quadcopter_mass,
-                     0.0);
-    private_nh.param("thrust_model/A_ge", thrust_model.A_ge, 0.0);
-    private_nh.param("thrust_model/d0", thrust_model.d0, 0.0);
+    ROS_ASSERT(private_nh.getParam("thrust_model/quadcopter_mass",
+                                   thrust_model.quadcopter_mass));
+    ROS_ASSERT(private_nh.getParam("thrust_model/A_ge", thrust_model.A_ge));
+    ROS_ASSERT(private_nh.getParam("thrust_model/d0", thrust_model.d0));
     std::vector<double> voltage_polynomial;
-    private_nh.param("thrust_model/voltage_polynomial", voltage_polynomial);
+    ROS_ASSERT(private_nh.getParam("thrust_model/voltage_polynomial",
+                                   voltage_polynomial));
     ROS_ASSERT_MSG(voltage_polynomial.size()
-                == ThrustModel::VOLTAGE_POLYNOMIAL_DEGREE,
+                == ThrustModel::VOLTAGE_POLYNOMIAL_DEGREE + 1,
                    "Voltage polynomial param is wrong length");
-    private_nh.param("thrust_model/throttle_b", thrust_model.throttle_b, 0.0);
-    private_nh.param("thrust_model/throttle_c", thrust_model.throttle_c, 0.0);
+    for (size_t i = 0; i < voltage_polynomial.size(); i++) {
+        thrust_model.voltage_polynomial[i] = voltage_polynomial[i];
+    }
+    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_b",
+                                   thrust_model.throttle_b));
+    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_c",
+                                   thrust_model.throttle_c));
 
     // Throttle Limit settings retrieve
     private_nh.param("throttle_max", max_velocity.linear.z, 0.0);
