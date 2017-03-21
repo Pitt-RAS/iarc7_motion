@@ -199,6 +199,13 @@ data = (
     )
 
 if __name__ == '__main__':
+
+    min_throttle_command = 1100
+    max_throttle_command = 1900
+    for arr in data:
+        arr[:,1] = ((arr[:,1] - min_throttle_command)
+                  / (max_throttle_command - min_throttle_command))
+
     fig = plt.figure()
     axes = fig.add_subplot(111, projection='3d')
     for line_index in range(len(data)):
