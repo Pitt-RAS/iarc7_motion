@@ -22,6 +22,7 @@
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 #include "nav_msgs/Odometry.h"
+#include "std_msgs/Float32.h"
 
 namespace Iarc7Motion
 {
@@ -85,6 +86,16 @@ namespace Iarc7Motion
 
     private:
 
+        /// Callback to handle messages on fc_battery
+        void batteryCallback(const std_msgs::Float32& msg);
+
+        /// Blocks waiting for a message to come in at the requested time,
+        /// returns true if voltage is valid.
+        bool __attribute__((warn_unused_result)) getBatteryAtTime(
+                double& voltage,
+                const ros::Time& time,
+                const ros::Duration& timeout);
+
         /// Waits until a transform is available at time or later, returns
         /// true on success, returns a transform using the passed in reference to
         /// a transform.
@@ -118,6 +129,22 @@ namespace Iarc7Motion
         /// based on our current yaw
         void updatePidSetpoints(double current_yaw);
 
+        /// Blocks while waiting until we have an battery message at time
+        /// or both before and after time
+        ///
+        /// Returns false if the operation times out or the precondition is not
+        /// satisfied
+        ///
+        /// Precondition: battery_msg_queue_ must contain a message with
+        /// msg.header.stamp < time
+        ///
+        /// Postcondition: battery_msg_queue_ will contain a message with
+        /// msg.header.stamp >= time and a message with
+        /// msg.header.stamp < time
+        bool __attribute__((warn_unused_result)) waitForBatteryAtTime(
+                const ros::Time& time,
+                const ros::Duration& timeout);
+
         /// Blocks while waiting until we have an odometry message at time
         /// or both before and after time
         ///
@@ -147,6 +174,15 @@ namespace Iarc7Motion
         tf2_ros::Buffer tfBuffer_;
         const tf2_ros::TransformListener tfListener_;
 
+        // Subscriber for motor battery voltage
+        const ros::Subscriber battery_subscriber_;
+
+        // Queue of received battery messages
+        //
+        // This will always (after waitUntilReady is called) contain at least one
+        // battery message older than the last update time
+        std::vector<iarc7_msgs::Float64Stamped> battery_msg_queue_;
+
         // The subscriber for /odometry/filtered
         const ros::Subscriber odometry_subscriber_;
 
@@ -158,9 +194,6 @@ namespace Iarc7Motion
 
         // The current setpoint
         geometry_msgs::Twist setpoint_;
-
-        // A fudge feed forward value used for more stable hovering
-        double hover_throttle_;
 
         // Last time an update was successful
         ros::Time last_update_time_;

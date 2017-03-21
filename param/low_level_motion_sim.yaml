@@ -5,7 +5,6 @@ throttle_i: 0.05
 throttle_d: 0.00
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
-hover_throttle: 0.55
 
 thrust_model:
     quadcopter_mass: 1.678
