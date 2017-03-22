@@ -331,9 +331,9 @@ bool QuadVelocityController::getBatteryAtTime(
                            &QuadVelocityController::timeVsMsgStampedComparator
                                 <iarc7_msgs::Float64Stamped>);
 
-    ROS_ERROR_COND(geq_msg <= battery_msg_queue_.begin(),
+    ROS_ASSERT_MSG(geq_msg > battery_msg_queue_.begin(),
                    "geq_msg - 1 out of bounds");
-    ROS_ERROR_COND(geq_msg >= battery_msg_queue_.end(),
+    ROS_ASSERT_MSG(geq_msg < battery_msg_queue_.end(),
                    "geq_msg out of bounds");
 
     // Linear interpolation between next_odom and last_odom
@@ -420,9 +420,9 @@ bool QuadVelocityController::getVelocityAtTime(
                            &QuadVelocityController::timeVsMsgStampedComparator
                                 <nav_msgs::Odometry>);
 
-    ROS_ERROR_COND(geq_msg <= odometry_msg_queue_.begin(),
+    ROS_ASSERT_MSG(geq_msg > odometry_msg_queue_.begin(),
                    "geq_msg - 1 out of bounds");
-    ROS_ERROR_COND(geq_msg >= odometry_msg_queue_.end(),
+    ROS_ASSERT_MSG(geq_msg < odometry_msg_queue_.end(),
                    "geq_msg out of bounds");
 
     // Linear interpolation between next_odom and last_odom
