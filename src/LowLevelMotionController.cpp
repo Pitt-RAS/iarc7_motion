@@ -75,6 +75,7 @@ int main(int argc, char **argv)
     double pitch_pid[5];
     double roll_pid[5];
     ThrustModel thrust_model;
+    double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
 
@@ -120,6 +121,9 @@ int main(int argc, char **argv)
     ROS_ASSERT(private_nh.getParam("thrust_model/throttle_c",
                                    thrust_model.throttle_c));
 
+    // Battery timeout setting
+    ROS_ASSERT(private_nh.getParam("battery_timeout", battery_timeout));
+
     // Throttle Limit settings retrieve
     private_nh.param("throttle_max", max_velocity.linear.z, 0.0);
     private_nh.param("throttle_min", min_velocity.linear.z, 0.0);
@@ -155,6 +159,7 @@ int main(int argc, char **argv)
                                           pitch_pid,
                                           roll_pid,
                                           thrust_model,
+                                          ros::Duration(battery_timeout),
                                           nh,
                                           private_nh);
     if (!quadController.waitUntilReady())

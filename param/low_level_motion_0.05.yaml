@@ -18,6 +18,8 @@ thrust_model:
     throttle_b: 7.79323748e-01
     throttle_c: -5.49876832e-02
 
+battery_timeout: 0.5
+
 pitch_p: 0.0
 pitch_i: 0.0
 pitch_d: 0.0

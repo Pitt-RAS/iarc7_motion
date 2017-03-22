@@ -37,6 +37,7 @@ namespace Iarc7Motion
                                double pitch_pid[5],
                                double roll_pid[5],
                                const ThrustModel& thrust_model,
+                               const ros::Duration& battery_timeout,
                                ros::NodeHandle& nh,
                                ros::NodeHandle& private_nh);
 
@@ -157,6 +158,9 @@ namespace Iarc7Motion
         // This will always (after waitUntilReady is called) contain at least one
         // battery message older than the last update time
         std::vector<iarc7_msgs::Float64Stamped> battery_msg_queue_;
+
+        /// Max time to allow for outdated battery messages
+        const ros::Duration battery_timeout_;
 
         // The subscriber for /odometry/filtered
         const ros::Subscriber odometry_subscriber_;

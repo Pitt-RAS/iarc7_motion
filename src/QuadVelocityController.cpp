@@ -37,6 +37,7 @@ QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
                                                const ThrustModel& thrust_model,
+                                               const ros::Duration& battery_timeout,
                                                ros::NodeHandle& nh,
                                                ros::NodeHandle& private_nh) :
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
@@ -50,6 +51,7 @@ battery_subscriber_(nh.subscribe(
                         100,
                         &QuadVelocityController::batteryCallback,
                         this)),
+battery_timeout_(battery_timeout),
 odometry_subscriber_(nh.subscribe(
                          "odometry/filtered",
                          100,
@@ -262,6 +264,10 @@ bool QuadVelocityController::waitUntilReady()
     // because we should always have a message older than the last update
     last_update_time_ = odometry_msg_queue_.front().header.stamp
                       + ros::Duration(0, 1);
+    if (last_update_time_ <= battery_msg_queue_.front().header.stamp) {
+        last_update_time_ = battery_msg_queue_.front().header.stamp
+                          + ros::Duration(0, 1);
+    }
     return true;
 }
 
@@ -303,8 +309,18 @@ bool QuadVelocityController::getBatteryAtTime(
     // Wait until there's a message with stamp >= time
     if (!waitForBatteryAtTime(time, timeout))
     {
-        ROS_ERROR("Timed out waiting for battery message in getBatteryAtTime");
+        ROS_WARN("Timed out waiting for battery message in getBatteryAtTime");
+    }
+
+    if (battery_msg_queue_.back().header.stamp <= time - battery_timeout_) {
+        ROS_ERROR("Haven't received a battery message within the last %f seconds",
+                  battery_timeout_.toSec());
         return false;
+    }
+
+    if (battery_msg_queue_.back().header.stamp <= time) {
+        voltage = battery_msg_queue_.back().data;
+        return true;
     }
 
     // Get first msg that is >= the requested time
