@@ -121,7 +121,7 @@ bool QuadVelocityController::update(const ros::Time& time,
         ROS_WARN("Failed to get current transform in QuadVelocityController::update");
         return false;
     }
-    double col_height = transform.transform.translation.z;
+    double col_height = col_height_transform.transform.translation.z;
 
     // Get current yaw from the transform
     double current_yaw = yawFromQuaternion(transform.transform.rotation);
