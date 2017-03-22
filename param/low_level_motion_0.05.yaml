@@ -8,7 +8,7 @@ throttle_accumulator_min: 0.0
 
 thrust_model:
     quadcopter_mass: 1.678
-    thrust_scale_factor: 1
+    thrust_scale_factor: 0.0729
     A_ge: 0.132650296655
     d0: 0.495494309272
     voltage_polynomial: [4.81644497e+00,
