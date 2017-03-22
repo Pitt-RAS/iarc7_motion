@@ -113,8 +113,8 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped col_height_transform;
     success = getTransformAtTime(col_height_transform,
-                                 "quad",
-                                 "level_quad",
+                                 "center_of_lift",
+                                 "map",
                                  time,
                                  update_timeout_);
     if (!success) {
@@ -251,7 +251,7 @@ bool QuadVelocityController::waitUntilReady()
 
     success = getTransformAtTime(transform,
                                  "center_of_lift",
-                                 "level_quad",
+                                 "map",
                                  ros::Time(0),
                                  startup_timeout_);
     if (!success)
