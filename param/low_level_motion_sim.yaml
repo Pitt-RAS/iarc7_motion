@@ -11,8 +11,8 @@ thrust_model:
     thrust_scale_factor: 1
     A_ge: 0
     d0: 1
-    voltage_polynomial: [0, 0, 0, 1]
-    throttle_b: 1
+    voltage_polynomial: [0, 0, 0, 99.67]
+    throttle_b: 0
     throttle_c: 0
 
 battery_timeout: 0.5
