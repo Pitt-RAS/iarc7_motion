@@ -92,7 +92,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current battery voltage of the quad
     double voltage;
-    success = getBatteryAtTime(voltage, time, update_timeout_);
+    success = getBatteryAroundTime(voltage, time, update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current battery voltage in QuadVelocityController::update");
         return false;
@@ -301,13 +301,13 @@ void QuadVelocityController::batteryCallback(const std_msgs::Float32& msg)
     }
 }
 
-bool QuadVelocityController::getBatteryAtTime(
+bool QuadVelocityController::getBatteryAroundTime(
         double& voltage,
         const ros::Time& time,
         const ros::Duration& timeout)
 {
     // Wait until there's a message with stamp >= time
-    if (!waitForBatteryAtTime(time, timeout))
+    if (!waitForBatteryAtTime(time - battery_timeout_, timeout))
     {
         ROS_WARN("Timed out waiting for battery message in getBatteryAtTime");
     }

@@ -65,9 +65,9 @@ namespace Iarc7Motion
         /// Callback to handle messages on fc_battery
         void batteryCallback(const std_msgs::Float32& msg);
 
-        /// Blocks waiting for a message to come in at the requested time,
+        /// Blocks waiting for a message to come in close to the requested time,
         /// returns true if voltage is valid.
-        bool __attribute__((warn_unused_result)) getBatteryAtTime(
+        bool __attribute__((warn_unused_result)) getBatteryAroundTime(
                 double& voltage,
                 const ros::Time& time,
                 const ros::Duration& timeout);
