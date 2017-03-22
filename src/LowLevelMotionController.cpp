@@ -17,6 +17,7 @@
 #include "iarc7_motion/AccelerationPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
+#include "iarc7_motion/ThrustModel.hpp"
 
 #include "iarc7_safety/SafetyClient.hpp"
 
