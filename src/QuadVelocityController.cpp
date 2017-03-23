@@ -174,8 +174,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Simple feedforward using a fixed hover_accel to avoid excessive
     // oscillations from the PID's I term compensating for there needing to be
     // an average throttle value at 0 velocity in the z axis.
+    ROS_WARN("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
+    double thrust_request = hover_accel + tilt_accel + vertical_accel_output;
     uav_command.throttle = thrust_model_.throttleFromAccel(
-            hover_accel + tilt_accel + vertical_accel_output,
+            std::max(thrust_request, 7.0),
             voltage,
             col_height);
     uav_command.data.pitch = pitch_output;
@@ -196,11 +198,11 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Print the velocity and throttle information
-    ROS_INFO("Vz: %f Vx: %f Vy: %f",
+    ROS_DEBUG("Vz: %f Vx: %f Vy: %f",
              velocity.z,
              velocity.x,
              velocity.y);
-    ROS_INFO("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
+    ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
              uav_command.throttle,
              uav_command.data.pitch,
              uav_command.data.roll,
