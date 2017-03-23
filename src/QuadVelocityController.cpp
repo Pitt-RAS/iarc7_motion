@@ -465,7 +465,7 @@ bool QuadVelocityController::waitForBatteryAtTime(
         const ros::Time& time,
         const ros::Duration& timeout)
 {
-    if (battery_msg_queue_.front().header.stamp >= time) {
+    if (battery_msg_queue_.front().header.stamp >= last_update_time_) {
         ROS_ERROR("Class invariant false: battery_msg_queue_ does not contain a message older than the requested time");
         return false;
     }
@@ -485,7 +485,7 @@ bool QuadVelocityController::waitForOdometryAtTime(
         const ros::Time& time,
         const ros::Duration& timeout)
 {
-    if (odometry_msg_queue_.front().header.stamp >= time) {
+    if (odometry_msg_queue_.front().header.stamp >= last_update_time_) {
         ROS_ERROR("Class invariant false: odometry_msg_queue_ does not contain a message older than the requested time");
         return false;
     }

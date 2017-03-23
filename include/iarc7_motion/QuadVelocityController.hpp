@@ -112,11 +112,11 @@ namespace Iarc7Motion
         /// satisfied
         ///
         /// Precondition: battery_msg_queue_ must contain a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         ///
         /// Postcondition: battery_msg_queue_ will contain a message with
         /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         bool __attribute__((warn_unused_result)) waitForBatteryAtTime(
                 const ros::Time& time,
                 const ros::Duration& timeout);
@@ -128,11 +128,11 @@ namespace Iarc7Motion
         /// satisfied
         ///
         /// Precondition: odometry_msg_queue_ must contain a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         ///
         /// Postcondition: odometry_msg_queue_ will contain a message with
         /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         bool __attribute__((warn_unused_result)) waitForOdometryAtTime(
                 const ros::Time& time,
                 const ros::Duration& timeout);
