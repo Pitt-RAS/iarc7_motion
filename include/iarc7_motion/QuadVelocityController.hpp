@@ -182,6 +182,12 @@ namespace Iarc7Motion
 
         // Max allowed timeout waiting for velocities and transforms
         const ros::Duration update_timeout_;
+
+        // Min allowed requested thrust in m/s^2
+        double min_thrust_;
+
+        // Max allowed requested thrust in m/s^2
+        double max_thrust_;
     };
 }
 

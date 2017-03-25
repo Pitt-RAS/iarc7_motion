@@ -15,6 +15,10 @@ thrust_model:
     throttle_b: 0
     throttle_c: 0
 
+# Thrust levels are in m/s^2
+min_thrust: 0.1
+max_thrust: 100.0
+
 battery_timeout: 0.5
 
 pitch_p: -0.4
