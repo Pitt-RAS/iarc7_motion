@@ -17,7 +17,8 @@ namespace Iarc7Motion
     public:
 
         PidController(double p_gain, double i_gain, double d_gain,
-                       double i_accumulator_max, double i_accumulator_min);
+                      double i_accumulator_max, double i_accumulator_min,
+                      double i_accumulator_enable_threshold);
 
         PidController() = delete;
         ~PidController() = default;
@@ -46,6 +47,7 @@ namespace Iarc7Motion
 
         const double i_accumulator_max_;
         const double i_accumulator_min_;
+        const double i_accumulator_enable_threshold_;
     };
 
 }

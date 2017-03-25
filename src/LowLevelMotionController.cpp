@@ -71,9 +71,10 @@ int main(int argc, char **argv)
     ros::NodeHandle private_nh ("~");
 
     // LOAD PARAMETERS
-    double throttle_pid[5];
-    double pitch_pid[5];
-    double roll_pid[5];
+    const size_t pid_param_array_size = 6;
+    double throttle_pid[pid_param_array_size];
+    double pitch_pid[pid_param_array_size];
+    double roll_pid[pid_param_array_size];
     ThrustModel thrust_model;
     double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
     private_nh.param("throttle_d", throttle_pid[2], 0.0);
     private_nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
     private_nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
+    private_nh.param("throttle_accumulator_enable_threshold", throttle_pid[5], 0.0);
 
     // Pitch PID settings retrieve
     private_nh.param("pitch_p", pitch_pid[0], 0.0);
@@ -92,6 +94,7 @@ int main(int argc, char **argv)
     private_nh.param("pitch_d", pitch_pid[2], 0.0);
     private_nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
     private_nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
+    private_nh.param("pitch_accumulator_enable_threshold", throttle_pid[5], 0.0);
 
     // Roll PID settings retrieve
     private_nh.param("roll_p", roll_pid[0], 0.0);
@@ -99,6 +102,7 @@ int main(int argc, char **argv)
     private_nh.param("roll_d", roll_pid[2], 0.0);
     private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
+    private_nh.param("roll_accumulator_enable_threshold", throttle_pid[5], 0.0);
 
     // Thrust model settings retrieve
     ROS_ASSERT(private_nh.getParam("thrust_model/quadcopter_mass",

@@ -15,7 +15,8 @@
 using namespace Iarc7Motion;
 
 PidController::PidController(double p_gain, double i_gain, double d_gain,
-                               double i_accumulator_max, double i_accumulator_min)
+                             double i_accumulator_max, double i_accumulator_min,
+                             double i_accumulator_enable_threshold)
     : p_gain_(p_gain),
       i_gain_(i_gain),
       d_gain_(d_gain),
@@ -25,7 +26,8 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
       last_time_(0.0),
       setpoint_(0.0),
       i_accumulator_max_(i_accumulator_max),
-      i_accumulator_min_(i_accumulator_min)
+      i_accumulator_min_(i_accumulator_min),
+      i_accumulator_enable_threshold_(i_accumulator_enable_threshold)
 {
     // Nothing to do
 }

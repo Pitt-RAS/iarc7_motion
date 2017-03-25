@@ -34,16 +34,16 @@ static T getParam(ros::NodeHandle& nh, const std::string& name)
 }
 
 // Create QuadVelocityController, copy PID settings, initialize all other variables
-QuadVelocityController::QuadVelocityController(double thrust_pid[5],
-                                               double pitch_pid[5],
-                                               double roll_pid[5],
+QuadVelocityController::QuadVelocityController(double thrust_pid[6],
+                                               double pitch_pid[6],
+                                               double roll_pid[6],
                                                const ThrustModel& thrust_model,
                                                const ros::Duration& battery_timeout,
                                                ros::NodeHandle& nh,
                                                ros::NodeHandle& private_nh) :
-throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
-pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
-roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
+throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4], thrust_pid[5]),
+pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4], pitch_pid[5]),
+roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4], roll_pid[5]),
 thrust_model_(thrust_model),
 tfBuffer_(),
 tfListener_(tfBuffer_),
