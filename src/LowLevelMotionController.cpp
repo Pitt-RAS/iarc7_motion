@@ -17,6 +17,7 @@
 #include "iarc7_motion/AccelerationPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
+#include "iarc7_motion/ThrustModel.hpp"
 
 #include "iarc7_safety/SafetyClient.hpp"
 
@@ -73,8 +74,8 @@ int main(int argc, char **argv)
     double throttle_pid[5];
     double pitch_pid[5];
     double roll_pid[5];
-    double yaw_pid[5];
-    double hover_throttle;
+    ThrustModel thrust_model;
+    double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
 
@@ -99,15 +100,29 @@ int main(int argc, char **argv)
     private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
 
-    // Yaw PID settings retrieve
-    private_nh.param("yaw_p", yaw_pid[0], 0.0);
-    private_nh.param("yaw_i", yaw_pid[1], 0.0);
-    private_nh.param("yaw_d", yaw_pid[2], 0.0);
-    private_nh.param("yaw_accumulator_max", yaw_pid[3], 0.0);
-    private_nh.param("yaw_accumulator_min", yaw_pid[4], 0.0);
+    // Thrust model settings retrieve
+    ROS_ASSERT(private_nh.getParam("thrust_model/quadcopter_mass",
+                                   thrust_model.quadcopter_mass));
+    ROS_ASSERT(private_nh.getParam("thrust_model/thrust_scale_factor",
+                                   thrust_model.thrust_scale_factor));
+    ROS_ASSERT(private_nh.getParam("thrust_model/A_ge", thrust_model.A_ge));
+    ROS_ASSERT(private_nh.getParam("thrust_model/d0", thrust_model.d0));
+    std::vector<double> voltage_polynomial;
+    ROS_ASSERT(private_nh.getParam("thrust_model/voltage_polynomial",
+                                   voltage_polynomial));
+    ROS_ASSERT_MSG(voltage_polynomial.size()
+                == ThrustModel::VOLTAGE_POLYNOMIAL_DEGREE + 1,
+                   "Voltage polynomial param is wrong length");
+    for (size_t i = 0; i < voltage_polynomial.size(); i++) {
+        thrust_model.voltage_polynomial[i] = voltage_polynomial[i];
+    }
+    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_b",
+                                   thrust_model.throttle_b));
+    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_c",
+                                   thrust_model.throttle_c));
 
-    // Throttle setting for hovering, to be added to throttle ouput
-    private_nh.param("hover_throttle", hover_throttle, 0.0);
+    // Battery timeout setting
+    ROS_ASSERT(private_nh.getParam("battery_timeout", battery_timeout));
 
     // Throttle Limit settings retrieve
     private_nh.param("throttle_max", max_velocity.linear.z, 0.0);
@@ -143,7 +158,8 @@ int main(int argc, char **argv)
     QuadVelocityController quadController(throttle_pid,
                                           pitch_pid,
                                           roll_pid,
-                                          hover_throttle,
+                                          thrust_model,
+                                          ros::Duration(battery_timeout),
                                           nh,
                                           private_nh);
     if (!quadController.waitUntilReady())

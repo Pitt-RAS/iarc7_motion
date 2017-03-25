@@ -5,7 +5,17 @@ throttle_i: 0.05
 throttle_d: 0.00
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
-hover_throttle: 0.55
+
+thrust_model:
+    quadcopter_mass: 3
+    thrust_scale_factor: 1
+    A_ge: 0
+    d0: 1
+    voltage_polynomial: [0, 0, 0, 99.67]
+    throttle_b: 0
+    throttle_c: 0
+
+battery_timeout: 0.5
 
 pitch_p: -0.4
 pitch_i: -0.15

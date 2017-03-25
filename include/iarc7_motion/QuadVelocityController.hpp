@@ -12,6 +12,7 @@
 
 #include <ros/ros.h>
 #include "iarc7_motion/PidController.hpp"
+#include "iarc7_motion/ThrustModel.hpp"
 #include "tf2_ros/transform_listener.h"
 
 #include "geometry_msgs/Transform.h"
@@ -22,10 +23,10 @@
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 #include "nav_msgs/Odometry.h"
+#include "std_msgs/Float32.h"
 
 namespace Iarc7Motion
 {
-
     class QuadVelocityController
     {
     public:
@@ -35,7 +36,8 @@ namespace Iarc7Motion
         QuadVelocityController(double thrust_pid[5],
                                double pitch_pid[5],
                                double roll_pid[5],
-                               double hover_throttle,
+                               const ThrustModel& thrust_model,
+                               const ros::Duration& battery_timeout,
                                ros::NodeHandle& nh,
                                ros::NodeHandle& private_nh);
 
@@ -60,11 +62,23 @@ namespace Iarc7Motion
 
     private:
 
+        /// Callback to handle messages on fc_battery
+        void batteryCallback(const std_msgs::Float32& msg);
+
+        /// Blocks waiting for a message to come in close to the requested time,
+        /// returns true if voltage is valid.
+        bool __attribute__((warn_unused_result)) getBatteryAroundTime(
+                double& voltage,
+                const ros::Time& time,
+                const ros::Duration& timeout);
+
         /// Waits until a transform is available at time or later, returns
         /// true on success, returns a transform using the passed in reference to
         /// a transform.
         bool __attribute__((warn_unused_result)) getTransformAtTime(
                 geometry_msgs::TransformStamped& transform,
+                const std::string& target_frame,
+                const std::string& source_frame,
                 const ros::Time& time,
                 const ros::Duration& timeout) const;
 
@@ -91,6 +105,22 @@ namespace Iarc7Motion
         /// based on our current yaw
         void updatePidSetpoints(double current_yaw);
 
+        /// Blocks while waiting until we have an battery message at time
+        /// or both before and after time
+        ///
+        /// Returns false if the operation times out or the precondition is not
+        /// satisfied
+        ///
+        /// Precondition: battery_msg_queue_ must contain a message with
+        /// msg.header.stamp < last_update_time_
+        ///
+        /// Postcondition: battery_msg_queue_ will contain a message with
+        /// msg.header.stamp >= time and a message with
+        /// msg.header.stamp < last_update_time_
+        bool __attribute__((warn_unused_result)) waitForBatteryAtTime(
+                const ros::Time& time,
+                const ros::Duration& timeout);
+
         /// Blocks while waiting until we have an odometry message at time
         /// or both before and after time
         ///
@@ -98,11 +128,11 @@ namespace Iarc7Motion
         /// satisfied
         ///
         /// Precondition: odometry_msg_queue_ must contain a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         ///
         /// Postcondition: odometry_msg_queue_ will contain a message with
         /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp < time
+        /// msg.header.stamp < last_update_time_
         bool __attribute__((warn_unused_result)) waitForOdometryAtTime(
                 const ros::Time& time,
                 const ros::Duration& timeout);
@@ -114,9 +144,23 @@ namespace Iarc7Motion
         PidController pitch_pid_;
         PidController roll_pid_;
 
+        ThrustModel thrust_model_;
+
         // TF listener objects
         tf2_ros::Buffer tfBuffer_;
         const tf2_ros::TransformListener tfListener_;
+
+        // Subscriber for motor battery voltage
+        const ros::Subscriber battery_subscriber_;
+
+        // Queue of received battery messages
+        //
+        // This will always (after waitUntilReady is called) contain at least one
+        // battery message older than the last update time
+        std::vector<iarc7_msgs::Float64Stamped> battery_msg_queue_;
+
+        /// Max time to allow for outdated battery messages
+        const ros::Duration battery_timeout_;
 
         // The subscriber for /odometry/filtered
         const ros::Subscriber odometry_subscriber_;
@@ -129,9 +173,6 @@ namespace Iarc7Motion
 
         // The current setpoint
         geometry_msgs::Twist setpoint_;
-
-        // A fudge feed forward value used for more stable hovering
-        double hover_throttle_;
 
         // Last time an update was successful
         ros::Time last_update_time_;

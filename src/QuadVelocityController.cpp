@@ -18,6 +18,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 // ROS message headers
+#include "iarc7_msgs/Float64Stamped.h"
 
 using namespace Iarc7Motion;
 
@@ -35,14 +36,22 @@ static T getParam(ros::NodeHandle& nh, const std::string& name)
 QuadVelocityController::QuadVelocityController(double thrust_pid[5],
                                                double pitch_pid[5],
                                                double roll_pid[5],
-                                               double hover_throttle,
+                                               const ThrustModel& thrust_model,
+                                               const ros::Duration& battery_timeout,
                                                ros::NodeHandle& nh,
                                                ros::NodeHandle& private_nh) :
 throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
+thrust_model_(thrust_model),
 tfBuffer_(),
 tfListener_(tfBuffer_),
+battery_subscriber_(nh.subscribe(
+                        "fc_battery",
+                        100,
+                        &QuadVelocityController::batteryCallback,
+                        this)),
+battery_timeout_(battery_timeout),
 odometry_subscriber_(nh.subscribe(
                          "odometry/filtered",
                          100,
@@ -50,7 +59,6 @@ odometry_subscriber_(nh.subscribe(
                          this)),
 odometry_msg_queue_(),
 setpoint_(),
-hover_throttle_(hover_throttle),
 startup_timeout_(getParam<double>(private_nh, "startup_timeout")),
 update_timeout_(getParam<double>(private_nh, "update_timeout"))
 {
@@ -82,13 +90,38 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
+    // Get the current battery voltage of the quad
+    double voltage;
+    success = getBatteryAroundTime(voltage, time, update_timeout_);
+    if (!success) {
+        ROS_WARN("Failed to get current battery voltage in QuadVelocityController::update");
+        return false;
+    }
+
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
-    success = getTransformAtTime(transform, time, update_timeout_);
+    success = getTransformAtTime(transform,
+                                 "quad",
+                                 "level_quad",
+                                 time,
+                                 update_timeout_);
     if (!success) {
         ROS_WARN("Failed to get current transform in QuadVelocityController::update");
         return false;
     }
+
+    // Get the current transform (rotation) of the quad
+    geometry_msgs::TransformStamped col_height_transform;
+    success = getTransformAtTime(col_height_transform,
+                                 "center_of_lift",
+                                 "map",
+                                 time,
+                                 update_timeout_);
+    if (!success) {
+        ROS_WARN("Failed to get current transform in QuadVelocityController::update");
+        return false;
+    }
+    double col_height = col_height_transform.transform.translation.z;
 
     // Get current yaw from the transform
     double current_yaw = yawFromQuaternion(transform.transform.rotation);
@@ -98,15 +131,13 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Update all the PID loops
 
-    //hover throttle adjustment for tilting
-    double tilt_throttle;
     // Used to temporarily store throttle and angle outputs from PID loops
-    double throttle_output;
+    double vertical_accel_output;
     double pitch_output;
     double roll_output;
 
     // Update throttle PID loop
-    success = throttle_pid_.update(velocity.z, time, throttle_output);
+    success = throttle_pid_.update(velocity.z, time, vertical_accel_output);
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
@@ -135,13 +166,18 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
 
-    //based on roll and pitch angles we calculate additional throttle to match the level hover_throttle_
-    tilt_throttle = hover_throttle_*(1-cos(roll_output)*cos(pitch_output));
+    double hover_accel = 9.8;
+    //based on roll and pitch angles we calculate additional throttle to match the level hover_accel
+    double tilt_accel = hover_accel*(1-cos(roll_output)*cos(pitch_output));
 
-    // Simple feedforward using a fixed hover_throttle_ to avoid excessive
+
+    // Simple feedforward using a fixed hover_accel to avoid excessive
     // oscillations from the PID's I term compensating for there needing to be
     // an average throttle value at 0 velocity in the z axis.
-    uav_command.throttle = throttle_output + hover_throttle_ + tilt_throttle;
+    uav_command.throttle = thrust_model_.throttleFromAccel(
+            hover_accel + tilt_accel + vertical_accel_output,
+            voltage,
+            col_height);
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
 
@@ -189,30 +225,134 @@ bool QuadVelocityController::waitUntilReady()
         return false;
     }
 
+    while (ros::ok()
+           && battery_msg_queue_.empty()
+           && ros::Time::now() < start_time + startup_timeout_) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
+
+    if (battery_msg_queue_.empty()) {
+        ROS_ERROR("Failed to fetch battery voltage");
+        return false;
+    }
+
     geometry_msgs::TransformStamped transform;
     bool success = getTransformAtTime(transform,
+                                      "quad",
+                                      "level_quad",
                                       ros::Time(0),
                                       startup_timeout_);
-
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
         return false;
     }
-    else
+
+    success = getTransformAtTime(transform,
+                                 "center_of_lift",
+                                 "map",
+                                 ros::Time(0),
+                                 startup_timeout_);
+    if (!success)
     {
-        // Mark the last update time as 1ns later than the odometry message,
-        // because we should always have a message older than the last update
-        last_update_time_ = odometry_msg_queue_.front().header.stamp
+        ROS_ERROR("Failed to fetch initial transform");
+        return false;
+    }
+
+    // Mark the last update time as 1ns later than the odometry message,
+    // because we should always have a message older than the last update
+    last_update_time_ = odometry_msg_queue_.front().header.stamp
+                      + ros::Duration(0, 1);
+    if (last_update_time_ <= battery_msg_queue_.front().header.stamp) {
+        last_update_time_ = battery_msg_queue_.front().header.stamp
                           + ros::Duration(0, 1);
+    }
+    return true;
+}
+
+void QuadVelocityController::batteryCallback(const std_msgs::Float32& msg)
+{
+    ros::Time now = ros::Time::now();
+    if (!battery_msg_queue_.empty()
+          && now < battery_msg_queue_.back().header.stamp) {
+        ROS_ERROR_STREAM("Ignoring battery message at time "
+                      << now
+                      << " because the queue already has a message with stamp "
+                      << battery_msg_queue_.back().header.stamp);
+        return;
+    }
+
+    iarc7_msgs::Float64Stamped msg_to_queue;
+    msg_to_queue.data = msg.data;
+    msg_to_queue.header.stamp = now;
+    battery_msg_queue_.push_back(msg_to_queue);
+
+    // Keep only one message older than the last update time
+    std::vector<iarc7_msgs::Float64Stamped>::const_iterator first_geq_time
+        = std::lower_bound(battery_msg_queue_.begin(),
+                           battery_msg_queue_.end(),
+                           last_update_time_,
+                           &QuadVelocityController::timeVsMsgStampedComparator
+                                <iarc7_msgs::Float64Stamped>);
+    if (first_geq_time - 1 > battery_msg_queue_.begin()) {
+        battery_msg_queue_.erase(battery_msg_queue_.begin(),
+                                  first_geq_time - 1);
+    }
+}
+
+bool QuadVelocityController::getBatteryAroundTime(
+        double& voltage,
+        const ros::Time& time,
+        const ros::Duration& timeout)
+{
+    // Wait until there's a message with stamp >= time
+    if (!waitForBatteryAtTime(time - battery_timeout_, timeout))
+    {
+        ROS_WARN("Timed out waiting for battery message in getBatteryAtTime");
+    }
+
+    if (battery_msg_queue_.back().header.stamp <= time - battery_timeout_) {
+        ROS_ERROR("Haven't received a battery message within the last %f seconds",
+                  battery_timeout_.toSec());
+        return false;
+    }
+
+    if (battery_msg_queue_.back().header.stamp <= time) {
+        voltage = battery_msg_queue_.back().data;
         return true;
     }
+
+    // Get first msg that is >= the requested time
+    std::vector<iarc7_msgs::Float64Stamped>::iterator geq_msg
+        = std::lower_bound(battery_msg_queue_.begin(),
+                           battery_msg_queue_.end(),
+                           time,
+                           &QuadVelocityController::timeVsMsgStampedComparator
+                                <iarc7_msgs::Float64Stamped>);
+
+    ROS_ASSERT_MSG(geq_msg > battery_msg_queue_.begin(),
+                   "geq_msg - 1 out of bounds");
+    ROS_ASSERT_MSG(geq_msg < battery_msg_queue_.end(),
+                   "geq_msg out of bounds");
+
+    // Linear interpolation between next_odom and last_odom
+    const iarc7_msgs::Float64Stamped& next_bat = *geq_msg;
+    const iarc7_msgs::Float64Stamped& last_bat = *(geq_msg - 1);
+
+    double dt = (next_bat.header.stamp - last_bat.header.stamp).toSec();
+
+    voltage = ((time - last_bat.header.stamp).toSec() / dt) * next_bat.data
+            + ((next_bat.header.stamp - time).toSec() / dt) * last_bat.data;
+    return true;
 }
 
 // Get a valid transform, blocks until the transform is received or
 // the request takes too long and times out
 bool QuadVelocityController::getTransformAtTime(
         geometry_msgs::TransformStamped& transform,
+        const std::string& target_frame,
+        const std::string& source_frame,
         const ros::Time& time,
         const ros::Duration& timeout) const
 {
@@ -234,10 +374,10 @@ bool QuadVelocityController::getTransformAtTime(
             }
 
             // Check if the transform from map to quad can be made right now
-            if (tfBuffer_.canTransform("level_quad", "quad", time))
+            if (tfBuffer_.canTransform(source_frame, target_frame, time))
             {
                 // Get the transform
-                transform = tfBuffer_.lookupTransform("level_quad", "quad", time);
+                transform = tfBuffer_.lookupTransform(source_frame, target_frame, time);
                 return true;
             }
 
@@ -250,7 +390,10 @@ bool QuadVelocityController::getTransformAtTime(
     // Catch any exceptions that might happen while transforming
     catch (tf2::TransformException& ex)
     {
-        ROS_ERROR("Exception transforming level_quad to quad: %s", ex.what());
+        ROS_ERROR("Exception transforming %s to %s: %s",
+                  target_frame.c_str(),
+                  source_frame.c_str(),
+                  ex.what());
     }
 
     ROS_ERROR("Exception or ros::ok was false");
@@ -277,9 +420,9 @@ bool QuadVelocityController::getVelocityAtTime(
                            &QuadVelocityController::timeVsMsgStampedComparator
                                 <nav_msgs::Odometry>);
 
-    ROS_ERROR_COND(geq_msg <= odometry_msg_queue_.begin(),
+    ROS_ASSERT_MSG(geq_msg > odometry_msg_queue_.begin(),
                    "geq_msg - 1 out of bounds");
-    ROS_ERROR_COND(geq_msg >= odometry_msg_queue_.end(),
+    ROS_ASSERT_MSG(geq_msg < odometry_msg_queue_.end(),
                    "geq_msg out of bounds");
 
     // Linear interpolation between next_odom and last_odom
@@ -318,11 +461,31 @@ void QuadVelocityController::updatePidSetpoints(double current_yaw)
     roll_pid_.setSetpoint(-local_y_velocity);
 }
 
+bool QuadVelocityController::waitForBatteryAtTime(
+        const ros::Time& time,
+        const ros::Duration& timeout)
+{
+    if (battery_msg_queue_.front().header.stamp >= last_update_time_) {
+        ROS_ERROR("Class invariant false: battery_msg_queue_ does not contain a message older than the requested time");
+        return false;
+    }
+
+    const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && battery_msg_queue_.back().header.stamp < time
+           && ros::Time::now() < start_time + timeout) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
+
+    return (battery_msg_queue_.back().header.stamp >= time);
+}
+
 bool QuadVelocityController::waitForOdometryAtTime(
         const ros::Time& time,
         const ros::Duration& timeout)
 {
-    if (odometry_msg_queue_.front().header.stamp >= time) {
+    if (odometry_msg_queue_.front().header.stamp >= last_update_time_) {
         ROS_ERROR("Class invariant false: odometry_msg_queue_ does not contain a message older than the requested time");
         return false;
     }
