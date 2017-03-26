@@ -9,13 +9,15 @@
 #include <cmath>
 #include <limits>
 #include <ros/ros.h>
+#include <boost/algorithm/clamp.hpp>
 
 #include "iarc7_motion/PidController.hpp"
 
 using namespace Iarc7Motion;
 
 PidController::PidController(double p_gain, double i_gain, double d_gain,
-                               double i_accumulator_max, double i_accumulator_min)
+                             double i_accumulator_max, double i_accumulator_min,
+                             double i_accumulator_enable_threshold)
     : p_gain_(p_gain),
       i_gain_(i_gain),
       d_gain_(d_gain),
@@ -25,7 +27,8 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
       last_time_(0.0),
       setpoint_(0.0),
       i_accumulator_max_(i_accumulator_max),
-      i_accumulator_min_(i_accumulator_min)
+      i_accumulator_min_(i_accumulator_min),
+      i_accumulator_enable_threshold_(i_accumulator_enable_threshold)
 {
     // Nothing to do
 }
@@ -58,12 +61,12 @@ bool PidController::update(double current_value, const ros::Time& time, double& 
     } else {
         double time_delta = (time - last_time_).toSec();
 
-        i_accumulator_ += i_gain_ * difference * time_delta;
-        if (i_accumulator_ > i_accumulator_max_) {
-            i_accumulator_ = i_accumulator_max_;
-        } else if (i_accumulator_ < i_accumulator_min_) {
-            i_accumulator_ = i_accumulator_min_;
+        if (std::abs(difference) < i_accumulator_enable_threshold_) {
+            i_accumulator_ += i_gain_ * difference * time_delta;
+
+            boost::algorithm::clamp(i_accumulator_, i_accumulator_min_, i_accumulator_max_);
         }
+
         response += i_accumulator_;
 
         double d_term = d_gain_ * (current_value - last_current_value_) / time_delta;

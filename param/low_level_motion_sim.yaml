@@ -5,6 +5,7 @@ throttle_i: 0.05
 throttle_d: 0.00
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
+throttle_accumulator_enable_threshold: 10.0
 
 thrust_model:
     quadcopter_mass: 3
@@ -15,6 +16,10 @@ thrust_model:
     throttle_b: 0
     throttle_c: 0
 
+# Thrust levels are in m/s^2
+min_thrust: 0.1
+max_thrust: 100.0
+
 battery_timeout: 0.5
 
 pitch_p: -0.4
@@ -22,12 +27,14 @@ pitch_i: -0.15
 pitch_d: 0.0
 pitch_accumulator_max: 2.0
 pitch_accumulator_min: -2.0
+pitch_accumulator_enable_threshold: 10.0
 
 roll_p: -0.4
 roll_i: -0.15
 roll_d: 0.0
 roll_accumulator_max: 2.0
 roll_accumulator_min: -2.0
+roll_accumulator_enable_threshold: 10.0
 
 throttle_max      : 1.0
 throttle_min      : 0.0

@@ -8,6 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include <cmath>
+#include <boost/algorithm/clamp.hpp>
 
 // Associated header
 #include "iarc7_motion/QuadVelocityController.hpp"
@@ -33,16 +34,16 @@ static T getParam(ros::NodeHandle& nh, const std::string& name)
 }
 
 // Create QuadVelocityController, copy PID settings, initialize all other variables
-QuadVelocityController::QuadVelocityController(double thrust_pid[5],
-                                               double pitch_pid[5],
-                                               double roll_pid[5],
+QuadVelocityController::QuadVelocityController(double thrust_pid[6],
+                                               double pitch_pid[6],
+                                               double roll_pid[6],
                                                const ThrustModel& thrust_model,
                                                const ros::Duration& battery_timeout,
                                                ros::NodeHandle& nh,
                                                ros::NodeHandle& private_nh) :
-throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4]),
-pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4]),
-roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4]),
+throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4], thrust_pid[5]),
+pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4], pitch_pid[5]),
+roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4], roll_pid[5]),
 thrust_model_(thrust_model),
 tfBuffer_(),
 tfListener_(tfBuffer_),
@@ -60,7 +61,9 @@ odometry_subscriber_(nh.subscribe(
 odometry_msg_queue_(),
 setpoint_(),
 startup_timeout_(getParam<double>(private_nh, "startup_timeout")),
-update_timeout_(getParam<double>(private_nh, "update_timeout"))
+update_timeout_(getParam<double>(private_nh, "update_timeout")),
+min_thrust_(getParam<double>(private_nh, "min_thrust")),
+max_thrust_(getParam<double>(private_nh, "max_thrust"))
 {
 }
 
@@ -174,8 +177,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Simple feedforward using a fixed hover_accel to avoid excessive
     // oscillations from the PID's I term compensating for there needing to be
     // an average throttle value at 0 velocity in the z axis.
+    ROS_DEBUG("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
+    double thrust_request = hover_accel + tilt_accel + vertical_accel_output;
     uav_command.throttle = thrust_model_.throttleFromAccel(
-            hover_accel + tilt_accel + vertical_accel_output,
+            boost::algorithm::clamp(thrust_request, min_thrust_, max_thrust_),
             voltage,
             col_height);
     uav_command.data.pitch = pitch_output;
@@ -196,11 +201,11 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Print the velocity and throttle information
-    ROS_INFO("Vz: %f Vx: %f Vy: %f",
+    ROS_DEBUG("Vz: %f Vx: %f Vy: %f",
              velocity.z,
              velocity.x,
              velocity.y);
-    ROS_INFO("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
+    ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
              uav_command.throttle,
              uav_command.data.pitch,
              uav_command.data.roll,
