@@ -4,7 +4,12 @@ import rospy
 from geometry_msgs.msg import TwistStamped
 
 from .abstract_task import AbstractTask
-from .task_state import TaskState
+from iarc_tasks.task_states import (TaskRunning,
+                                    TaskDone,
+                                    TaskCanceled,
+                                    TaskAborted)
+from iarc_tasks.task_commands import (VelocityCommand,
+                                      NopCommand)
 
 class TestTask(AbstractTask):
 
@@ -25,19 +30,19 @@ class TestTask(AbstractTask):
         if self.abort > 0.5:
             if self.abort_time < rospy.Time.now():
                 rospy.loginfo("TestTask aborted")
-                return (TaskState.aborted, result)
+                return (TaskAborted(), result)
 
         if self.canceled:
             rospy.loginfo("TestTask canceled")
-            return (TaskState.canceled,)
+            return (TaskCanceled(),)
 
         if self.target  < rospy.Time.now():
             rospy.loginfo("TestTask done")
-            return (TaskState.done, result)
+            return (TaskDone(), result)
         else:
             rospy.loginfo("TestTask not done")
 
-        return (TaskState.running, 'nop')
+        return (TaskRunning(), NopCommand())
 
     def cancel(self):
         rospy.loginfo("TestTask canceling")
