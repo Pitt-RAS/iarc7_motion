@@ -14,22 +14,22 @@ def constrain(x, l, h):
     return min(h, max(x, l))
 
 if __name__ == '__main__':
-    rospy.init_node('waypoints_test', anonymous=True)
+    rospy.init_node('waypoints_test')
 
     safety_client = SafetyClient('motion_planner')
-    assert(safety_client.form_bond())
+    assert safety_client.form_bond()
 
     velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
     tf_listener = tf.TransformListener()
 
-    while rospy.Time.now() == 0:
+    while not rospy.is_shutdown() and rospy.Time.now() == 0:
         pass
     start_time = rospy.Time.now()
 
     arm_service = rospy.ServiceProxy('uav_arm', SetBool)
     arm_service.wait_for_service()
     armed = False
-    while armed == False :
+    while not rospy.is_shutdown() and not armed:
         try:
             armed = arm_service(True)
         except rospy.ServiceException as exc:
