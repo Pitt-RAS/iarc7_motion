@@ -20,6 +20,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 // ROS message headers
+#include "geometry_msgs/AccelWithCovarianceStamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 
 using namespace Iarc7Motion;
@@ -48,6 +49,16 @@ roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4], roll_
 thrust_model_(thrust_model),
 tfBuffer_(),
 tfListener_(tfBuffer_),
+accel_subscriber_(nh.subscribe(
+    "accel/filtered",
+    100,
+    boost::function<void(const geometry_msgs::AccelWithCovarianceStamped::ConstPtr&)>(
+        boost::bind(&QuadVelocityController::msgCallback
+                        <geometry_msgs::AccelWithCovarianceStamped>,
+                    this,
+                    _1,
+                    boost::ref(accel_msg_queue_))))),
+accel_msg_queue_(),
 battery_subscriber_(nh.subscribe(
     "fc_battery",
     100,
@@ -128,6 +139,26 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
+    // Get the current acceleration of the quad
+    tf2::Vector3 accel;
+    success = getInterpolatedMsgAtTime
+                    <geometry_msgs::AccelWithCovarianceStamped, tf2::Vector3>(
+            accel_msg_queue_,
+            accel,
+            time,
+            ros::Duration(0),
+            update_timeout_,
+            [](const geometry_msgs::AccelWithCovarianceStamped& msg) {
+                return tf2::Vector3(msg.accel.accel.linear.x,
+                                    msg.accel.accel.linear.y,
+                                    msg.accel.accel.linear.z);
+            });
+    if (!success) {
+        ROS_WARN("Failed to get current acceleration in QuadVelocityController::update");
+        return false;
+    }
+
+
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
     success = getTransformAtTime(transform,
@@ -167,27 +198,41 @@ bool QuadVelocityController::update(const ros::Time& time,
     double roll_output;
 
     // Update throttle PID loop
-    success = throttle_pid_.update(velocity.z, time, vertical_accel_output);
+    success = throttle_pid_.update(velocity.z(),
+                                   time,
+                                   vertical_accel_output,
+                                   accel.z());
     if (!success) {
         ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Calculate local frame velocities
-    double local_x_velocity = std::cos(current_yaw) * velocity.x
-                            + std::sin(current_yaw) * velocity.y;
-    double local_y_velocity = -std::sin(current_yaw) * velocity.x
-                            +  std::cos(current_yaw) * velocity.y;
+    double local_x_velocity = std::cos(current_yaw) * velocity.x()
+                            + std::sin(current_yaw) * velocity.y();
+    double local_y_velocity = -std::sin(current_yaw) * velocity.x()
+                            +  std::cos(current_yaw) * velocity.y();
+    // Calculate local frame accelerations
+    double local_x_accel = std::cos(current_yaw) * accel.x()
+                         + std::sin(current_yaw) * accel.y();
+    double local_y_accel = -std::sin(current_yaw) * accel.x()
+                         +  std::cos(current_yaw) * accel.y();
 
     // Update pitch PID loop
-    success = pitch_pid_.update(local_x_velocity, time, pitch_output);
+    success = pitch_pid_.update(local_x_velocity,
+                                time,
+                                pitch_output,
+                                local_x_accel);
     if (!success) {
         ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
     // Update roll PID loop
-    success = roll_pid_.update(-local_y_velocity, time, roll_output);
+    success = roll_pid_.update(-local_y_velocity,
+                               time,
+                               roll_output,
+                               -local_y_accel);
     if (!success) {
         ROS_WARN("Roll PID update failed in QuadVelocityController::update");
         return false;
@@ -245,6 +290,18 @@ bool QuadVelocityController::update(const ros::Time& time,
 bool QuadVelocityController::waitUntilReady()
 {
     const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && accel_msg_queue_.empty()
+           && ros::Time::now() < start_time + startup_timeout_) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
+
+    if (accel_msg_queue_.empty()) {
+        ROS_ERROR("Failed to fetch initial acceleration");
+        return false;
+    }
+
     while (ros::ok()
            && odometry_msg_queue_.empty()
            && ros::Time::now() < start_time + startup_timeout_) {

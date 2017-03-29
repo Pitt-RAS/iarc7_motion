@@ -15,6 +15,7 @@
 #include "iarc7_motion/ThrustModel.hpp"
 #include "tf2_ros/transform_listener.h"
 
+#include "geometry_msgs/AccelWithCovarianceStamped.h"
 #include "geometry_msgs/Transform.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/TwistStamped.h"
@@ -129,6 +130,15 @@ namespace Iarc7Motion
         // TF listener objects
         tf2_ros::Buffer tfBuffer_;
         const tf2_ros::TransformListener tfListener_;
+
+        // The subscriber for /accel/filtered
+        const ros::Subscriber accel_subscriber_;
+
+        // Queue of received accel messages
+        //
+        // This will always (after waitUntilReady is called) contain at least one
+        // acceleration older than the last update time
+        std::vector<geometry_msgs::AccelWithCovarianceStamped> accel_msg_queue_;
 
         // Subscriber for motor battery voltage
         const ros::Subscriber battery_subscriber_;
