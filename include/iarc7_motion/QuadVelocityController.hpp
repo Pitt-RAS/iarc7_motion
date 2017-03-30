@@ -15,6 +15,7 @@
 #include "iarc7_motion/ThrustModel.hpp"
 #include "tf2_ros/transform_listener.h"
 
+#include "geometry_msgs/AccelWithCovarianceStamped.h"
 #include "geometry_msgs/Transform.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/TwistStamped.h"
@@ -61,17 +62,6 @@ namespace Iarc7Motion
         bool __attribute__((warn_unused_result)) waitUntilReady();
 
     private:
-
-        /// Callback to handle messages on fc_battery
-        void batteryCallback(const std_msgs::Float32& msg);
-
-        /// Blocks waiting for a message to come in close to the requested time,
-        /// returns true if voltage is valid.
-        bool __attribute__((warn_unused_result)) getBatteryAroundTime(
-                double& voltage,
-                const ros::Time& time,
-                const ros::Duration& timeout);
-
         /// Waits until a transform is available at time or later, returns
         /// true on success, returns a transform using the passed in reference to
         /// a transform.
@@ -83,15 +73,20 @@ namespace Iarc7Motion
                 const ros::Duration& timeout) const;
 
         /// Blocks waiting for a message to come in at the requested time,
-        /// returns true if velocities are valid.  The returned velocity is in
-        /// the level_quad frame.
-        bool __attribute__((warn_unused_result)) getVelocityAtTime(
-                geometry_msgs::Vector3& velocity,
+        /// returns true if the result is valid.
+        template<class StampedMsgType, typename OutType>
+        bool __attribute__((warn_unused_result)) getInterpolatedMsgAtTime(
+                typename std::vector<StampedMsgType>& queue,
+                OutType& out,
                 const ros::Time& time,
-                const ros::Duration& timeout);
+                const ros::Duration& allowed_time_offset,
+                const ros::Duration& timeout,
+                const std::function<OutType(const StampedMsgType&)>& extractor) const;
 
         /// Callback to handle messages on odometry/filtered
-        void odometryCallback(const nav_msgs::Odometry& msg);
+        template<class StampedMsgType>
+        void msgCallback(const typename StampedMsgType::ConstPtr& msg,
+                         std::vector<StampedMsgType>& queue);
 
         /// Comparator that compares a message by its timestamp
         template<class MsgType>
@@ -105,37 +100,23 @@ namespace Iarc7Motion
         /// based on our current yaw
         void updatePidSetpoints(double current_yaw);
 
-        /// Blocks while waiting until we have an battery message at time
+        /// Blocks while waiting until we have an message in the queue at time
         /// or both before and after time
         ///
         /// Returns false if the operation times out or the precondition is not
         /// satisfied
         ///
-        /// Precondition: battery_msg_queue_ must contain a message with
+        /// Precondition: the queue must contain a message with
         /// msg.header.stamp < last_update_time_
         ///
-        /// Postcondition: battery_msg_queue_ will contain a message with
+        /// Postcondition: the queue will contain a message with
         /// msg.header.stamp >= time and a message with
         /// msg.header.stamp < last_update_time_
-        bool __attribute__((warn_unused_result)) waitForBatteryAtTime(
+        template<class StampedMsgType>
+        bool __attribute__((warn_unused_result)) waitForMsgAtTime(
+                const std::vector<StampedMsgType>& queue,
                 const ros::Time& time,
-                const ros::Duration& timeout);
-
-        /// Blocks while waiting until we have an odometry message at time
-        /// or both before and after time
-        ///
-        /// Returns false if the operation times out or the precondition is not
-        /// satisfied
-        ///
-        /// Precondition: odometry_msg_queue_ must contain a message with
-        /// msg.header.stamp < last_update_time_
-        ///
-        /// Postcondition: odometry_msg_queue_ will contain a message with
-        /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp < last_update_time_
-        bool __attribute__((warn_unused_result)) waitForOdometryAtTime(
-                const ros::Time& time,
-                const ros::Duration& timeout);
+                const ros::Duration& timeout) const;
 
         double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
@@ -149,6 +130,15 @@ namespace Iarc7Motion
         // TF listener objects
         tf2_ros::Buffer tfBuffer_;
         const tf2_ros::TransformListener tfListener_;
+
+        // The subscriber for /accel/filtered
+        const ros::Subscriber accel_subscriber_;
+
+        // Queue of received accel messages
+        //
+        // This will always (after waitUntilReady is called) contain at least one
+        // acceleration older than the last update time
+        std::vector<geometry_msgs::AccelWithCovarianceStamped> accel_msg_queue_;
 
         // Subscriber for motor battery voltage
         const ros::Subscriber battery_subscriber_;

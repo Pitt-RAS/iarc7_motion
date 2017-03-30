@@ -30,9 +30,11 @@ namespace Iarc7Motion
         void setSetpoint(double setpoint);
 
         // returns true on success
-        bool __attribute__((warn_unused_result)) update(double current_value,
-                                                        const ros::Time& time,
-                                                        double& result);
+        bool __attribute__((warn_unused_result)) update(
+                double current_value,
+                const ros::Time& time,
+                double& result,
+                double derivative = std::numeric_limits<double>::quiet_NaN());
 
     private:
         const double p_gain_;

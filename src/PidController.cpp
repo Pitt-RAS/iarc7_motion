@@ -33,7 +33,10 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
     // Nothing to do
 }
 
-bool PidController::update(double current_value, const ros::Time& time, double& response)
+bool PidController::update(double current_value,
+                           const ros::Time& time,
+                           double& response,
+                           double derivative)
 {
     if (time < last_time_) {
         ROS_WARN("Time passed in to PidController is less than the last time.");
@@ -49,6 +52,12 @@ bool PidController::update(double current_value, const ros::Time& time, double& 
     if (!std::isfinite(current_value)) {
         ROS_WARN("Invalid argument to PidController::update (current_value = %f)",
                  current_value);
+        return false;
+    }
+
+    if (!std::isnan(derivative) && !std::isfinite(derivative)) {
+        ROS_WARN("Invalid argument to PidController::update (derivative = %f)",
+                 derivative);
         return false;
     }
 
@@ -69,7 +78,12 @@ bool PidController::update(double current_value, const ros::Time& time, double& 
 
         response += i_accumulator_;
 
-        double d_term = d_gain_ * (current_value - last_current_value_) / time_delta;
+        // Check if we were passed a derivative or not
+        if (std::isnan(derivative)) {
+            derivative = (current_value - last_current_value_) / time_delta;
+        }
+
+        double d_term = d_gain_ * derivative;
         response -= d_term;
     }
 
