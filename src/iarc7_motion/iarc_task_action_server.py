@@ -9,6 +9,7 @@ from iarc7_motion.msg import QuadMoveAction, QuadMoveResult
 from iarc_tasks.takeoff_task import TakeoffTask
 from iarc_tasks.land_task import LandTask
 from iarc_tasks.test_task import TestTask
+from iarc_tasks.xyztranslation_task import XYZTranslationTask
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -30,6 +31,7 @@ class IarcTaskActionServer:
 
         self._task_dict = {'takeoff': TakeoffTask,
                            'land': LandTask,
+                           'xyztranslation': XYZTranslationTask,
                            'test_task': TestTask}
 
     # Private method
@@ -48,8 +50,11 @@ class IarcTaskActionServer:
 
             try:
                 actionvalues_dict = {'takeoff_height': task_request.takeoff_height ,
-                                     'preempt': task_request.preempt , 
-                                     'movement_type': task_request.movement_type}
+                                     'preempt': task_request.preempt ,
+                                     'movement_type': task_request.movement_type ,
+                                     'x_position': task_request.x_position ,
+                                     'y_position': task_request.y_position ,
+                                     'z_position': task_request.z_position}
                 new_task = new_task_type(actionvalues_dict)
             except Exception as e:
                 rospy.logerr("Could not construct task: %s", task_request.movement_type)
@@ -145,8 +150,8 @@ class IarcTaskActionServer:
         with self._lock:
             if len(self._goal_tasks) == 0:
                 return None
-            
-            self._current_goal, self._current_task= self._goal_tasks.pop(0)
+
+            self._current_goal, self._current_task = self._goal_tasks.pop(0)
             self._cancel_requested = False
 
             rospy.logdebug("New task accepted")

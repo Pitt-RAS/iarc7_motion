@@ -14,10 +14,10 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskCanceled,
                                     TaskAborted,
                                     TaskFailed)
-from iarc_tasks.task_commands import (VelocityCommand, 
+from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
                                       NopCommand)
-from position_holder import PositionHolder
+from horizontal_holder import HorizontalHolder
 
 class LandTaskState:
     init = 0
@@ -44,7 +44,7 @@ class LandTask(AbstractTask):
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = LandTaskState.init
         self._disarm_request_success = False
-        self._path_holder = PositionHolder()
+        self._path_holder = HorizontalHolder()
 
     def _receive_fc_status(self, data):
         self._fc_status = data

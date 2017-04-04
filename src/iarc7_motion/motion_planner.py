@@ -23,7 +23,7 @@ class MotionPlanner:
         self._action_server = _action_server
         self._update_rate = update_rate
         self._task = None
-        self._velocity_pub = rospy.Publisher('movement_velocity_targets',   
+        self._velocity_pub = rospy.Publisher('movement_velocity_targets',
                                              TwistStampedArrayStamped,
                                              queue_size=0)
         self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
@@ -149,7 +149,7 @@ class MotionPlanner:
                 self._action_server.set_aborted()
                 self._task = None
                 return (task_commands.NopCommand(),)
-            
+
             task_state = task_request[0]
             if isinstance(task_state, task_states.TaskCanceled):
                 self._action_server.set_canceled()

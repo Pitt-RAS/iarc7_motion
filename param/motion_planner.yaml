@@ -23,3 +23,5 @@ max_translation_acceleration: 1.0
 max_translation_speed: 3.0
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.1
+# Translation is considered finished if x,y,z within this range of target
+translation_xyz_tolerance : 0.3
