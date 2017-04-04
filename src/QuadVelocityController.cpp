@@ -119,7 +119,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                     msg.twist.twist.linear.z);
             });
     if (!success) {
-        ROS_WARN("Failed to get current velocities in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current velocities in QuadVelocityController::update");
         return false;
     }
 
@@ -135,7 +135,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                 return msg.data;
             });
     if (!success) {
-        ROS_WARN("Failed to get current battery voltage in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current battery voltage in QuadVelocityController::update");
         return false;
     }
 
@@ -154,7 +154,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                     msg.accel.accel.linear.z);
             });
     if (!success) {
-        ROS_WARN("Failed to get current acceleration in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current acceleration in QuadVelocityController::update");
         return false;
     }
 
@@ -167,7 +167,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                  time,
                                  update_timeout_);
     if (!success) {
-        ROS_WARN("Failed to get current transform in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
     }
 
@@ -179,7 +179,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                  time,
                                  update_timeout_);
     if (!success) {
-        ROS_WARN("Failed to get current transform in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
     }
     double col_height = col_height_transform.transform.translation.z;
@@ -203,7 +203,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                    vertical_accel_output,
                                    accel.z());
     if (!success) {
-        ROS_WARN("Throttle PID update failed in QuadVelocityController::update");
+        ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
         return false;
     }
 
@@ -224,7 +224,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                 pitch_output,
                                 local_x_accel);
     if (!success) {
-        ROS_WARN("Pitch PID update failed in QuadVelocityController::update");
+        ROS_ERROR("Pitch PID update failed in QuadVelocityController::update");
         return false;
     }
 
@@ -234,7 +234,7 @@ bool QuadVelocityController::update(const ros::Time& time,
                                roll_output,
                                -local_y_accel);
     if (!success) {
-        ROS_WARN("Roll PID update failed in QuadVelocityController::update");
+        ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
         return false;
     }
 
@@ -267,7 +267,7 @@ bool QuadVelocityController::update(const ros::Time& time,
      || !std::isfinite(uav_command.data.pitch)
      || !std::isfinite(uav_command.data.roll)
      || !std::isfinite(uav_command.data.yaw)) {
-        ROS_WARN(
+        ROS_ERROR(
             "Part of command is not finite in QuadVelocityController::update");
         return false;
     }
@@ -409,7 +409,7 @@ bool QuadVelocityController::getTransformAtTime(
                   ex.what());
     }
 
-    ROS_ERROR("Exception or ros::ok was false");
+    ROS_ERROR("Exception or ros::ok was false while waiting for transform");
     return false;
 }
 
@@ -422,18 +422,14 @@ bool QuadVelocityController::getInterpolatedMsgAtTime(
         const ros::Duration& timeout,
         const std::function<OutType(const StampedMsgType&)>& extractor) const
 {
-    // Wait until there's a message with stamp >= time
+    // Wait until there's a message with stamp >= time - allowed_time_offset
     if (!waitForMsgAtTime(queue, time - allowed_time_offset, timeout))
     {
-        ROS_ERROR("Timed out waiting for message in getInterpolatedMsgAtTime");
+        ROS_ERROR("Can't get interpolated message: timed out waiting");
         return false;
     }
 
-    if (queue.back().header.stamp <= time - allowed_time_offset) {
-        ROS_ERROR("Haven't received a message within the last %f seconds",
-                  allowed_time_offset.toSec());
-        return false;
-    }
+    ROS_ASSERT(queue.back().header.stamp >= time - allowed_time_offset);
 
     if (queue.back().header.stamp <= time) {
         out = extractor(queue.back());
@@ -490,7 +486,8 @@ bool QuadVelocityController::waitForMsgAtTime(
         const ros::Duration& timeout) const
 {
     if (queue.front().header.stamp >= last_update_time_) {
-        ROS_ERROR("Class invariant false: queue does not contain a message older than the requested time");
+        ROS_ERROR("Class invariant false: "
+                  "queue contains no messages older than the requested time");
         return false;
     }
 
