@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   iarc7_safety
   nav_msgs
   roscpp
+  ros_utils
   tf2
   tf2_ros
   tf2_geometry_msgs

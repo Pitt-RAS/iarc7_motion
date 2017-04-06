@@ -13,7 +13,7 @@
 #include <ros/ros.h>
 #include "iarc7_motion/PidController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
-#include "tf2_ros/transform_listener.h"
+#include "ros_utils/SafeTransformWrapper.hpp"
 
 #include "geometry_msgs/AccelWithCovarianceStamped.h"
 #include "geometry_msgs/Transform.h"
@@ -62,16 +62,6 @@ namespace Iarc7Motion
         bool __attribute__((warn_unused_result)) waitUntilReady();
 
     private:
-        /// Waits until a transform is available at time or later, returns
-        /// true on success, returns a transform using the passed in reference to
-        /// a transform.
-        bool __attribute__((warn_unused_result)) getTransformAtTime(
-                geometry_msgs::TransformStamped& transform,
-                const std::string& target_frame,
-                const std::string& source_frame,
-                const ros::Time& time,
-                const ros::Duration& timeout) const;
-
         /// Blocks waiting for a message to come in at the requested time,
         /// returns true if the result is valid.
         template<class StampedMsgType, typename OutType>
@@ -127,10 +117,7 @@ namespace Iarc7Motion
 
         ThrustModel thrust_model_;
 
-        // TF listener objects
-        tf2_ros::Buffer tfBuffer_;
-        const tf2_ros::TransformListener tfListener_;
-
+        ros_utils::SafeTransformWrapper transform_wrapper_;
         // The subscriber for /accel/filtered
         const ros::Subscriber accel_subscriber_;
 

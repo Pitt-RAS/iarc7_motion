@@ -14,6 +14,7 @@
 #include "iarc7_motion/QuadVelocityController.hpp"
 
 // ROS Headers
+#include "ros_utils/SafeTransformWrapper.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Vector3.h"
@@ -47,8 +48,7 @@ throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust
 pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4], pitch_pid[5]),
 roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4], roll_pid[5]),
 thrust_model_(thrust_model),
-tfBuffer_(),
-tfListener_(tfBuffer_),
+transform_wrapper_(),
 accel_subscriber_(nh.subscribe(
     "accel/filtered",
     100,
@@ -158,14 +158,13 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
-
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
-    success = getTransformAtTime(transform,
-                                 "quad",
-                                 "level_quad",
-                                 time,
-                                 update_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "quad",
+                                                    "level_quad",
+                                                    time,
+                                                    update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -173,11 +172,11 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped col_height_transform;
-    success = getTransformAtTime(col_height_transform,
-                                 "center_of_lift",
-                                 "map",
-                                 time,
-                                 update_timeout_);
+    success = transform_wrapper_.getTransformAtTime(col_height_transform,
+                                                    "center_of_lift",
+                                                    "map",
+                                                    time,
+                                                    update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -289,60 +288,41 @@ bool QuadVelocityController::update(const ros::Time& time,
 
 bool QuadVelocityController::waitUntilReady()
 {
-    const ros::Time start_time = ros::Time::now();
-    while (ros::ok()
-           && accel_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (accel_msg_queue_.empty()) {
+    bool success = accel_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
         ROS_ERROR("Failed to fetch initial acceleration");
         return false;
     }
 
-    while (ros::ok()
-           && odometry_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (odometry_msg_queue_.empty()) {
-        ROS_ERROR("Failed to fetch initial velocity");
-        return false;
-    }
-
-    while (ros::ok()
-           && battery_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (battery_msg_queue_.empty()) {
+    success = battery_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
         ROS_ERROR("Failed to fetch battery voltage");
         return false;
     }
 
+    success = odom_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
+        ROS_ERROR("Failed to fetch initial velocity");
+        return false;
+    }
+
     geometry_msgs::TransformStamped transform;
-    bool success = getTransformAtTime(transform,
-                                      "quad",
-                                      "level_quad",
-                                      ros::Time(0),
-                                      startup_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "quad",
+                                                    "level_quad",
+                                                    ros::Time(0),
+                                                    startup_timeout_);
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
         return false;
     }
 
-    success = getTransformAtTime(transform,
-                                 "center_of_lift",
-                                 "map",
-                                 ros::Time(0),
-                                 startup_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "center_of_lift",
+                                                    "map",
+                                                    ros::Time(0),
+                                                    startup_timeout_);
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
@@ -358,59 +338,6 @@ bool QuadVelocityController::waitUntilReady()
                           + ros::Duration(0, 1);
     }
     return true;
-}
-
-// Get a valid transform, blocks until the transform is received or
-// the request takes too long and times out
-bool QuadVelocityController::getTransformAtTime(
-        geometry_msgs::TransformStamped& transform,
-        const std::string& target_frame,
-        const std::string& source_frame,
-        const ros::Time& time,
-        const ros::Duration& timeout) const
-{
-    const ros::Time start_time = ros::Time::now();
-
-    // Catch TransformException exceptions
-    try
-    {
-        // While we aren't supposed to be shutting down
-        while (ros::ok())
-        {
-            if (ros::Time::now() > start_time + timeout)
-            {
-                ROS_ERROR_STREAM("Transform timed out ("
-                              << "current time: " << ros::Time::now() << ", "
-                              << "request time: " << start_time
-                              << ")");
-                return false;
-            }
-
-            // Check if the transform from map to quad can be made right now
-            if (tfBuffer_.canTransform(source_frame, target_frame, time))
-            {
-                // Get the transform
-                transform = tfBuffer_.lookupTransform(source_frame, target_frame, time);
-                return true;
-            }
-
-            // Handle callbacks and sleep for a small amount of time
-            // before looping again
-            ros::spinOnce();
-            ros::Duration(0.005).sleep();
-        }
-    }
-    // Catch any exceptions that might happen while transforming
-    catch (tf2::TransformException& ex)
-    {
-        ROS_ERROR("Exception transforming %s to %s: %s",
-                  target_frame.c_str(),
-                  source_frame.c_str(),
-                  ex.what());
-    }
-
-    ROS_ERROR("Exception or ros::ok was false while waiting for transform");
-    return false;
 }
 
 template<class StampedMsgType, class OutType>
