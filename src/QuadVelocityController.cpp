@@ -16,6 +16,7 @@
 
 // ROS Headers
 #include "ros_utils/LinearMsgInterpolator.hpp"
+#include "ros_utils/ParamUtils.hpp"
 #include "ros_utils/SafeTransformWrapper.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
@@ -27,16 +28,6 @@
 #include "iarc7_msgs/Float64Stamped.h"
 
 using namespace Iarc7Motion;
-
-template<typename T>
-static T getParam(ros::NodeHandle& nh, const std::string& name)
-{
-    T val;
-    ROS_ASSERT_MSG(nh.getParam(name, val),
-                   "Failed to retrieve parameter: %s",
-                   name.c_str());
-    return val;
-}
 
 QuadVelocityController::QuadVelocityController(
         double thrust_pid[6],
@@ -67,10 +58,10 @@ QuadVelocityController::QuadVelocityController(
       thrust_model_(thrust_model),
       transform_wrapper_(),
       setpoint_(),
-      startup_timeout_(getParam<double>(
+      startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
-      update_timeout_(getParam<double>(
+      update_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "update_timeout")),
       accel_interpolator_(
@@ -102,10 +93,10 @@ QuadVelocityController::QuadVelocityController(
                                                  msg.twist.twist.linear.z);
                          },
                          100),
-      min_thrust_(getParam<double>(
+      min_thrust_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "min_thrust")),
-      max_thrust_(getParam<double>(
+      max_thrust_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "max_thrust"))
 {
