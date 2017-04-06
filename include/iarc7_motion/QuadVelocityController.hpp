@@ -13,6 +13,7 @@
 #include <ros/ros.h>
 #include "iarc7_motion/PidController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
+#include "ros_utils/LinearMsgInterpolator.hpp"
 #include "ros_utils/SafeTransformWrapper.hpp"
 
 #include "geometry_msgs/AccelWithCovarianceStamped.h"
@@ -62,51 +63,9 @@ namespace Iarc7Motion
         bool __attribute__((warn_unused_result)) waitUntilReady();
 
     private:
-        /// Blocks waiting for a message to come in at the requested time,
-        /// returns true if the result is valid.
-        template<class StampedMsgType, typename OutType>
-        bool __attribute__((warn_unused_result)) getInterpolatedMsgAtTime(
-                typename std::vector<StampedMsgType>& queue,
-                OutType& out,
-                const ros::Time& time,
-                const ros::Duration& allowed_time_offset,
-                const ros::Duration& timeout,
-                const std::function<OutType(const StampedMsgType&)>& extractor) const;
-
-        /// Callback to handle messages on odometry/filtered
-        template<class StampedMsgType>
-        void msgCallback(const typename StampedMsgType::ConstPtr& msg,
-                         std::vector<StampedMsgType>& queue);
-
-        /// Comparator that compares a message by its timestamp
-        template<class MsgType>
-        static bool timeVsMsgStampedComparator(const MsgType& msg,
-                                               const ros::Time& time)
-        {
-            return msg.header.stamp < time;
-        }
-
         /// Looks at setpoint_ and sets our pid controller setpoints accordinly
         /// based on our current yaw
         void updatePidSetpoints(double current_yaw);
-
-        /// Blocks while waiting until we have an message in the queue at time
-        /// or both before and after time
-        ///
-        /// Returns false if the operation times out or the precondition is not
-        /// satisfied
-        ///
-        /// Precondition: the queue must contain a message with
-        /// msg.header.stamp < last_update_time_
-        ///
-        /// Postcondition: the queue will contain a message with
-        /// msg.header.stamp >= time and a message with
-        /// msg.header.stamp < last_update_time_
-        template<class StampedMsgType>
-        bool __attribute__((warn_unused_result)) waitForMsgAtTime(
-                const std::vector<StampedMsgType>& queue,
-                const ros::Time& time,
-                const ros::Duration& timeout) const;
 
         double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
@@ -118,35 +77,6 @@ namespace Iarc7Motion
         ThrustModel thrust_model_;
 
         ros_utils::SafeTransformWrapper transform_wrapper_;
-        // The subscriber for /accel/filtered
-        const ros::Subscriber accel_subscriber_;
-
-        // Queue of received accel messages
-        //
-        // This will always (after waitUntilReady is called) contain at least one
-        // acceleration older than the last update time
-        std::vector<geometry_msgs::AccelWithCovarianceStamped> accel_msg_queue_;
-
-        // Subscriber for motor battery voltage
-        const ros::Subscriber battery_subscriber_;
-
-        // Queue of received battery messages
-        //
-        // This will always (after waitUntilReady is called) contain at least one
-        // battery message older than the last update time
-        std::vector<iarc7_msgs::Float64Stamped> battery_msg_queue_;
-
-        /// Max time to allow for outdated battery messages
-        const ros::Duration battery_timeout_;
-
-        // The subscriber for /odometry/filtered
-        const ros::Subscriber odometry_subscriber_;
-
-        // Queue of received odometry messages
-        //
-        // This will always (after waitUntilReady is called) contain at least one
-        // velocity older than the last update time
-        std::vector<nav_msgs::Odometry> odometry_msg_queue_;
 
         // The current setpoint
         geometry_msgs::Twist setpoint_;
@@ -159,6 +89,19 @@ namespace Iarc7Motion
 
         // Max allowed timeout waiting for velocities and transforms
         const ros::Duration update_timeout_;
+
+        ros_utils::LinearMsgInterpolator<
+            geometry_msgs::AccelWithCovarianceStamped,
+            tf2::Vector3>
+                accel_interpolator_;
+        ros_utils::LinearMsgInterpolator<
+            iarc7_msgs::Float64Stamped,
+            double>
+                battery_interpolator_;
+        ros_utils::LinearMsgInterpolator<
+            nav_msgs::Odometry,
+            tf2::Vector3>
+                odom_interpolator_;
 
         // Min allowed requested thrust in m/s^2
         double min_thrust_;
