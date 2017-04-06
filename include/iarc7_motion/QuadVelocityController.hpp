@@ -35,9 +35,9 @@ namespace Iarc7Motion
         QuadVelocityController() = delete;
 
         // Require that PID parameters are passed in upon class creation
-        QuadVelocityController(double thrust_pid[5],
-                               double pitch_pid[5],
-                               double roll_pid[5],
+        QuadVelocityController(double thrust_pid[6],
+                               double pitch_pid[6],
+                               double roll_pid[6],
                                const ThrustModel& thrust_model,
                                const ros::Duration& battery_timeout,
                                ros::NodeHandle& nh,
