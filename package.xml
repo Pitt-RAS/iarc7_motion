@@ -42,11 +42,13 @@
   <build_depend>iarc7_msgs</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rosconsole</build_depend>
+  <build_depend>ros_utils</build_depend>
   <build_depend>tf2</build_depend>
   <build_depend>tf2_ros</build_depend>
   <build_depend>tf2_geometry_msgs</build_depend>
   <build_depend>iarc7_safety</build_depend>
   <run_depend>iarc7_msgs</run_depend>
+  <run_depend>ros_utils</run_depend>
   <run_depend>tf2</run_depend>
   <run_depend>tf2_geometry_msgs</run_depend>
   <run_depend>tf2_ros</run_depend>

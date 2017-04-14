@@ -7,6 +7,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include <cmath>
 #include <boost/algorithm/clamp.hpp>
 
@@ -14,6 +15,9 @@
 #include "iarc7_motion/QuadVelocityController.hpp"
 
 // ROS Headers
+#include "ros_utils/LinearMsgInterpolator.hpp"
+#include "ros_utils/ParamUtils.hpp"
+#include "ros_utils/SafeTransformWrapper.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Vector3.h"
@@ -25,65 +29,76 @@
 
 using namespace Iarc7Motion;
 
-template<typename T>
-static T getParam(ros::NodeHandle& nh, const std::string& name)
-{
-    T val;
-    ROS_ASSERT_MSG(nh.getParam(name, val),
-                   "Failed to retrieve parameter: %s",
-                   name.c_str());
-    return val;
-}
-
-// Create QuadVelocityController, copy PID settings, initialize all other variables
-QuadVelocityController::QuadVelocityController(double thrust_pid[6],
-                                               double pitch_pid[6],
-                                               double roll_pid[6],
-                                               const ThrustModel& thrust_model,
-                                               const ros::Duration& battery_timeout,
-                                               ros::NodeHandle& nh,
-                                               ros::NodeHandle& private_nh) :
-throttle_pid_(thrust_pid[0], thrust_pid[1], thrust_pid[2], thrust_pid[3], thrust_pid[4], thrust_pid[5]),
-pitch_pid_(pitch_pid[0], pitch_pid[1], pitch_pid[2], pitch_pid[3], pitch_pid[4], pitch_pid[5]),
-roll_pid_(roll_pid[0], roll_pid[1], roll_pid[2], roll_pid[3], roll_pid[4], roll_pid[5]),
-thrust_model_(thrust_model),
-tfBuffer_(),
-tfListener_(tfBuffer_),
-accel_subscriber_(nh.subscribe(
-    "accel/filtered",
-    100,
-    boost::function<void(const geometry_msgs::AccelWithCovarianceStamped::ConstPtr&)>(
-        boost::bind(&QuadVelocityController::msgCallback
-                        <geometry_msgs::AccelWithCovarianceStamped>,
-                    this,
-                    _1,
-                    boost::ref(accel_msg_queue_))))),
-accel_msg_queue_(),
-battery_subscriber_(nh.subscribe(
-    "fc_battery",
-    100,
-    boost::function<void(const iarc7_msgs::Float64Stamped::ConstPtr&)>(
-        boost::bind(&QuadVelocityController::msgCallback
-                        <iarc7_msgs::Float64Stamped>,
-                    this,
-                    _1,
-                    boost::ref(battery_msg_queue_))))),
-battery_msg_queue_(),
-battery_timeout_(battery_timeout),
-odometry_subscriber_(nh.subscribe(
-    "odometry/filtered",
-    100,
-    boost::function<void(const nav_msgs::Odometry::ConstPtr&)>(
-        boost::bind(&QuadVelocityController::msgCallback<nav_msgs::Odometry>,
-                    this,
-                    _1,
-                    boost::ref(odometry_msg_queue_))))),
-odometry_msg_queue_(),
-setpoint_(),
-startup_timeout_(getParam<double>(private_nh, "startup_timeout")),
-update_timeout_(getParam<double>(private_nh, "update_timeout")),
-min_thrust_(getParam<double>(private_nh, "min_thrust")),
-max_thrust_(getParam<double>(private_nh, "max_thrust"))
+QuadVelocityController::QuadVelocityController(
+        double thrust_pid[6],
+        double pitch_pid[6],
+        double roll_pid[6],
+        const ThrustModel& thrust_model,
+        const ros::Duration& battery_timeout,
+        ros::NodeHandle& nh,
+        ros::NodeHandle& private_nh)
+    : throttle_pid_(thrust_pid[0],
+                    thrust_pid[1],
+                    thrust_pid[2],
+                    thrust_pid[3],
+                    thrust_pid[4],
+                    thrust_pid[5]),
+      pitch_pid_(pitch_pid[0],
+                 pitch_pid[1],
+                 pitch_pid[2],
+                 pitch_pid[3],
+                 pitch_pid[4],
+                 pitch_pid[5]),
+      roll_pid_(roll_pid[0],
+                roll_pid[1],
+                roll_pid[2],
+                roll_pid[3],
+                roll_pid[4],
+                roll_pid[5]),
+      thrust_model_(thrust_model),
+      transform_wrapper_(),
+      setpoint_(),
+      startup_timeout_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "startup_timeout")),
+      update_timeout_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "update_timeout")),
+      accel_interpolator_(
+              nh,
+              "accel/filtered",
+              update_timeout_,
+              ros::Duration(0),
+              [](const geometry_msgs::AccelWithCovarianceStamped& msg) {
+                  return tf2::Vector3(msg.accel.accel.linear.x,
+                                      msg.accel.accel.linear.y,
+                                      msg.accel.accel.linear.z);
+              },
+              100),
+      battery_interpolator_(nh,
+                            "fc_battery",
+                            update_timeout_,
+                            battery_timeout,
+                            [](const iarc7_msgs::Float64Stamped& msg) {
+                                return msg.data;
+                            },
+                            100),
+      odom_interpolator_(nh,
+                         "odometry/filtered",
+                         update_timeout_,
+                         ros::Duration(0),
+                         [](const nav_msgs::Odometry& msg) {
+                             return tf2::Vector3(msg.twist.twist.linear.x,
+                                                 msg.twist.twist.linear.y,
+                                                 msg.twist.twist.linear.z);
+                         },
+                         100),
+      min_thrust_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "min_thrust")),
+      max_thrust_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "max_thrust"))
 {
 }
 
@@ -107,17 +122,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current velocity of the quad.
     tf2::Vector3 velocity;
-    bool success = getInterpolatedMsgAtTime<nav_msgs::Odometry, tf2::Vector3>(
-            odometry_msg_queue_,
-            velocity,
-            time,
-            ros::Duration(0),
-            update_timeout_,
-            [](const nav_msgs::Odometry& msg) {
-                return tf2::Vector3(msg.twist.twist.linear.x,
-                                    msg.twist.twist.linear.y,
-                                    msg.twist.twist.linear.z);
-            });
+    bool success = odom_interpolator_.getInterpolatedMsgAtTime(velocity, time);
     if (!success) {
         ROS_ERROR("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -125,15 +130,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current battery voltage of the quad
     double voltage;
-    success = getInterpolatedMsgAtTime<iarc7_msgs::Float64Stamped, double>(
-            battery_msg_queue_,
-            voltage,
-            time,
-            battery_timeout_,
-            update_timeout_,
-            [](const iarc7_msgs::Float64Stamped& msg) {
-                return msg.data;
-            });
+    success = battery_interpolator_.getInterpolatedMsgAtTime(voltage, time);
     if (!success) {
         ROS_ERROR("Failed to get current battery voltage in QuadVelocityController::update");
         return false;
@@ -141,31 +138,19 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current acceleration of the quad
     tf2::Vector3 accel;
-    success = getInterpolatedMsgAtTime
-                    <geometry_msgs::AccelWithCovarianceStamped, tf2::Vector3>(
-            accel_msg_queue_,
-            accel,
-            time,
-            ros::Duration(0),
-            update_timeout_,
-            [](const geometry_msgs::AccelWithCovarianceStamped& msg) {
-                return tf2::Vector3(msg.accel.accel.linear.x,
-                                    msg.accel.accel.linear.y,
-                                    msg.accel.accel.linear.z);
-            });
+    success = accel_interpolator_.getInterpolatedMsgAtTime(accel, time);
     if (!success) {
         ROS_ERROR("Failed to get current acceleration in QuadVelocityController::update");
         return false;
     }
 
-
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped transform;
-    success = getTransformAtTime(transform,
-                                 "quad",
-                                 "level_quad",
-                                 time,
-                                 update_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "quad",
+                                                    "level_quad",
+                                                    time,
+                                                    update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -173,11 +158,11 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Get the current transform (rotation) of the quad
     geometry_msgs::TransformStamped col_height_transform;
-    success = getTransformAtTime(col_height_transform,
-                                 "center_of_lift",
-                                 "map",
-                                 time,
-                                 update_timeout_);
+    success = transform_wrapper_.getTransformAtTime(col_height_transform,
+                                                    "center_of_lift",
+                                                    "map",
+                                                    time,
+                                                    update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
         return false;
@@ -289,60 +274,41 @@ bool QuadVelocityController::update(const ros::Time& time,
 
 bool QuadVelocityController::waitUntilReady()
 {
-    const ros::Time start_time = ros::Time::now();
-    while (ros::ok()
-           && accel_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (accel_msg_queue_.empty()) {
+    bool success = accel_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
         ROS_ERROR("Failed to fetch initial acceleration");
         return false;
     }
 
-    while (ros::ok()
-           && odometry_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (odometry_msg_queue_.empty()) {
-        ROS_ERROR("Failed to fetch initial velocity");
-        return false;
-    }
-
-    while (ros::ok()
-           && battery_msg_queue_.empty()
-           && ros::Time::now() < start_time + startup_timeout_) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    if (battery_msg_queue_.empty()) {
+    success = battery_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
         ROS_ERROR("Failed to fetch battery voltage");
         return false;
     }
 
+    success = odom_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
+        ROS_ERROR("Failed to fetch initial velocity");
+        return false;
+    }
+
     geometry_msgs::TransformStamped transform;
-    bool success = getTransformAtTime(transform,
-                                      "quad",
-                                      "level_quad",
-                                      ros::Time(0),
-                                      startup_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "quad",
+                                                    "level_quad",
+                                                    ros::Time(0),
+                                                    startup_timeout_);
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
         return false;
     }
 
-    success = getTransformAtTime(transform,
-                                 "center_of_lift",
-                                 "map",
-                                 ros::Time(0),
-                                 startup_timeout_);
+    success = transform_wrapper_.getTransformAtTime(transform,
+                                                    "center_of_lift",
+                                                    "map",
+                                                    ros::Time(0),
+                                                    startup_timeout_);
     if (!success)
     {
         ROS_ERROR("Failed to fetch initial transform");
@@ -351,113 +317,9 @@ bool QuadVelocityController::waitUntilReady()
 
     // Mark the last update time as 1ns later than the odometry message,
     // because we should always have a message older than the last update
-    last_update_time_ = odometry_msg_queue_.front().header.stamp
-                      + ros::Duration(0, 1);
-    if (last_update_time_ <= battery_msg_queue_.front().header.stamp) {
-        last_update_time_ = battery_msg_queue_.front().header.stamp
-                          + ros::Duration(0, 1);
-    }
-    return true;
-}
-
-// Get a valid transform, blocks until the transform is received or
-// the request takes too long and times out
-bool QuadVelocityController::getTransformAtTime(
-        geometry_msgs::TransformStamped& transform,
-        const std::string& target_frame,
-        const std::string& source_frame,
-        const ros::Time& time,
-        const ros::Duration& timeout) const
-{
-    const ros::Time start_time = ros::Time::now();
-
-    // Catch TransformException exceptions
-    try
-    {
-        // While we aren't supposed to be shutting down
-        while (ros::ok())
-        {
-            if (ros::Time::now() > start_time + timeout)
-            {
-                ROS_ERROR_STREAM("Transform timed out ("
-                              << "current time: " << ros::Time::now() << ", "
-                              << "request time: " << start_time
-                              << ")");
-                return false;
-            }
-
-            // Check if the transform from map to quad can be made right now
-            if (tfBuffer_.canTransform(source_frame, target_frame, time))
-            {
-                // Get the transform
-                transform = tfBuffer_.lookupTransform(source_frame, target_frame, time);
-                return true;
-            }
-
-            // Handle callbacks and sleep for a small amount of time
-            // before looping again
-            ros::spinOnce();
-            ros::Duration(0.005).sleep();
-        }
-    }
-    // Catch any exceptions that might happen while transforming
-    catch (tf2::TransformException& ex)
-    {
-        ROS_ERROR("Exception transforming %s to %s: %s",
-                  target_frame.c_str(),
-                  source_frame.c_str(),
-                  ex.what());
-    }
-
-    ROS_ERROR("Exception or ros::ok was false while waiting for transform");
-    return false;
-}
-
-template<class StampedMsgType, class OutType>
-bool QuadVelocityController::getInterpolatedMsgAtTime(
-        typename std::vector<StampedMsgType>& queue,
-        OutType& out,
-        const ros::Time& time,
-        const ros::Duration& allowed_time_offset,
-        const ros::Duration& timeout,
-        const std::function<OutType(const StampedMsgType&)>& extractor) const
-{
-    // Wait until there's a message with stamp >= time - allowed_time_offset
-    if (!waitForMsgAtTime(queue, time - allowed_time_offset, timeout))
-    {
-        ROS_ERROR("Can't get interpolated message: timed out waiting");
-        return false;
-    }
-
-    ROS_ASSERT(queue.back().header.stamp >= time - allowed_time_offset);
-
-    if (queue.back().header.stamp <= time) {
-        out = extractor(queue.back());
-        return true;
-    }
-
-    // Get first msg that is >= the requested time
-    typename std::vector<StampedMsgType>::iterator geq_msg
-        = std::lower_bound(queue.begin(),
-                           queue.end(),
-                           time,
-                           &QuadVelocityController::timeVsMsgStampedComparator
-                                <StampedMsgType>);
-
-    ROS_ASSERT_MSG(geq_msg > queue.begin(), "geq_msg - 1 out of bounds");
-    ROS_ASSERT_MSG(geq_msg < queue.end(), "geq_msg out of bounds");
-
-    // Linear interpolation between next_msg and last_msg
-    const StampedMsgType& next_msg = *geq_msg;
-    const StampedMsgType& last_msg = *(geq_msg - 1);
-
-    const OutType& next_data = extractor(next_msg);
-    const OutType& last_data = extractor(last_msg);
-
-    double dt = (next_msg.header.stamp - last_msg.header.stamp).toSec();
-
-    out = ((time - last_msg.header.stamp).toSec() / dt) * next_data
-        + ((next_msg.header.stamp - time).toSec() / dt) * last_data;
+    last_update_time_ = std::max({accel_interpolator_.getLastUpdateTime(),
+                                  battery_interpolator_.getLastUpdateTime(),
+                                  odom_interpolator_.getLastUpdateTime()});
     return true;
 }
 
@@ -477,56 +339,6 @@ void QuadVelocityController::updatePidSetpoints(double current_yaw)
     // Note: Roll is inverted because a positive y velocity means a negative
     // roll by the right hand rule
     roll_pid_.setSetpoint(-local_y_velocity);
-}
-
-template<class StampedMsgType>
-bool QuadVelocityController::waitForMsgAtTime(
-        const std::vector<StampedMsgType>& queue,
-        const ros::Time& time,
-        const ros::Duration& timeout) const
-{
-    if (queue.front().header.stamp >= last_update_time_) {
-        ROS_ERROR("Class invariant false: "
-                  "queue contains no messages older than the requested time");
-        return false;
-    }
-
-    const ros::Time start_time = ros::Time::now();
-    while (ros::ok()
-           && queue.back().header.stamp < time
-           && ros::Time::now() < start_time + timeout) {
-        ros::spinOnce();
-        ros::Duration(0.005).sleep();
-    }
-
-    return (queue.back().header.stamp >= time);
-}
-
-template<class StampedMsgType>
-void QuadVelocityController::msgCallback(
-        const typename StampedMsgType::ConstPtr& msg,
-        std::vector<StampedMsgType>& queue)
-{
-    if (!queue.empty() && msg->header.stamp < queue.back().header.stamp) {
-        ROS_ERROR_STREAM("Ignoring message with timestamp of "
-                      << msg->header.stamp
-                      << " because the queue already has a message with stamp "
-                      << queue.back().header.stamp);
-        return;
-    }
-
-    queue.push_back(*msg);
-
-    // Keep only one message older than the last update time
-    typename std::vector<StampedMsgType>::const_iterator first_geq_time
-        = std::lower_bound(queue.begin(),
-                           queue.end(),
-                           last_update_time_,
-                           &QuadVelocityController::timeVsMsgStampedComparator
-                                <StampedMsgType>);
-    if (first_geq_time - 1 > queue.begin()) {
-        queue.erase(queue.begin(), first_geq_time - 1);
-    }
 }
 
 double QuadVelocityController::yawFromQuaternion(
