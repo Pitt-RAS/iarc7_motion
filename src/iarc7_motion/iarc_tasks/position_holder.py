@@ -45,7 +45,6 @@ class PositionHolder():
                 response = TwistStamped()
                 response.header.stamp = rospy.Time.now()
                 response.header.frame_id = 'level_quad'
-
             return response
 
     def _current_velocity_callback(self, odometry):
@@ -147,7 +146,7 @@ class PositionHolder():
         # rospy.logdebug('ta %s current angle %s',
         #                 target_acceleration,
         #                 current_angle)
-        rospy.lodgebug('target acceleration: %s', target_acceleration)
+        rospy.logdebug('target acceleration: %s', target_acceleration)
         rospy.logdebug('dx %s dy %s dz %s dvx %s dvy %s dvz %s vx %s vy %s vz %s', x, y, z,
         target_acceleration * self._update_period * -(x/distance),
         target_acceleration * self._update_period * -(y/distance),

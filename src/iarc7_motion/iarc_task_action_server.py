@@ -31,7 +31,7 @@ class IarcTaskActionServer:
 
         self._task_dict = {'takeoff': TakeoffTask,
                            'land': LandTask,
-                           'xyztranslation': XYZTranslationTask,
+                           'xyztranslate': XYZTranslationTask,
                            'test_task': TestTask}
 
     # Private method
