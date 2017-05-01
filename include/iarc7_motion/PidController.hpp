@@ -36,6 +36,8 @@ namespace Iarc7Motion
                 double& result,
                 double derivative = std::numeric_limits<double>::quiet_NaN());
 
+        void resetAccumulator();
+
     private:
         const double p_gain_;
         const double i_gain_;

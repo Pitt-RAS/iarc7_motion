@@ -58,3 +58,15 @@ yaw_max_rate      : 600.0
 update_frequency: 60.0
 startup_timeout: 10.0
 update_timeout: 0.2
+
+# Maximum height considered valid before taking off
+max_takeoff_start_height: 0.3
+
+# Height at which to consider takeoff finished in meters
+takeoff_complete_height: 0.7
+
+# Rate at which to ramp the throttle during takeoff in percent a second
+takeoff_throttle_ramp_rate: 0.1
+
+# Percent to nudge the throttle forward after detecting takeoff in percent
+takeoff_throttle_bump: 0.05

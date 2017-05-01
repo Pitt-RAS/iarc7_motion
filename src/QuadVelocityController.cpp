@@ -110,6 +110,12 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
     setpoint_ = twist;
 }
 
+// Use a new thrust model
+void QuadVelocityController::setThrustModel(ThrustModel thrust_model)
+{
+    thrust_model_ = thrust_model;
+}
+
 // Main update, runs all PID calculations and returns a desired uav_command
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
 bool QuadVelocityController::update(const ros::Time& time,
@@ -354,4 +360,12 @@ double QuadVelocityController::yawFromQuaternion(
     matrix.getEulerYPR(y, p, r);
 
     return y;
+}
+
+bool QuadVelocityController::resetForTakeover()
+{
+    throttle_pid_.resetAccumulator();
+    pitch_pid_.resetAccumulator();
+    roll_pid_.resetAccumulator();
+    return true;
 }

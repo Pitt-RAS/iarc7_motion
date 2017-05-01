@@ -14,9 +14,12 @@
 
 #include <ros/ros.h>
 
+#include "actionlib/server/simple_action_server.h"
+
 #include "iarc7_motion/AccelerationPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
+#include "iarc7_motion/TakeoffController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
 
 #include "iarc7_safety/SafetyClient.hpp"
@@ -24,9 +27,17 @@
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
 
+#include "iarc7_motion/GroundInteractionAction.h"
+
 using namespace Iarc7Motion;
 using geometry_msgs::TwistStamped;
 using geometry_msgs::Twist;
+
+typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Server;
+
+enum class MotionState { TAKEOFF,
+                         LAND , 
+                         VELOCITY_CONTROL };
 
 // This is a helper function that will limit a
 // iarc7_msgs::OrientationThrottleStamped using the twist limiter
@@ -157,6 +168,13 @@ int main(int argc, char **argv)
         ros::spinOnce();
     }
 
+    Server server(nh,
+                  "ground_interaction_action",
+                  false);
+    server.start();
+
+    MotionState motion_state = MotionState::VELOCITY_CONTROL;
+
     // Create a quad velocity controller. It will output angles corresponding
     // to our desired velocity
     QuadVelocityController quadController(throttle_pid,
@@ -171,6 +189,10 @@ int main(int argc, char **argv)
         ROS_ERROR("Failed during initialization of QuadVelocityController");
         return 1;
     }
+
+    TakeoffController takeoffController(nh,
+                                        private_nh,
+                                        server);
 
     // Create an acceleration planner. It handles interpolation between
     // timestamped velocity requests so that smooth accelerations are possible.
@@ -231,8 +253,36 @@ int main(int argc, char **argv)
         {
             last_time = current_time;
 
+            if(server.isNewGoalAvailable() && !server.isActive())
+            {
+                const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();
+                if ("takeoff" == goal->interaction_type)
+                {
+                    bool success = takeoffController.resetForTakeover(current_time);
+                    if(success)
+                    { 
+                        motion_state = MotionState::TAKEOFF;
+                    }
+                    else
+                    {
+                        server.setAborted();
+                        motion_state = MotionState::VELOCITY_CONTROL;
+                    }
+                }
+                else if ("land" == goal->interaction_type)
+                {
+                    motion_state = MotionState::LAND;
+                }
+                else
+                {
+                    ROS_ERROR("Unknown ground interaction type");
+                    server.setAborted();
+                }
+            }
+
             //  This will contain the target twist or velocity that we want to achieve
             geometry_msgs::TwistStamped target_twist;
+            iarc7_msgs::OrientationThrottleStamped uav_command;
 
             // Check for a safety state in which case we should execute our safety response
             if(safety_client.isSafetyActive())
@@ -241,25 +291,49 @@ int main(int argc, char **argv)
                 // Override whatever the Acceleration Planner wants to do and attempt to land
                 target_twist.twist.linear.z = -0.2; // Try to descend
             }
-            else
+            else if(motion_state == MotionState::VELOCITY_CONTROL)
             {
                 // If nothing is wrong get a target velocity from the acceleration planner
                 accelerationPlanner.getTargetTwist(current_time, target_twist);
+
+                // Request the appropriate throttle and angle settings for the desired velocity
+                quadController.setTargetVelocity(target_twist.twist);
+
+                // Get the next uav command that is appropriate for the desired velocity
+                bool success = quadController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
             }
+            else if(motion_state == MotionState::TAKEOFF)
+            {
+                bool success = takeoffController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion takeoff controller update failed");
 
-            // Publish the current target velocity
-            uav_velocity_target_.publish(target_twist);
+                if(takeoffController.isDone())
+                {
+                    //thrust_model.something = takeoffController.getHoverThrottle();
+                    server.setSucceeded();
 
-            // Request the appropriate throttle and angle settings for the desired velocity
-            quadController.setTargetVelocity(target_twist.twist);
+                    success = quadController.resetForTakeover();
+                    quadController.setThrustModel(thrust_model);
+                    ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
+                    
+                    motion_state = MotionState::VELOCITY_CONTROL;
+                }
+            }
+            else if(motion_state == MotionState::LAND)
+            {
 
-            // Get the next uav command that is appropriate for the desired velocity
-            iarc7_msgs::OrientationThrottleStamped uav_command;
-            bool success = quadController.update(current_time, uav_command);
-            ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
+            }
+            else
+            {
+                ROS_ASSERT_MSG(false, "Low level motion does not know what state to be in");
+            }
 
             // Limit the uav command with the twist limiter before sending the uav command
             limitUavCommand(limiter, uav_command);
+
+            // Publish the current target velocity
+            uav_velocity_target_.publish(target_twist);
 
             // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);
