@@ -49,6 +49,7 @@ TakeoffController::TakeoffController(
 }
 
 // Used to reset and check initial conditions for takeoff
+// Update needs to begin being called shortly after this is called.
 bool TakeoffController::resetForTakeover(const ros::Time& time)
 {
     if (time < last_update_time_) {
@@ -80,6 +81,8 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
     recorded_hover_throttle_ = 0;
     throttle_ = 0;
     state_ = TakeoffState::RAMP;
+    // Mark the last update time as the current time to prevent large throttle spikes
+    last_update_time_ = time;
     return true;
 }
 

@@ -13,8 +13,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskCanceled,
                                     TaskAborted,
                                     TaskFailed)
-from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
+from iarc_tasks.task_commands import (ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand)
 
@@ -64,7 +63,7 @@ class TakeoffTask(AbstractTask):
         if self._state == TakeoffTaskState.init:
             # Check if we have an fc status
             if self._fc_status is None:
-                return (TaskRunning(), VelocityCommand())
+                return (TaskRunning(), NopCommand())
             # Check that auto pilot is enabled
             if not self._fc_status.auto_pilot:
                 return (TaskFailed(msg='flight controller not allowing auto pilot'),)
@@ -92,14 +91,14 @@ class TakeoffTask(AbstractTask):
                                        'takeoff',
                                        self.takeoff_callback))
             else:
-                return (TaskRunning(), VelocityCommand())
+                return (TaskRunning(), NopCommand())
 
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
 
         if self._state == TakeoffTaskState.done:
-            return (TaskDone(), VelocityCommand())
+            return (TaskDone(), NopCommand())
 
         if self._state == TakeoffTaskState.failed:
             return (TaskFailed(msg='Take off task experienced failure'),)
