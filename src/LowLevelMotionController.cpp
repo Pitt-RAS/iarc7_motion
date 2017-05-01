@@ -36,7 +36,7 @@ using geometry_msgs::Twist;
 typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Server;
 
 enum class MotionState { TAKEOFF,
-                         LAND , 
+                         LAND,
                          VELOCITY_CONTROL };
 
 // This is a helper function that will limit a
