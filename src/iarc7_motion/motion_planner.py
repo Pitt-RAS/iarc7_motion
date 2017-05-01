@@ -107,7 +107,7 @@ class MotionPlanner:
 
     def _handle_ground_interaction_command(self, ground_interaction_command):
         self._ground_interaction_task_callback = ground_interaction_command.completion_callback
-        # Request takeoff of llm
+        # Request ground interaction of llm
         goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)
         # Sends the goal to the action server.
         self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)

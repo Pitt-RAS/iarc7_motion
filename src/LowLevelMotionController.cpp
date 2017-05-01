@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                     bool success = takeoffController.resetForTakeover(current_time);
                     if(success)
                     {
-                        ROS_ERROR("Transitioning to takeoff mode");
+                        ROS_DEBUG("Transitioning to takeoff mode");
                         motion_state = MotionState::TAKEOFF;
                     }
                     else
@@ -275,10 +275,6 @@ int main(int argc, char **argv)
                         server.setAborted();
                         motion_state = MotionState::VELOCITY_CONTROL;
                     }
-                }
-                else if ("land" == goal->interaction_type)
-                {
-                    motion_state = MotionState::LAND;
                 }
                 else
                 {
@@ -326,10 +322,6 @@ int main(int argc, char **argv)
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }
-            }
-            else if(motion_state == MotionState::LAND)
-            {
-                ROS_ERROR("LAND state?");
             }
             else
             {

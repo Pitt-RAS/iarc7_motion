@@ -49,8 +49,7 @@ class IarcTaskActionServer:
                 return
 
             try:
-                actionvalues_dict = {'takeoff_height': task_request.takeoff_height ,
-                                     'preempt': task_request.preempt ,
+                actionvalues_dict = {'preempt': task_request.preempt ,
                                      'movement_type': task_request.movement_type ,
                                      'x_position': task_request.x_position ,
                                      'y_position': task_request.y_position ,
