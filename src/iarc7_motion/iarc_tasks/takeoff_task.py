@@ -4,9 +4,13 @@ import math
 import rospy
 import tf2_ros
 
+import actionlib
+from actionlib_msgs.msg import GoalStatus
+
 from geometry_msgs.msg import TwistStamped
 
 from iarc7_msgs.msg import FlightControllerStatus
+from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -49,6 +53,10 @@ class TakeoffTask(AbstractTask):
         self._state = TakeoffTaskState.init
         self._arm_request_success = False
         self._path_holder = HorizontalHolder()
+
+        # Creates the SimpleActionClient for requesting takeoff of low level motion
+        self._takeoff_client = actionlib.SimpleActionClient('ground_interaction_action', GroundInteractionAction)
+        self._takeoff_client.wait_for_server()
 
     def _receive_fc_status(self, data):
         self._fc_status = data
@@ -106,6 +114,10 @@ class TakeoffTask(AbstractTask):
         if self._state == TakeoffTaskState.pause_before_takeoff:
             if rospy.Time.now() - self.pause_start_time > rospy.Duration(self._DELAY_BEFORE_TAKEOFF):
                 self._state = TakeoffTaskState.takeoff
+                # Request takeoff of llm
+                goal = GroundInteractionGoal(interaction_type="takeoff")
+                # Sends the goal to the action server.
+                self._takeoff_client.send_goal(goal)
             else:
                 return (TaskRunning(), VelocityCommand())
 
@@ -125,20 +137,13 @@ class TakeoffTask(AbstractTask):
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg=msg),)
 
-            # Check if we reached the target height
-            if(transStamped.transform.translation.z > self._takeoff_height - self._TAKEOFF_HEIGHT_TOLERANCE):
-                return (TaskDone(), VelocityCommand())
-
-            # Check if we are above maneuver height
-            if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                hold_twist = self._path_holder.get_xy_hold_response(z_velocity=self._TAKEOFF_VELOCITY)
-                return (TaskRunning(), VelocityCommand(hold_twist))
+            task_state = self._takeoff_client.get_state()
+            if task_state == GoalStatus.SUCCEEDED:
+                return (TaskDone(),)
+            elif task_state == GoalStatus.ACTIVE or task_state == GoalStatus.PENDING:
+                return (TaskRunning(),)
             else:
-                velocity = TwistStamped()
-                velocity.header.frame_id = 'level_quad'
-                velocity.header.stamp = rospy.Time.now()
-                velocity.twist.linear.z = self._TAKEOFF_VELOCITY
-                return (TaskRunning(), VelocityCommand(velocity))
+                return (TaskFailed('Failed to execute takeoff using low level motion'),)
 
         # Impossible state reached
         return (TaskAborted(msg='Impossible state in takeoff task reached'),)

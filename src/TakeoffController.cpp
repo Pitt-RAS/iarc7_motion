@@ -21,7 +21,7 @@ TakeoffController::TakeoffController(
         Server& server)
     : transform_wrapper_(),
       server_(server),
-      state_(TakeoffState::RAMP),
+      state_(TakeoffState::DONE),
       throttle_(),
       recorded_hover_throttle_(),
       max_takeoff_start_height_(ros_utils::ParamUtils::getParam<double>(
@@ -44,6 +44,7 @@ TakeoffController::TakeoffController(
               private_nh,
               "update_timeout"))
 {
+  // Saving this here to prevent compile warnings. It will be needed in a soon to come revision.
   ros::NodeHandle nh_ = nh;
 }
 
@@ -58,7 +59,7 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "center_of_lift",
+                                                    "foot1",
                                                     "map",
                                                     time,
                                                     update_timeout_);
@@ -68,9 +69,11 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
         return false;
     }
 
-    if(transform.transform.translation.z < max_takeoff_start_height_) {
+    if(transform.transform.translation.z > max_takeoff_start_height_) {
+        ROS_ERROR("Tried to reset the takeoff controller without being on the ground");
         return false;
     } else if (state_ != TakeoffState::DONE) {
+        ROS_ERROR("Tried to reset takeoff controller that wasn't in the done state");
         return false;
     }
 
@@ -92,7 +95,7 @@ bool TakeoffController::update(const ros::Time& time,
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "center_of_lift",
+                                                    "foot1",
                                                     "map",
                                                     time,
                                                     update_timeout_);
@@ -127,7 +130,7 @@ bool TakeoffController::update(const ros::Time& time,
     }
     else
     {
-      ROS_ASSERT_MSG(false, "Invalid state in takeoff controller");
+        ROS_ASSERT_MSG(false, "Invalid state in takeoff controller");
     }
 
     // Fill in the uav_command's information
@@ -160,7 +163,7 @@ bool TakeoffController::waitUntilReady()
 {
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "center_of_lift",
+                                                    "foot1",
                                                     "map",
                                                     ros::Time(0),
                                                     startup_timeout_);

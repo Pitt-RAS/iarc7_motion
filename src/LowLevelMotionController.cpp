@@ -193,6 +193,11 @@ int main(int argc, char **argv)
     TakeoffController takeoffController(nh,
                                         private_nh,
                                         server);
+    if (!takeoffController.waitUntilReady())
+    {
+        ROS_ERROR("Failed during initialization of TakeoffController");
+        return 1;
+    }
 
     // Create an acceleration planner. It handles interpolation between
     // timestamped velocity requests so that smooth accelerations are possible.
@@ -260,11 +265,13 @@ int main(int argc, char **argv)
                 {
                     bool success = takeoffController.resetForTakeover(current_time);
                     if(success)
-                    { 
+                    {
+                        ROS_ERROR("Transitioning to takeoff mode");
                         motion_state = MotionState::TAKEOFF;
                     }
                     else
                     {
+                        ROS_ERROR("Failure transitioning to takeoff mode");
                         server.setAborted();
                         motion_state = MotionState::VELOCITY_CONTROL;
                     }
@@ -310,19 +317,19 @@ int main(int argc, char **argv)
 
                 if(takeoffController.isDone())
                 {
+                    ROS_DEBUG("Takeoff completed. Hover throttle: %f", takeoffController.getHoverThrottle());
                     //thrust_model.something = takeoffController.getHoverThrottle();
                     server.setSucceeded();
 
                     success = quadController.resetForTakeover();
                     quadController.setThrustModel(thrust_model);
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
-                    
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }
             }
             else if(motion_state == MotionState::LAND)
             {
-
+                ROS_ERROR("LAND state?");
             }
             else
             {
