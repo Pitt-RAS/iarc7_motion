@@ -5,9 +5,11 @@ import traceback
 import actionlib
 import rospy
 
+from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
 from std_srvs.srv import SetBool
 
+from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 from iarc7_msgs.msg import TwistStampedArrayStamped
 from iarc7_safety.SafetyClient import SafetyClient
@@ -35,10 +37,18 @@ class MotionPlanner:
                                         "motion_planner_server",
                                         QuadMoveAction)
 
+        # Creates the SimpleActionClient for requesting ground interaction
+        self._ground_interaction_client = actionlib.SimpleActionClient(
+                                          'ground_interaction_action',
+                                          GroundInteractionAction)
+
+        self._ground_interaction_task_callback = None
+
         self._command_implementations = {
             task_commands.VelocityCommand: self._handle_velocity_command,
             task_commands.ArmCommand: self._handle_arm_command,
-            task_commands.NopCommand: self._handle_nop_command
+            task_commands.NopCommand: self._handle_nop_command,
+            task_commands.GroundInteractionCommand: self._handle_ground_interaction_command
             }
 
     def run(self):
@@ -48,8 +58,11 @@ class MotionPlanner:
         if not self._safety_client.form_bond():
             rospy.logerr('Motion planner could not form bond with safety client')
             return
-        rospy.wait_for_service('uav_arm')
         rospy.logwarn('done forming bond')
+
+        rospy.wait_for_service('uav_arm')
+        self._action_client.wait_for_server()
+        self._ground_interaction_client.wait_for_server()
 
         while not rospy.is_shutdown():
 
@@ -76,6 +89,28 @@ class MotionPlanner:
                     self._handle_nop_command(None)
 
             rate.sleep()
+
+    def handle_ground_interaction_done(self, status, result):
+        if self._ground_interaction_task_callback is not None:
+            try:
+                self._ground_interaction_task_callback(status, result)
+            except Exception as e:
+                rospy.logerr('Exception sending result using ground interaction done cb')
+                rospy.logerr(str(e))
+                rospy.logerr(traceback.format_exc())
+                rospy.logwarn('Motion planner aborted task')
+                self._action_server.set_aborted()
+                self._task = None
+            self._ground_interaction_task_callback = None
+        else:
+            rospy.logerr('Ground interaction done callback received with no task callback available')
+
+    def _handle_ground_interaction_command(self, ground_interaction_command):
+        self._ground_interaction_task_callback = ground_interaction_command.completion_callback
+        # Request takeoff of llm
+        goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)
+        # Sends the goal to the action server.
+        self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
 
     def _handle_nop_command(self, nop_command):
         velocity = TwistStamped()

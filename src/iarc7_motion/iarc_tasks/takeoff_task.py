@@ -4,13 +4,10 @@ import math
 import rospy
 import tf2_ros
 
-import actionlib
 from actionlib_msgs.msg import GoalStatus
-
 from geometry_msgs.msg import TwistStamped
 
 from iarc7_msgs.msg import FlightControllerStatus
-from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -20,14 +17,16 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
-                                      NopCommand)
-from horizontal_holder import HorizontalHolder
+                                      NopCommand,
+                                      GroundInteractionCommand)
 
 class TakeoffTaskState:
     init = 0
     request_arm = 1
     pause_before_takeoff = 2
     takeoff = 3
+    done = 4
+    failed = 5
 
 class TakeoffTask(AbstractTask):
 
@@ -52,17 +51,21 @@ class TakeoffTask(AbstractTask):
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = TakeoffTaskState.init
         self._arm_request_success = False
-        self._path_holder = HorizontalHolder()
-
-        # Creates the SimpleActionClient for requesting takeoff of low level motion
-        self._takeoff_client = actionlib.SimpleActionClient('ground_interaction_action', GroundInteractionAction)
-        self._takeoff_client.wait_for_server()
 
     def _receive_fc_status(self, data):
         self._fc_status = data
 
     def arm_callback(self, data):
         self._arm_request_success = data.success
+
+    def takeoff_callback(self, status, result):
+        if status == GoalStatus.SUCCEEDED:
+            # Takeoff request succeeded, transition state
+            self._state = TakeoffTaskState.done
+        else:
+            # Takeoff request failed
+            rospy.logerr('Takeoff task failed during call to low level motion')
+            self._state = TakeoffTaskState.failed
 
     def get_desired_command(self):
         if self._canceled:
@@ -114,36 +117,21 @@ class TakeoffTask(AbstractTask):
         if self._state == TakeoffTaskState.pause_before_takeoff:
             if rospy.Time.now() - self.pause_start_time > rospy.Duration(self._DELAY_BEFORE_TAKEOFF):
                 self._state = TakeoffTaskState.takeoff
-                # Request takeoff of llm
-                goal = GroundInteractionGoal(interaction_type="takeoff")
-                # Sends the goal to the action server.
-                self._takeoff_client.send_goal(goal)
+                return (TaskRunning(), GroundInteractionCommand(
+                                       'takeoff',
+                                       self.takeoff_callback))
             else:
                 return (TaskRunning(), VelocityCommand())
 
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
-            try:
-                transStamped = self._tf_buffer.lookup_transform(
-                                    'map',
-                                    'quad',
-                                    rospy.Time.now(),
-                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
-            except (tf2_ros.LookupException,
-                    tf2_ros.ConnectivityException,
-                    tf2_ros.ExtrapolationException) as ex:
-                msg = 'Exception when looking up transform during takeoff'
-                rospy.logerr('Takeofftask: {}'.format(msg))
-                rospy.logerr(ex.message)
-                return (TaskAborted(msg=msg),)
+            return (TaskRunning(),)
 
-            task_state = self._takeoff_client.get_state()
-            if task_state == GoalStatus.SUCCEEDED:
-                return (TaskDone(),)
-            elif task_state == GoalStatus.ACTIVE or task_state == GoalStatus.PENDING:
-                return (TaskRunning(),)
-            else:
-                return (TaskFailed('Failed to execute takeoff using low level motion'),)
+        if self._state == TakeoffTaskState.done:
+            return (TaskDone(), VelocityCommand())
+
+        if self._state == TakeoffTaskState.failed:
+            return (TaskFailed(msg='Take off task experienced failure'),)
 
         # Impossible state reached
         return (TaskAborted(msg='Impossible state in takeoff task reached'),)

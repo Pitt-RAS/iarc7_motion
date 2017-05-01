@@ -20,3 +20,8 @@ class ArmCommand(object):
 class NopCommand(object):
     def __init__(self):
         pass
+
+class GroundInteractionCommand(object):
+    def __init__(self, interaction_type, completion_callback):
+        self.interaction_type = interaction_type
+        self.completion_callback = completion_callback
