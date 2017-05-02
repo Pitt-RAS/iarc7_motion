@@ -75,7 +75,6 @@ class PositionHolder():
     def _calculate_trapezoidal_acceleration(self, x, y, z, distance):
         try:
             # Compute a dot product to find our current speed towards a target
-            # The z term can be discarded since we aren't concerned with the z velocity
             speed_towards_target = ((self._last_vel_x * x + self._last_vel_y * y
                                     + self._last_vel_z * z) / distance)
         except ZeroDivisionError:
@@ -111,12 +110,10 @@ class PositionHolder():
 
         target_acceleration = self._calculate_trapezoidal_acceleration(x, y, z,
                                                               distance)
-        # current_angle = math.atan2(y, x)
-        # current_vertical_angle = math.atan2(z, x)
 
         target_twist = TwistStamped()
         target_twist.header.stamp = rospy.Time.now()
-        target_twist.header.frame_id = 'level_quad' # TODO
+        target_twist.header.frame_id = 'level_quad'
 
         if distance > self._position_tolerance:
             target_twist.twist.linear.x = ((self._last_speed
@@ -143,9 +140,6 @@ class PositionHolder():
         self._last_speed = math.sqrt(self._last_vel_x**2 + self._last_vel_y**2
                                      + self._last_vel_z**2)
 
-        # rospy.logdebug('ta %s current angle %s',
-        #                 target_acceleration,
-        #                 current_angle)
         rospy.logdebug('target acceleration: %s', target_acceleration)
         rospy.logdebug('dx %s dy %s dz %s dvx %s dvy %s dvz %s vx %s vy %s vz %s', x, y, z,
         target_acceleration * self._update_period * -(x/distance),

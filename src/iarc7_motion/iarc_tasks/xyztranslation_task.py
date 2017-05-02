@@ -43,7 +43,7 @@ class XYZTranslationTask(AbstractTask):
 
     def get_desired_command(self):
         if self._canceled:
-            return (TaskCanceled(),) # ask about syntax
+            return (TaskCanceled(),)
 
         if self._state == XYZTranslationTaskState.init:
             self._state = XYZTranslationTaskState.translate
@@ -68,7 +68,6 @@ class XYZTranslationTask(AbstractTask):
                     velocity = TwistStamped()
                     velocity.header.frame_id = 'level_quad'
                     velocity.header.stamp = rospy.Time.now()
-                    # velocity.twist.linear.z = self._LAND_VELOCITY # TODO
                     return (TaskRunning(), VelocityCommand(velocity))
 
         return (TaskAborted(msg='Impossible state in takeoff task reached'))
