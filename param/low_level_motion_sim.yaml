@@ -54,4 +54,4 @@ yaw_max_rate      : 1000.0
 
 update_frequency: 60.0
 startup_timeout: 10.0
-update_timeout: 0.1
+update_timeout: 2.0
