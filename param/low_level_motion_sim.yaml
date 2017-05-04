@@ -1,6 +1,6 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 0.05
+throttle_p: 1.0
 throttle_i: 0.05
 throttle_d: 0.00
 throttle_accumulator_max: 0.5
@@ -62,8 +62,8 @@ max_takeoff_start_height: 0.1
 # Height at which to consider takeoff finished in meters
 takeoff_complete_height: 0.7
 
-# Rate at which to ramp the throttle during takeoff in percent a second
-takeoff_throttle_ramp_rate: 0.1
+# Rate at which to ramp the throttle during takeoff in (percent/100) a second
+takeoff_throttle_ramp_rate: 0.5
 
 # Percent to nudge the throttle forward after detecting takeoff in percent
 takeoff_throttle_bump: 0.01
@@ -74,7 +74,7 @@ descend_acceleration: 0.1
 
 # Rate at which to descent
 # must be negative
-descend_rate: 0.3
+descend_rate: -0.3
 
 # How hard to brace
 brace_impact_velocity: 1.0
