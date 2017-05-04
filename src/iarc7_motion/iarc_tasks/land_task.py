@@ -16,7 +16,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand)
-from horizontal_holder import HorizontalHolder
 
 class LandTaskState:
     init = 0
