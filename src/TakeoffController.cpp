@@ -17,10 +17,8 @@ using namespace Iarc7Motion;
 
 TakeoffController::TakeoffController(
         ros::NodeHandle& nh,
-        ros::NodeHandle& private_nh,
-        Server& server)
+        ros::NodeHandle& private_nh)
     : transform_wrapper_(),
-      server_(server),
       state_(TakeoffState::DONE),
       throttle_(),
       recorded_hover_throttle_(),
@@ -66,7 +64,7 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
                                                     update_timeout_);
 
     if (!success) {
-        ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current transform in TakeoffController::update");
         return false;
     }
 
@@ -103,7 +101,7 @@ bool TakeoffController::update(const ros::Time& time,
                                                     time,
                                                     update_timeout_);
     if (!success) {
-        ROS_ERROR("Failed to get current transform in QuadVelocityController::update");
+        ROS_ERROR("Failed to get current transform in TakeoffController::update");
         return false;
     }
 

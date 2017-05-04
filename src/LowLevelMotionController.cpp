@@ -17,6 +17,7 @@
 #include "actionlib/server/simple_action_server.h"
 
 #include "iarc7_motion/AccelerationPlanner.hpp"
+#include "iarc7_motion/LandPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
 #include "iarc7_motion/TakeoffController.hpp"
@@ -190,14 +191,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    TakeoffController takeoffController(nh,
-                                        private_nh,
-                                        server);
+    TakeoffController takeoffController(nh, private_nh);
     if (!takeoffController.waitUntilReady())
     {
         ROS_ERROR("Failed during initialization of TakeoffController");
         return 1;
     }
+
+    LandPlanner landPlanner(nh, private_nh);
+    if (!landPlanner.waitUntilReady())
+    {
+        ROS_ERROR("Failed during initialization of LandPlanner");
+        return 1;
+    }
+
 
     // Create an acceleration planner. It handles interpolation between
     // timestamped velocity requests so that smooth accelerations are possible.
@@ -276,6 +283,21 @@ int main(int argc, char **argv)
                         motion_state = MotionState::VELOCITY_CONTROL;
                     }
                 }
+                else if("land" == goal->interaction_type)
+                {
+                    bool success = landPlanner.resetForTakeover(current_time);
+                    if(success)
+                    {
+                        ROS_DEBUG("Transitioning to land mode");
+                        motion_state = MotionState::LAND;
+                    }
+                    else
+                    {
+                        ROS_ERROR("Failure transitioning to land mode");
+                        server.setAborted();
+                        motion_state = MotionState::VELOCITY_CONTROL;
+                    }
+                }
                 else
                 {
                     ROS_ERROR("Unknown ground interaction type");
@@ -291,8 +313,10 @@ int main(int argc, char **argv)
             if(safety_client.isSafetyActive())
             {
                 // This is the safety response
-                // Override whatever the Acceleration Planner wants to do and attempt to land
-                target_twist.twist.linear.z = -0.2; // Try to descend
+                bool success = landPlanner.resetForTakeover(current_time);
+                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner resetForTakeover failed");
+                ROS_WARN("Transitioning to state LAND for safety response");
+                motion_state = MotionState::LAND;
             }
             else if(motion_state == MotionState::VELOCITY_CONTROL)
             {
@@ -319,6 +343,27 @@ int main(int argc, char **argv)
 
                     success = quadController.resetForTakeover();
                     quadController.setThrustModel(thrust_model);
+                    ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
+                    motion_state = MotionState::VELOCITY_CONTROL;
+                }
+            }
+            else if(motion_state == MotionState::LAND) {
+
+                bool success = landPlanner.getTargetTwist(current_time, target_twist);
+                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner getTargetTwist failed");
+
+                quadController.setTargetVelocity(target_twist.twist);
+
+                // Get the next uav command that is appropriate for the desired velocity
+                success = quadController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
+
+                if(landPlanner.isDone())
+                {
+                    ROS_DEBUG("Land completed");
+                    server.setSucceeded();
+
+                    success = quadController.resetForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }

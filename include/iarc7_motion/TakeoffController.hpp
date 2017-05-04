@@ -11,19 +11,14 @@
 
 #include <ros/ros.h>
 
-#include "actionlib/server/simple_action_server.h"
-
 #include "ros_utils/LinearMsgInterpolator.hpp"
 #include "ros_utils/SafeTransformWrapper.hpp"
 
 // ROS message headers
-#include "iarc7_motion/GroundInteractionAction.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
 namespace Iarc7Motion
 {
-
-typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Server;
 
 enum class TakeoffState { RAMP,
                           ASCEND,
@@ -35,7 +30,7 @@ enum class TakeoffState { RAMP,
         TakeoffController() = delete;
 
         // Require construction with a node handle and action server
-        TakeoffController(ros::NodeHandle& nh, ros::NodeHandle& private_nh, Server& server);
+        TakeoffController(ros::NodeHandle& nh, ros::NodeHandle& private_nh);
 
         ~TakeoffController() = default;
 
@@ -61,8 +56,6 @@ enum class TakeoffState { RAMP,
 
     private:
         ros_utils::SafeTransformWrapper transform_wrapper_;
-
-        Server& server_;
 
         TakeoffState state_;
 
