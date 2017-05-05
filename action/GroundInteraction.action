@@ -1,0 +1,8 @@
+# These actions are to be used by high level motion only!
+string interaction_type
+---
+# Result
+bool success
+---
+# Feedback
+float64 completion

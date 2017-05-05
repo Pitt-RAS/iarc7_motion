@@ -68,7 +68,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate actions in the 'action' folder
 add_action_files(
   DIRECTORY action
-  FILES QuadMove.action
+  FILES QuadMove.action GroundInteraction.action
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -135,7 +135,7 @@ include_directories(
 # add_dependencies(iarc7_motion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/PidController.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp src/AccelerationPlanner.cpp)
+add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/PidController.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp src/AccelerationPlanner.cpp src/TakeoffController.cpp src/LandPlanner.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

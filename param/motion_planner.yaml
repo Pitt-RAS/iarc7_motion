@@ -1,16 +1,14 @@
-# Velocity with which to take off with
-takeoff_velocity        : 0.3
-# If we get to this height less than the requested take off height
-# it is counted as take off occuring
-takeoff_height_tolerance: 0.1
 # Delay between arming and taking off
 delay_before_takeoff    : 2.0
-# Maximum height considered valid before taking off
-max_takeoff_start_height: 0.3
 # Velocity with which to land with
 land_velocity           : -0.2
 # Height below which landing is considered finish
 land_height_tolerance   : 0.15
+# Velocity with which to take off with
+takeoff_velocity        : 0.3
+# Height at which to consider takeoff finished in meters
+# Should be higher than min_maneuver_height
+takeoff_complete_height: 0.7
 # Timeout for transforms
 transform_timeout       : 0.2
 # Minimum height for any XY translationanl maneuvers

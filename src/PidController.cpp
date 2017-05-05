@@ -103,3 +103,8 @@ void PidController::setSetpoint(double setpoint)
 {
     setpoint_ = setpoint;
 }
+
+void PidController::resetAccumulator()
+{
+    i_accumulator_ = 0;
+}

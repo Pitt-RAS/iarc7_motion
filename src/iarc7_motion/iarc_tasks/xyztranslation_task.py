@@ -52,9 +52,9 @@ class XYZTranslationTask(AbstractTask):
             try:
                 transStamped = self._tf_buffer.lookup_transform('map', 'quad', rospy.Time.now(), rospy.Duration(self._TRANSFORM_TIMEOUT))
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
-                rospy.logerr('LandTask: Exception when looking up transform')
+                rospy.logerr('XYZTranslation Task: Exception when looking up transform')
                 rospy.logerr(ex.message)
-                return (TaskAborted(msg = 'Exception when looking up transform during xyztranslation'))
+                return (TaskAborted(msg = 'Exception when looking up transform during xyztranslation'),)
 
             if (abs(transStamped.transform.translation.x - self._x_position) < self._TRANSLATION_XYZ_TOLERANCE
                 and abs(transStamped.transform.translation.y - self._y_position) < self._TRANSLATION_XYZ_TOLERANCE
@@ -65,10 +65,7 @@ class XYZTranslationTask(AbstractTask):
                     hold_twist = self._path_holder.get_xyz_hold_response()
                     return (TaskRunning(), VelocityCommand(hold_twist))
                 else:
-                    velocity = TwistStamped()
-                    velocity.header.frame_id = 'level_quad'
-                    velocity.header.stamp = rospy.Time.now()
-                    return (TaskRunning(), VelocityCommand(velocity))
+                    return (TaskFailed(msg='Fell below minimum manuever height during translation'),)
 
         return (TaskAborted(msg='Impossible state in takeoff task reached'))
 

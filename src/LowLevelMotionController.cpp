@@ -14,9 +14,13 @@
 
 #include <ros/ros.h>
 
+#include "actionlib/server/simple_action_server.h"
+
 #include "iarc7_motion/AccelerationPlanner.hpp"
+#include "iarc7_motion/LandPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
+#include "iarc7_motion/TakeoffController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
 
 #include "iarc7_safety/SafetyClient.hpp"
@@ -24,9 +28,18 @@
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
 
+#include "iarc7_motion/GroundInteractionAction.h"
+
 using namespace Iarc7Motion;
 using geometry_msgs::TwistStamped;
 using geometry_msgs::Twist;
+
+typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Server;
+
+enum class MotionState { TAKEOFF,
+                         LAND,
+                         VELOCITY_CONTROL,
+                         GROUNDED };
 
 // This is a helper function that will limit a
 // iarc7_msgs::OrientationThrottleStamped using the twist limiter
@@ -157,6 +170,14 @@ int main(int argc, char **argv)
         ros::spinOnce();
     }
 
+    Server server(nh,
+                  "ground_interaction_action",
+                  false);
+    server.start();
+
+    // This assumes that we start on the ground
+    MotionState motion_state = MotionState::GROUNDED;
+
     // Create a quad velocity controller. It will output angles corresponding
     // to our desired velocity
     QuadVelocityController quadController(throttle_pid,
@@ -171,6 +192,21 @@ int main(int argc, char **argv)
         ROS_ERROR("Failed during initialization of QuadVelocityController");
         return 1;
     }
+
+    TakeoffController takeoffController(nh, private_nh, thrust_model);
+    if (!takeoffController.waitUntilReady())
+    {
+        ROS_ERROR("Failed during initialization of TakeoffController");
+        return 1;
+    }
+
+    LandPlanner landPlanner(nh, private_nh);
+    if (!landPlanner.waitUntilReady())
+    {
+        ROS_ERROR("Failed during initialization of LandPlanner");
+        return 1;
+    }
+
 
     // Create an acceleration planner. It handles interpolation between
     // timestamped velocity requests so that smooth accelerations are possible.
@@ -231,35 +267,138 @@ int main(int argc, char **argv)
         {
             last_time = current_time;
 
+            if(server.isNewGoalAvailable() && !server.isActive())
+            {
+                const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();
+                if ("takeoff" == goal->interaction_type)
+                {
+                    if (motion_state == MotionState::GROUNDED)
+                    {
+                        bool success = takeoffController.prepareForTakeover(current_time);
+                        if(success)
+                        {
+                            ROS_DEBUG("Transitioning to takeoff mode");
+                            motion_state = MotionState::TAKEOFF;
+                        }
+                        else
+                        {
+                            ROS_ERROR("Failure transitioning to takeoff mode");
+                            server.setAborted();
+                            motion_state = MotionState::GROUNDED;
+                        }
+                    }
+                    else
+                    {
+                        ROS_ERROR("Attempt to take off without LLM in the ground state");
+                        server.setAborted();
+                    }
+                }
+                else if("land" == goal->interaction_type)
+                {
+                    if (motion_state == MotionState::VELOCITY_CONTROL)
+                    {
+                        bool success = landPlanner.prepareForTakeover(current_time);
+                        if(success)
+                        {
+                            ROS_DEBUG("Transitioning to land mode");
+                            motion_state = MotionState::LAND;
+                        }
+                        else
+                        {
+                            ROS_ERROR("Failure transitioning to land mode");
+                            server.setAborted();
+                            motion_state = MotionState::VELOCITY_CONTROL;
+                        }
+                    }
+                    else
+                    {
+                        ROS_ERROR("Attempt to land off without LLM in the velocity control state");
+                        server.setAborted();
+                    }
+                }
+                else
+                {
+                    ROS_ERROR("Unknown ground interaction type");
+                    server.setAborted();
+                }
+            }
+
             //  This will contain the target twist or velocity that we want to achieve
             geometry_msgs::TwistStamped target_twist;
+            iarc7_msgs::OrientationThrottleStamped uav_command;
 
             // Check for a safety state in which case we should execute our safety response
             if(safety_client.isSafetyActive())
             {
                 // This is the safety response
-                // Override whatever the Acceleration Planner wants to do and attempt to land
-                target_twist.twist.linear.z = -0.2; // Try to descend
+                bool success = landPlanner.prepareForTakeover(current_time);
+                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner prepareForTakeover failed");
+                ROS_WARN("Transitioning to state LAND for safety response");
+                motion_state = MotionState::LAND;
             }
-            else
+            else if(motion_state == MotionState::VELOCITY_CONTROL)
             {
                 // If nothing is wrong get a target velocity from the acceleration planner
                 accelerationPlanner.getTargetTwist(current_time, target_twist);
+
+                // Request the appropriate throttle and angle settings for the desired velocity
+                quadController.setTargetVelocity(target_twist.twist);
+
+                // Get the next uav command that is appropriate for the desired velocity
+                bool success = quadController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
             }
+            else if(motion_state == MotionState::TAKEOFF)
+            {
+                bool success = takeoffController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion takeoff controller update failed");
 
-            // Publish the current target velocity
-            uav_velocity_target_.publish(target_twist);
+                if(takeoffController.isDone())
+                {
+                    server.setSucceeded();
+                    ThrustModel new_model = takeoffController.getThrustModel();
+                    quadController.setThrustModel(new_model);
+                    success = quadController.prepareForTakeover();
+                    ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
+                    motion_state = MotionState::VELOCITY_CONTROL;
+                }
+            }
+            else if(motion_state == MotionState::LAND)
+            {
 
-            // Request the appropriate throttle and angle settings for the desired velocity
-            quadController.setTargetVelocity(target_twist.twist);
+                bool success = landPlanner.getTargetTwist(current_time, target_twist);
+                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner getTargetTwist failed");
 
-            // Get the next uav command that is appropriate for the desired velocity
-            iarc7_msgs::OrientationThrottleStamped uav_command;
-            bool success = quadController.update(current_time, uav_command);
-            ROS_ASSERT_MSG(success, "LowLevelMotion controller update failed");
+                quadController.setTargetVelocity(target_twist.twist);
+
+                // Get the next uav command that is appropriate for the desired velocity
+                success = quadController.update(current_time, uav_command);
+                ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
+
+                if(landPlanner.isDone())
+                {
+                    ROS_DEBUG("Land completed");
+                    server.setSucceeded();
+
+                    success = quadController.prepareForTakeover();
+                    ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
+                    motion_state = MotionState::GROUNDED;
+                }
+            }
+            else if(motion_state == MotionState::GROUNDED)
+            {
+                ROS_DEBUG("Low level motion is grounded");
+            }
+            else
+            {
+                ROS_ASSERT_MSG(false, "Low level motion does not know what state to be in");
+            }
 
             // Limit the uav command with the twist limiter before sending the uav command
             limitUavCommand(limiter, uav_command);
+
+            // Publish the current target velocity
+            uav_velocity_target_.publish(target_twist);
 
             // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);

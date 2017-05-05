@@ -58,3 +58,30 @@ yaw_max_rate      : 600.0
 update_frequency: 60.0
 startup_timeout: 10.0
 update_timeout: 0.2
+
+# Maximum height considered valid before taking off
+max_takeoff_start_height: 0.3
+
+# Rate at which to ramp the throttle during takeoff in percent a second
+takeoff_throttle_ramp_rate: 0.1
+
+# Rate at which to accelerate from 0 to descent velocity
+# must be positive (m/s^2)
+descend_acceleration: 0.1
+
+# Rate at which to descent
+# must be negative
+descend_rate: -0.3
+
+# How hard to brace
+brace_impact_velocity: 0.2
+
+# When to begin bracing
+brace_impact_start_height: 0.15
+
+# If we go above this height during brace low level motion considers
+# this an emergency situation. The land sequence didn't work.
+brace_impact_failure_height: 0.2
+
+# This parameter will be obsolete when the foot touch sensors are implemented
+brace_impact_success_height: 0.05
