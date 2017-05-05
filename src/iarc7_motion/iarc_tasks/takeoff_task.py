@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-
 import rospy
+import tf2_ros
 
+from geometry_msgs.msg import TwistStamped
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
 
@@ -13,7 +14,8 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskCanceled,
                                     TaskAborted,
                                     TaskFailed)
-from iarc_tasks.task_commands import (ArmCommand,
+from iarc_tasks.task_commands import (VelocityCommand,
+                                      ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand)
 
@@ -22,16 +24,22 @@ class TakeoffTaskState:
     request_arm = 1
     pause_before_takeoff = 2
     takeoff = 3
-    done = 4
-    failed = 5
+    ascend = 4
+    done = 5
+    failed = 6
 
 class TakeoffTask(AbstractTask):
 
     def __init__(self, actionvalues_dict):
+        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False;
 
         try:
+            self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
+            self._TAKEOFF_COMPLETE_HEIGHT = rospy.get_param('~takeoff_complete_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
+            self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
@@ -50,7 +58,7 @@ class TakeoffTask(AbstractTask):
     def takeoff_callback(self, status, result):
         if status == GoalStatus.SUCCEEDED:
             # Takeoff request succeeded, transition state
-            self._state = TakeoffTaskState.done
+            self._state = TakeoffTaskState.ascend
         else:
             # Takeoff request failed
             rospy.logerr('Takeoff task failed during call to low level motion')
@@ -96,6 +104,32 @@ class TakeoffTask(AbstractTask):
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
+
+        if self._state == TakeoffTaskState.ascend:
+            try:
+                transStamped = self._tf_buffer.lookup_transform(
+                                    'map',
+                                    'base_footprint',
+                                    rospy.Time.now(),
+                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
+                msg = 'Exception when looking up transform during takeoff'
+                rospy.logerr('Takeofftask: {}'.format(msg))
+                rospy.logerr(ex.message)
+                return (TaskAborted(msg=msg),)
+
+            # Check if we reached the target height
+            if(transStamped.transform.translation.z > self._TAKEOFF_COMPLETE_HEIGHT):
+                self._state = TakeoffTaskState.done
+                return (TaskDone(), NopCommand())
+            else:
+                velocity = TwistStamped()
+                velocity.header.frame_id = 'level_quad'
+                velocity.header.stamp = rospy.Time.now()
+                velocity.twist.linear.z = self._TAKEOFF_VELOCITY
+                return (TaskRunning(), VelocityCommand(velocity))
 
         if self._state == TakeoffTaskState.done:
             return (TaskDone(), NopCommand())

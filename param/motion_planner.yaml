@@ -4,6 +4,11 @@ delay_before_takeoff    : 2.0
 land_velocity           : -0.2
 # Height below which landing is considered finish
 land_height_tolerance   : 0.15
+# Velocity with which to take off with
+takeoff_velocity        : 0.3
+# Height at which to consider takeoff finished in meters
+# Should be higher than min_maneuver_height
+takeoff_complete_height: 0.7
 # Timeout for transforms
 transform_timeout       : 0.2
 # Minimum height for any XY translationanl maneuvers

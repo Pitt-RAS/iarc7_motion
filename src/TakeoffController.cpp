@@ -26,15 +26,9 @@ TakeoffController::TakeoffController(
       max_takeoff_start_height_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "max_takeoff_start_height")),
-      takeoff_complete_height_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "takeoff_complete_height")),
       takeoff_throttle_ramp_rate_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "takeoff_throttle_ramp_rate")),
-      takeoff_throttle_bump_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "takeoff_throttle_bump")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -106,20 +100,11 @@ bool TakeoffController::update(const ros::Time& time,
     if(state_ == TakeoffState::RAMP) {
         if(transform.transform.translation.z > max_takeoff_start_height_) {
           // Do something to modify the thrust model
-          throttle_ = std::min(throttle_ + takeoff_throttle_bump_, 1.0);
-          state_ = TakeoffState::ASCEND;
+          state_ = TakeoffState::DONE;
         }
         else
         {
           throttle_ = std::min(throttle_ + ((time - last_update_time_).toSec() * takeoff_throttle_ramp_rate_), 1.0);
-        }
-    }
-    else if(state_ == TakeoffState::ASCEND)
-    {
-        // Continue to ascend when done return success and turn off
-        if(transform.transform.translation.z > takeoff_complete_height_)
-        {
-            state_ = TakeoffState::DONE;
         }
     }
     else if(state_ == TakeoffState::DONE)

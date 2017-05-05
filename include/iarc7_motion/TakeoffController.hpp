@@ -23,7 +23,6 @@ namespace Iarc7Motion
 {
 
 enum class TakeoffState { RAMP,
-                          ASCEND,
                           DONE };
 
 class TakeoffController
@@ -72,11 +71,7 @@ private:
     // Max allowed takeoff start height
     const double max_takeoff_start_height_;
 
-    const double takeoff_complete_height_;
-
     const double takeoff_throttle_ramp_rate_;
-
-    const double takeoff_throttle_bump_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
