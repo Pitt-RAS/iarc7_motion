@@ -38,7 +38,8 @@ typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Ser
 
 enum class MotionState { TAKEOFF,
                          LAND,
-                         VELOCITY_CONTROL };
+                         VELOCITY_CONTROL,
+                         GROUNDED };
 
 // This is a helper function that will limit a
 // iarc7_msgs::OrientationThrottleStamped using the twist limiter
@@ -174,7 +175,8 @@ int main(int argc, char **argv)
                   false);
     server.start();
 
-    MotionState motion_state = MotionState::VELOCITY_CONTROL;
+    // This assumes that we start on the ground
+    MotionState motion_state = MotionState::GROUNDED;
 
     // Create a quad velocity controller. It will output angles corresponding
     // to our desired velocity
@@ -270,32 +272,48 @@ int main(int argc, char **argv)
                 const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();
                 if ("takeoff" == goal->interaction_type)
                 {
-                    bool success = takeoffController.prepareForTakeover(current_time);
-                    if(success)
+                    if (motion_state == MotionState::GROUNDED)
                     {
-                        ROS_DEBUG("Transitioning to takeoff mode");
-                        motion_state = MotionState::TAKEOFF;
+                        bool success = takeoffController.prepareForTakeover(current_time);
+                        if(success)
+                        {
+                            ROS_DEBUG("Transitioning to takeoff mode");
+                            motion_state = MotionState::TAKEOFF;
+                        }
+                        else
+                        {
+                            ROS_ERROR("Failure transitioning to takeoff mode");
+                            server.setAborted();
+                            motion_state = MotionState::GROUNDED;
+                        }
                     }
                     else
                     {
-                        ROS_ERROR("Failure transitioning to takeoff mode");
+                        ROS_ERROR("Attempt to take off without LLM in the ground state");
                         server.setAborted();
-                        motion_state = MotionState::VELOCITY_CONTROL;
                     }
                 }
                 else if("land" == goal->interaction_type)
                 {
-                    bool success = landPlanner.prepareForTakeover(current_time);
-                    if(success)
+                    if (motion_state == MotionState::VELOCITY_CONTROL)
                     {
-                        ROS_DEBUG("Transitioning to land mode");
-                        motion_state = MotionState::LAND;
+                        bool success = landPlanner.prepareForTakeover(current_time);
+                        if(success)
+                        {
+                            ROS_DEBUG("Transitioning to land mode");
+                            motion_state = MotionState::LAND;
+                        }
+                        else
+                        {
+                            ROS_ERROR("Failure transitioning to land mode");
+                            server.setAborted();
+                            motion_state = MotionState::VELOCITY_CONTROL;
+                        }
                     }
                     else
                     {
-                        ROS_ERROR("Failure transitioning to land mode");
+                        ROS_ERROR("Attempt to land off without LLM in the velocity control state");
                         server.setAborted();
-                        motion_state = MotionState::VELOCITY_CONTROL;
                     }
                 }
                 else
@@ -345,7 +363,8 @@ int main(int argc, char **argv)
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }
             }
-            else if(motion_state == MotionState::LAND) {
+            else if(motion_state == MotionState::LAND)
+            {
 
                 bool success = landPlanner.getTargetTwist(current_time, target_twist);
                 ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner getTargetTwist failed");
@@ -363,8 +382,12 @@ int main(int argc, char **argv)
 
                     success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
-                    motion_state = MotionState::VELOCITY_CONTROL;
+                    motion_state = MotionState::GROUNDED;
                 }
+            }
+            else if(motion_state == MotionState::GROUNDED)
+            {
+                ROS_DEBUG("Low level motion is grounded");
             }
             else
             {
