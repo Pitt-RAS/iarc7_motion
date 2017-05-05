@@ -20,74 +20,74 @@
 namespace Iarc7Motion
 {
 
-    enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
-                           DESCEND,
-                           BRACE_FOR_IMPACT,
-                           DONE };
+enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
+                       DESCEND,
+                       BRACE_FOR_IMPACT,
+                       DONE };
 
-    class LandPlanner
-    {
-    public:
-        LandPlanner() = delete;
+class LandPlanner
+{
+public:
+    LandPlanner() = delete;
 
-        // Require construction with a node handle and action server
-        LandPlanner(ros::NodeHandle& nh, ros::NodeHandle& private_nh);
+    // Require construction with a node handle and action server
+    LandPlanner(ros::NodeHandle& nh, ros::NodeHandle& private_nh);
 
-        ~LandPlanner() = default;
+    ~LandPlanner() = default;
 
-        // Don't allow the copy constructor or assignment.
-        LandPlanner(const LandPlanner& rhs) = delete;
-        LandPlanner& operator=(const LandPlanner& rhs) = delete;
+    // Don't allow the copy constructor or assignment.
+    LandPlanner(const LandPlanner& rhs) = delete;
+    LandPlanner& operator=(const LandPlanner& rhs) = delete;
 
-        // Used to prepare and check initial conditions for landing
-        bool __attribute__((warn_unused_result)) prepareForTakeover(
-            const ros::Time& time);
+    // Used to prepare and check initial conditions for landing
+    bool __attribute__((warn_unused_result)) prepareForTakeover(
+        const ros::Time& time);
 
-        // Used to get a uav control message
-        bool __attribute__((warn_unused_result)) getTargetTwist(
-            const ros::Time& time,
-            geometry_msgs::TwistStamped& target_twist);
+    // Used to get a uav control message
+    bool __attribute__((warn_unused_result)) getTargetTwist(
+        const ros::Time& time,
+        geometry_msgs::TwistStamped& target_twist);
 
-        /// Waits until this object is ready to begin normal operation
-        bool __attribute__((warn_unused_result)) waitUntilReady();
+    /// Waits until this object is ready to begin normal operation
+    bool __attribute__((warn_unused_result)) waitUntilReady();
 
-        bool isDone();
+    bool isDone();
 
-    private:
-        ros_utils::SafeTransformWrapper transform_wrapper_;
+private:
+    ros_utils::SafeTransformWrapper transform_wrapper_;
 
-        LandState state_;
+    LandState state_;
 
-        double requested_z_vel_;
+    double requested_z_vel_;
 
-        // Rate at which to accelerate from 0 to descent velocity
-        const double descend_acceleration_;
+    // Rate at which to accelerate from 0 to descent velocity
+    const double descend_acceleration_;
 
-        // Rate at whicch to descent
-        const double descend_rate_;
+    // Rate at whicch to descent
+    const double descend_rate_;
 
-        // How hard to brace
-        const double brace_impact_velocity_;
+    // How hard to brace
+    const double brace_impact_velocity_;
 
-        // When to begin bracing
-        const double brace_impact_start_height_;
+    // When to begin bracing
+    const double brace_impact_start_height_;
 
-        // If we go above this height during brace we just report failure.
-        // The land sequence didn't work.
-        const double brace_impact_failure_height_;
+    // If we go above this height during brace we just report failure.
+    // The land sequence didn't work.
+    const double brace_impact_failure_height_;
 
-        // This parameter will be obsolete when the foot touch sensors are implemented
-        const double brace_impact_success_height_;
+    // This parameter will be obsolete when the foot touch sensors are implemented
+    const double brace_impact_success_height_;
 
-        // Last time an update was successful
-        ros::Time last_update_time_;
+    // Last time an update was successful
+    ros::Time last_update_time_;
 
-        // Max allowed timeout waiting for first velocity and transform
-        const ros::Duration startup_timeout_;
+    // Max allowed timeout waiting for first velocity and transform
+    const ros::Duration startup_timeout_;
 
-        // Max allowed timeout waiting for velocities and transforms
-        const ros::Duration update_timeout_;
-    };
+    // Max allowed timeout waiting for velocities and transforms
+    const ros::Duration update_timeout_;
+};
 
 } // End namespace Iarc7Motion
 
