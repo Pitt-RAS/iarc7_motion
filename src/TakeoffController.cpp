@@ -16,12 +16,13 @@
 using namespace Iarc7Motion;
 
 TakeoffController::TakeoffController(
-        ros::NodeHandle& nh,
-        ros::NodeHandle& private_nh)
+        ros::NodeHandle& /*nh*/,
+        ros::NodeHandle& private_nh,
+        const ThrustModel& thrust_model)
     : transform_wrapper_(),
       state_(TakeoffState::DONE),
       throttle_(),
-      recorded_hover_throttle_(),
+      thrust_model_(thrust_model),
       max_takeoff_start_height_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "max_takeoff_start_height")),
@@ -42,13 +43,11 @@ TakeoffController::TakeoffController(
               private_nh,
               "update_timeout"))
 {
-  // Saving this here to prevent compile warnings. It will be needed in a soon to come revision.
-  ros::NodeHandle nh_ = nh;
 }
 
 // Used to reset and check initial conditions for takeoff
 // Update needs to begin being called shortly after this is called.
-bool TakeoffController::resetForTakeover(const ros::Time& time)
+bool TakeoffController::prepareForTakeover(const ros::Time& time)
 {
     if (time < last_update_time_) {
         ROS_ERROR("Tried to reset TakeoffHandler with time before last update");
@@ -58,7 +57,7 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "foot1",
+                                                    "base_footprint",
                                                     "map",
                                                     time,
                                                     update_timeout_);
@@ -76,7 +75,6 @@ bool TakeoffController::resetForTakeover(const ros::Time& time)
         return false;
     }
 
-    recorded_hover_throttle_ = 0;
     throttle_ = 0;
     state_ = TakeoffState::RAMP;
     // Mark the last update time as the current time to prevent large throttle spikes
@@ -96,7 +94,7 @@ bool TakeoffController::update(const ros::Time& time,
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "foot1",
+                                                    "base_footprint",
                                                     "map",
                                                     time,
                                                     update_timeout_);
@@ -107,13 +105,13 @@ bool TakeoffController::update(const ros::Time& time,
 
     if(state_ == TakeoffState::RAMP) {
         if(transform.transform.translation.z > max_takeoff_start_height_) {
-          recorded_hover_throttle_ = throttle_;
-          throttle_ = std::min(throttle_ + takeoff_throttle_bump_, 100.0);
+          // Do something to modify the thrust model
+          throttle_ = std::min(throttle_ + takeoff_throttle_bump_, 1.0);
           state_ = TakeoffState::ASCEND;
         }
         else
         {
-          throttle_ = std::min(throttle_ + ((time - last_update_time_).toSec() * takeoff_throttle_ramp_rate_), 100.0);
+          throttle_ = std::min(throttle_ + ((time - last_update_time_).toSec() * takeoff_throttle_ramp_rate_), 1.0);
         }
     }
     else if(state_ == TakeoffState::ASCEND)
@@ -164,18 +162,21 @@ bool TakeoffController::waitUntilReady()
 {
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "foot1",
+                                                    "base_footprint",
                                                     "map",
                                                     ros::Time(0),
                                                     startup_timeout_);
     if (!success)
     {
-        ROS_ERROR("Failed to fetch initial transform");
+        ROS_ERROR("Failed to fetch transform");
         return false;
     }
 
     // Mark the last update time the current time as we could not have
     // received a message before this
+    // Note that this is not the same time as the transform.
+    // We get the last transform off the stack just to make sure there is something there.
+    // This time is just used to calculate any ramping that needs to be done.
     last_update_time_ = ros::Time::now();
     return true;
 }
@@ -185,7 +186,7 @@ bool TakeoffController::isDone()
   return (state_ == TakeoffState::DONE);
 }
 
-double TakeoffController::getHoverThrottle()
+ThrustModel TakeoffController::getThrustModel()
 {
-  return recorded_hover_throttle_;
+  return thrust_model_;
 }

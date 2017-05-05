@@ -106,6 +106,16 @@ class MotionPlanner:
             rospy.logerr('Ground interaction done callback received with no task callback available')
 
     def _handle_ground_interaction_command(self, ground_interaction_command):
+        if self._ground_interaction_task_callback is not None:
+            rospy.logerr('Task requested another ground interaction action before the last completed')
+            rospy.logwarn('Motion planner aborted task')
+            self._action_server.set_aborted()
+            self._task = None
+            self._ground_interaction_task_callback = None
+            self._ground_interaction_client.cancel_goal()
+            self._ground_interaction_client.stop_tracking_goal()
+            return
+
         self._ground_interaction_task_callback = ground_interaction_command.completion_callback
         # Request ground interaction of llm
         goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)

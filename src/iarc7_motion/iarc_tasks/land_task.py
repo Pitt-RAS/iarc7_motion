@@ -12,8 +12,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskCanceled,
                                     TaskAborted,
                                     TaskFailed)
-from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
+from iarc_tasks.task_commands import (ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand)
 

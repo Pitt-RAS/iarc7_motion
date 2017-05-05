@@ -11,25 +11,19 @@
 
 #include <ros/ros.h>
 
-#include "actionlib/server/simple_action_server.h"
-
 #include "ros_utils/LinearMsgInterpolator.hpp"
 #include "ros_utils/SafeTransformWrapper.hpp"
 
 // ROS message headers
 #include "geometry_msgs/TwistStamped.h"
 
-#include "iarc7_motion/GroundInteractionAction.h"
-
 namespace Iarc7Motion
 {
 
-typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Server;
-
-enum class LandState { BEGIN_DESCENT,
-                       DESCEND,
-                       BRACE_FOR_IMPACT,
-                       DONE };
+    enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
+                           DESCEND,
+                           BRACE_FOR_IMPACT,
+                           DONE };
 
     class LandPlanner
     {
@@ -45,8 +39,8 @@ enum class LandState { BEGIN_DESCENT,
         LandPlanner(const LandPlanner& rhs) = delete;
         LandPlanner& operator=(const LandPlanner& rhs) = delete;
 
-        // Used to reset and check initial conditions for landing
-        bool __attribute__((warn_unused_result)) resetForTakeover(
+        // Used to prepare and check initial conditions for landing
+        bool __attribute__((warn_unused_result)) prepareForTakeover(
             const ros::Time& time);
 
         // Used to get a uav control message

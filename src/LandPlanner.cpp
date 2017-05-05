@@ -16,7 +16,7 @@
 using namespace Iarc7Motion;
 
 LandPlanner::LandPlanner(
-        ros::NodeHandle& nh,
+        ros::NodeHandle& /*nh*/,
         ros::NodeHandle& private_nh)
     : transform_wrapper_(),
       state_(LandState::DONE),
@@ -47,14 +47,11 @@ LandPlanner::LandPlanner(
               private_nh,
               "update_timeout"))
 {
-  // Saving this here to prevent compile warnings. It will be needed in a soon to come revision.
-  // That involves the landing gear
-  ros::NodeHandle nh_ = nh;
 }
 
-// Used to reset and check initial conditions for landing
+// Used to prepare and check initial conditions for landing
 // getTargetTwist needs to begin being called shortly after this is called.
-bool LandPlanner::resetForTakeover(const ros::Time& time)
+bool LandPlanner::prepareForTakeover(const ros::Time& time)
 {
     if (time < last_update_time_) {
         ROS_ERROR("Tried to reset TakeoffHandler with time before last update");
@@ -62,7 +59,7 @@ bool LandPlanner::resetForTakeover(const ros::Time& time)
     }
 
     requested_z_vel_ = 0;
-    state_ = LandState::BEGIN_DESCENT;
+    state_ = LandState::ACCELERATE_TO_DESCENT_VELOCITY;
     // Mark the last update time as the current time since update may not have
     // Been called in a long time.
     last_update_time_ = time;
@@ -81,7 +78,7 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "foot1",
+                                                    "base_footprint",
                                                     "map",
                                                     time,
                                                     update_timeout_);
@@ -90,9 +87,9 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
         return false;
     }
 
-    if(state_ == LandState::BEGIN_DESCENT) {
+    if(state_ == LandState::ACCELERATE_TO_DESCENT_VELOCITY) {
         requested_z_vel_ = std::max(requested_z_vel_ - ((time - last_update_time_).toSec() * descend_acceleration_), descend_rate_);
-        if(requested_z_vel_ >= descend_rate_) {
+        if(requested_z_vel_ <= descend_rate_) {
             state_ = LandState::DESCEND;
         }
     }
@@ -138,18 +135,21 @@ bool LandPlanner::waitUntilReady()
 {
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "foot1",
+                                                    "base_footprint",
                                                     "map",
                                                     ros::Time(0),
                                                     startup_timeout_);
     if (!success)
     {
-        ROS_ERROR("Failed to fetch initial transform");
+        ROS_ERROR("Failed to fetch transform");
         return false;
     }
 
     // Mark the last update time the current time as we could not have
     // received a message before this
+    // Note that this is not the same time as the transform.
+    // We get the last transform off the stack just to make sure there is something there.
+    // This time is just used to calculate any ramping that needs to be done.
     last_update_time_ = ros::Time::now();
     return true;
 }

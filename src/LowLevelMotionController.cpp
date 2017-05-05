@@ -191,7 +191,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    TakeoffController takeoffController(nh, private_nh);
+    TakeoffController takeoffController(nh, private_nh, thrust_model);
     if (!takeoffController.waitUntilReady())
     {
         ROS_ERROR("Failed during initialization of TakeoffController");
@@ -270,7 +270,7 @@ int main(int argc, char **argv)
                 const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();
                 if ("takeoff" == goal->interaction_type)
                 {
-                    bool success = takeoffController.resetForTakeover(current_time);
+                    bool success = takeoffController.prepareForTakeover(current_time);
                     if(success)
                     {
                         ROS_DEBUG("Transitioning to takeoff mode");
@@ -285,7 +285,7 @@ int main(int argc, char **argv)
                 }
                 else if("land" == goal->interaction_type)
                 {
-                    bool success = landPlanner.resetForTakeover(current_time);
+                    bool success = landPlanner.prepareForTakeover(current_time);
                     if(success)
                     {
                         ROS_DEBUG("Transitioning to land mode");
@@ -313,8 +313,8 @@ int main(int argc, char **argv)
             if(safety_client.isSafetyActive())
             {
                 // This is the safety response
-                bool success = landPlanner.resetForTakeover(current_time);
-                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner resetForTakeover failed");
+                bool success = landPlanner.prepareForTakeover(current_time);
+                ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner prepareForTakeover failed");
                 ROS_WARN("Transitioning to state LAND for safety response");
                 motion_state = MotionState::LAND;
             }
@@ -337,12 +337,10 @@ int main(int argc, char **argv)
 
                 if(takeoffController.isDone())
                 {
-                    ROS_DEBUG("Takeoff completed. Hover throttle: %f", takeoffController.getHoverThrottle());
-                    //thrust_model.something = takeoffController.getHoverThrottle();
                     server.setSucceeded();
-
-                    success = quadController.resetForTakeover();
-                    quadController.setThrustModel(thrust_model);
+                    ThrustModel new_model = takeoffController.getThrustModel();
+                    quadController.setThrustModel(new_model);
+                    success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }
@@ -363,7 +361,7 @@ int main(int argc, char **argv)
                     ROS_DEBUG("Land completed");
                     server.setSucceeded();
 
-                    success = quadController.resetForTakeover();
+                    success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
                 }

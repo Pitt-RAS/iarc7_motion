@@ -14,23 +14,27 @@
 #include "ros_utils/LinearMsgInterpolator.hpp"
 #include "ros_utils/SafeTransformWrapper.hpp"
 
+#include "iarc7_motion/ThrustModel.hpp"
+
 // ROS message headers
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
 namespace Iarc7Motion
 {
 
-enum class TakeoffState { RAMP,
-                          ASCEND,
-                          DONE };
+    enum class TakeoffState { RAMP,
+                              ASCEND,
+                              DONE };
 
     class TakeoffController
     {
     public:
         TakeoffController() = delete;
 
-        // Require construction with a node handle and action server
-        TakeoffController(ros::NodeHandle& nh, ros::NodeHandle& private_nh);
+        // Require construction with a node handle
+        TakeoffController(ros::NodeHandle& nh,
+                          ros::NodeHandle& private_nh,
+                          const ThrustModel& thrust_model);
 
         ~TakeoffController() = default;
 
@@ -38,8 +42,8 @@ enum class TakeoffState { RAMP,
         TakeoffController(const TakeoffController& rhs) = delete;
         TakeoffController& operator=(const TakeoffController& rhs) = delete;
 
-        // Used to reset and check initial conditions for takeoff
-        bool __attribute__((warn_unused_result)) resetForTakeover(
+        // Used to prepare and check initial conditions for takeoff
+        bool __attribute__((warn_unused_result)) prepareForTakeover(
             const ros::Time& time);
 
         // Used to get a uav control message
@@ -52,7 +56,7 @@ enum class TakeoffState { RAMP,
 
         bool isDone();
 
-        double getHoverThrottle();
+        ThrustModel getThrustModel();
 
     private:
         ros_utils::SafeTransformWrapper transform_wrapper_;
@@ -62,8 +66,8 @@ enum class TakeoffState { RAMP,
         // Current throttle setting
         double throttle_;
 
-        // Used to hold the detected hover throttle
-        double recorded_hover_throttle_;
+        // Used to hold currently desired thrust model
+        ThrustModel thrust_model_;
 
         // Max allowed takeoff start height
         const double max_takeoff_start_height_;

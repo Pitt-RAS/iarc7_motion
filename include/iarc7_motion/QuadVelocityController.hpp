@@ -53,7 +53,7 @@ namespace Iarc7Motion
         void setTargetVelocity(geometry_msgs::Twist twist);
 
         // Use a new thrust model
-        void setThrustModel(ThrustModel thrust_model);
+        void setThrustModel(const ThrustModel& thrust_model);
 
         // Require checking of the returned value.
         // Used to update all PID loops according to a time delta that is passed in.
@@ -65,8 +65,8 @@ namespace Iarc7Motion
         /// Waits until this object is ready to begin normal operation
         bool __attribute__((warn_unused_result)) waitUntilReady();
 
-        /// Resets this controller as appropriate for taking over control from another controller
-        bool __attribute__((warn_unused_result)) resetForTakeover();
+        /// Prepares this controller as appropriate for taking over control from another controller
+        bool __attribute__((warn_unused_result)) prepareForTakeover();
 
     private:
         /// Looks at setpoint_ and sets our pid controller setpoints accordinly

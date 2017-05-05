@@ -111,7 +111,7 @@ void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
 }
 
 // Use a new thrust model
-void QuadVelocityController::setThrustModel(ThrustModel thrust_model)
+void QuadVelocityController::setThrustModel(const ThrustModel& thrust_model)
 {
     thrust_model_ = thrust_model;
 }
@@ -362,7 +362,7 @@ double QuadVelocityController::yawFromQuaternion(
     return y;
 }
 
-bool QuadVelocityController::resetForTakeover()
+bool QuadVelocityController::prepareForTakeover()
 {
     throttle_pid_.resetAccumulator();
     pitch_pid_.resetAccumulator();
