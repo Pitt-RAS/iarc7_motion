@@ -4,7 +4,7 @@ import tf
 
 import math
 
-from iarc7_msgs.msg import TwistStampedArrayStamped
+from iarc7_msgs.msg import TwistStampedArray
 from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
 
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     safety_client = SafetyClient('motion_planner')
     assert safety_client.form_bond()
 
-    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArrayStamped, queue_size=0)
+    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArray, queue_size=0)
     tf_listener = tf.TransformListener()
 
     while not rospy.is_shutdown() and rospy.Time.now() == 0:
@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
-
         try:
             (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
         except tf.Exception as ex:
@@ -102,10 +101,10 @@ if __name__ == '__main__':
         if abs(yaw_difference) >= 0.02:
             velocity.twist.angular.z = constrain(yaw_difference * kP_yaw, -max_yaw_vel, max_yaw_vel)
 
-        velocity_msg = TwistStampedArrayStamped()
-        velocity_msg.header.stamp = rospy.Time.now()
-        velocity_msg.data = [velocity]
+        velocity_msg = TwistStampedArray()
+        velocity_msg.twists = [velocity]
         velocity_pub.publish(velocity_msg)
+        rospy.logerr(velocity_msg)
 
         if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
             if abs(yaw_difference) < 0.15:

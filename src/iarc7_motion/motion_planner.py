@@ -11,7 +11,7 @@ from std_srvs.srv import SetBool
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
-from iarc7_msgs.msg import TwistStampedArrayStamped
+from iarc7_msgs.msg import TwistStampedArray
 from iarc7_safety.SafetyClient import SafetyClient
 
 from iarc_task_action_server import IarcTaskActionServer
@@ -26,7 +26,7 @@ class MotionPlanner:
         self._update_rate = update_rate
         self._task = None
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
-                                             TwistStampedArrayStamped,
+                                             TwistStampedArray,
                                              queue_size=0)
         self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
         self._safety_client = SafetyClient('motion_planner')
@@ -155,9 +155,8 @@ class MotionPlanner:
         return armed
 
     def _publish_twist(self, twist):
-        velocity_msg = TwistStampedArrayStamped()
-        velocity_msg.header.stamp = rospy.Time.now()
-        velocity_msg.data = [twist]
+        velocity_msg = TwistStampedArray()
+        velocity_msg.twists = [twist]
         self._velocity_pub.publish(velocity_msg)
 
     def _safety_task_complete_callback(self, status, response):

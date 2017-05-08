@@ -16,7 +16,7 @@
 
 #include "gtest/gtest_prod.h"
 
-#include "iarc7_msgs/TwistStampedArrayStamped.h"
+#include "iarc7_msgs/TwistStampedArray.h"
 #include "geometry_msgs/TwistStamped.h"
 
 using geometry_msgs::TwistStamped;
@@ -51,7 +51,7 @@ private:
     FRIEND_TEST(AccelerationPlannerTests, testAppendVelocityQueue);
 
     // Handles incoming velocity command messages
-    void processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message);
+    void processVelocityCommand(const iarc7_msgs::TwistStampedArray::ConstPtr& message);
 
     // Removes old velocities from the velocity queue
     static bool trimVelocityQueue(TwistStampedArray& twists, const ros::Time& time);
