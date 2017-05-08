@@ -37,6 +37,12 @@ class XYZTranslationTask(AbstractTask):
             rospy.logerr('Could not lookup a parameter for xyztranslation task')
             raise
 
+        # Check that we aren't being requested to go below the minimum maneuver height
+        # Error straight out if that's the case. If we are currently below the minimum height
+        # It will be caught and handled on the next update
+        if self._z_position < self._MIN_MANEUVER_HEIGHT :
+            raise ValueError('Requested z height was below the minimum maneuver height')
+
         # fc status?
         self._path_holder = PositionHolder(self._x_position, self._y_position, self._z_position)
         self._state = XYZTranslationTaskState.init
