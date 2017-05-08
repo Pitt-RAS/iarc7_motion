@@ -182,11 +182,11 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
 
 // Receive a new list of velocities commands and call appendVelocityQueue to insert them into the queue
 // TODO: check that message is sorted properly, default to safe state if anythings wrong?
-void AccelerationPlanner::processVelocityCommand(const iarc7_msgs::TwistStampedArrayStamped::ConstPtr& message)
+void AccelerationPlanner::processVelocityCommand(const iarc7_msgs::TwistStampedArray::ConstPtr& message)
 {
 
     // Check for empty message
-    if(message->data.empty())
+    if(message->twists.empty())
     {
         ROS_WARN("processVelocityCommand passed an empty array of TwistStampedArray, not accepting");
         return;
@@ -195,5 +195,5 @@ void AccelerationPlanner::processVelocityCommand(const iarc7_msgs::TwistStampedA
     // Cache time to make sure it stays the same for the proceeding function calls
     ros::Time current_time = ros::Time::now();
 
-    appendVelocityQueue(velocity_targets_, message->data, current_time);
+    appendVelocityQueue(velocity_targets_, message->twists, current_time);
 }
