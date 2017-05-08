@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 import rospy
+import actionlib
 import tf
 
 import math
 
+from actionlib_msgs.msg import GoalStatus
+
+from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_msgs.msg import TwistStampedArray
 from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
@@ -51,6 +55,21 @@ if __name__ == '__main__':
     kP_yaw = 0.5
     max_vel = 1
     max_yaw_vel = 2.0 * math.pi / 3 # Max requested yaw is one rev per 3 seconds
+
+    # Creates the SimpleActionClient for requesting ground interaction
+    ground_interaction_client = actionlib.SimpleActionClient(
+                                'ground_interaction_action',
+                                GroundInteractionAction)
+    ground_interaction_client.wait_for_server()
+
+    # Request ground interaction of llm
+    goal = GroundInteractionGoal(interaction_type='takeoff')
+    # Sends the goal to the action server.
+    ground_interaction_client.send_goal(goal)
+
+    # Waits for the server to finish performing the action.
+    ground_interaction_client.wait_for_result()
+    rospy.logwarn("Takeoff success: {}".format(ground_interaction_client.get_result()))
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
@@ -104,7 +123,6 @@ if __name__ == '__main__':
         velocity_msg = TwistStampedArray()
         velocity_msg.twists = [velocity]
         velocity_pub.publish(velocity_msg)
-        rospy.logerr(velocity_msg)
 
         if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
             if abs(yaw_difference) < 0.15:
