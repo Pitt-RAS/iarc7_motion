@@ -16,16 +16,16 @@
 using namespace Iarc7Motion;
 
 TakeoffController::TakeoffController(
-        ros::NodeHandle& /*nh*/,
+        ros::NodeHandle& nh,
         ros::NodeHandle& private_nh,
         const ThrustModel& thrust_model)
-    : transform_wrapper_(),
+    : landing_gear_message_(),
+      landing_gear_subscriber_(),
+      landing_gear_message_received_(false),
+      transform_wrapper_(),
       state_(TakeoffState::DONE),
       throttle_(),
       thrust_model_(thrust_model),
-      max_takeoff_start_height_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "max_takeoff_start_height")),
       takeoff_throttle_ramp_rate_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "takeoff_throttle_ramp_rate")),
@@ -37,6 +37,10 @@ TakeoffController::TakeoffController(
               private_nh,
               "update_timeout"))
 {
+    landing_gear_subscriber_ = nh.subscribe("landing_gear_contacts",
+                                   100,
+                                   &TakeoffController::processLandingGearMessage,
+                                   this);
 }
 
 // Used to reset and check initial conditions for takeoff
@@ -61,7 +65,7 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    if(transform.transform.translation.z > max_takeoff_start_height_) {
+    if(!allPressed(landing_gear_message_)) {
         ROS_ERROR("Tried to reset the takeoff controller without being on the ground");
         return false;
     } else if (state_ != TakeoffState::DONE) {
@@ -98,7 +102,7 @@ bool TakeoffController::update(const ros::Time& time,
     }
 
     if(state_ == TakeoffState::RAMP) {
-        if(transform.transform.translation.z > max_takeoff_start_height_) {
+        if(!allPressed(landing_gear_message_)) {
           // Do something to modify the thrust model
           state_ = TakeoffState::DONE;
         }
@@ -157,12 +161,21 @@ bool TakeoffController::waitUntilReady()
         return false;
     }
 
-    // Mark the last update time the current time as we could not have
-    // received a message before this
-    // Note that this is not the same time as the transform.
-    // We get the last transform off the stack just to make sure there is something there.
+    const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && !landing_gear_message_received_
+           && ros::Time::now() < start_time + startup_timeout_) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
+
+    if (!landing_gear_message_received_) {
+        ROS_ERROR_STREAM("TakeoffController failed to fetch initial switch message");
+        return false;
+    }
+
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = ros::Time::now();
+    last_update_time_ = landing_gear_message_.header.stamp;
     return true;
 }
 
@@ -174,4 +187,16 @@ bool TakeoffController::isDone()
 ThrustModel TakeoffController::getThrustModel()
 {
   return thrust_model_;
+}
+
+void TakeoffController::processLandingGearMessage(
+    const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message)
+{
+    landing_gear_message_received_ = true;
+    landing_gear_message_ = *message;
+}
+
+bool TakeoffController::allPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
+{
+    return msg.front && msg.back && msg.left && msg.right;
 }

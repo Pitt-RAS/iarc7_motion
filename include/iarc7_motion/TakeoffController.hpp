@@ -17,6 +17,7 @@
 #include "iarc7_motion/ThrustModel.hpp"
 
 // ROS message headers
+#include "iarc7_msgs/LandingGearContactsStamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
 namespace Iarc7Motion
@@ -58,6 +59,18 @@ public:
     ThrustModel getThrustModel();
 
 private:
+    // Handles incoming landing gear messages
+    void processLandingGearMessage(
+        const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message);
+
+    static bool allPressed(const iarc7_msgs::LandingGearContactsStamped& msg);
+
+    iarc7_msgs::LandingGearContactsStamped landing_gear_message_;
+
+    ros::Subscriber landing_gear_subscriber_;
+
+    bool landing_gear_message_received_;
+
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
     TakeoffState state_;
@@ -67,9 +80,6 @@ private:
 
     // Used to hold currently desired thrust model
     ThrustModel thrust_model_;
-
-    // Max allowed takeoff start height
-    const double max_takeoff_start_height_;
 
     const double takeoff_throttle_ramp_rate_;
 
