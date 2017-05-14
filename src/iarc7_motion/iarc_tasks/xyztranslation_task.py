@@ -61,17 +61,15 @@ class XYZTranslationTask(AbstractTask):
                 rospy.logerr('XYZTranslation Task: Exception when looking up transform')
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg = 'Exception when looking up transform during xyztranslation'),)
-
-            if (abs(transStamped.transform.translation.x - self._x_position) < self._TRANSLATION_XYZ_TOLERANCE
-                and abs(transStamped.transform.translation.y - self._y_position) < self._TRANSLATION_XYZ_TOLERANCE
-                and abs(transStamped.transform.translation.z - self._z_position) < self._TRANSLATION_XYZ_TOLERANCE):
-                    return (TaskDone(), NopCommand())
-            else:
-                if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                    hold_twist = self._path_holder.get_xyz_hold_response()
+            
+            if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
+                hold_twist = self._path_holder.get_xyz_hold_response()
+                if not self._path_holder.is_done():
                     return (TaskRunning(), VelocityCommand(hold_twist))
                 else:
-                    return (TaskFailed(msg='Fell below minimum manuever height during translation'),)
+                    return (TaskDone(), VelocityCommand(hold_twist))
+            else:
+                return (TaskFailed(msg='Fell below minimum manuever height during translation'),)
 
         return (TaskAborted(msg='Impossible state in takeoff task reached'))
 
