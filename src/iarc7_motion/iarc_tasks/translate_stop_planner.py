@@ -11,7 +11,7 @@ import rospy
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
-class PositionHolder():
+class TranslateStopPlanner():
     def __init__(self, x=None, y=None, z=None):
         update_rate = rospy.get_param('~update_rate', False)
         self._update_period = 1.0/update_rate

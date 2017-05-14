@@ -12,7 +12,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand, NopCommand)
 
-from position_holder import PositionHolder
+from translate_stop_planner import TranslateStopPlanner
 
 class XYZTranslationTaskState:
     init = 0
@@ -44,7 +44,9 @@ class XYZTranslationTask(AbstractTask):
             raise ValueError('Requested z height was below the minimum maneuver height')
 
         # fc status?
-        self._path_holder = PositionHolder(self._x_position, self._y_position, self._z_position)
+        self._path_holder = TranslateStopPlanner(self._x_position,
+                                                 self._y_position,
+                                                 self._z_position)
         self._state = XYZTranslationTaskState.init
 
     def get_desired_command(self):
