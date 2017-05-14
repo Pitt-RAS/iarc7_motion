@@ -75,7 +75,7 @@ brace_impact_start_height: 0.1
 
 # If we go above this height during brace low level motion considers
 # this an emergency situation. The land sequence didn't work.
-brace_impact_failure_height: 0.2
+brace_impact_failure_height: 0.15
 
 # This parameter will be obsolete when the foot touch sensors are implemented
 brace_impact_success_height: 0.05
