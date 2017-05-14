@@ -51,10 +51,10 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "base_footprint",
-                                                    "map",
-                                                    time,
-                                                    update_timeout_);
+                                                         "map",
+                                                         "base_footprint",
+                                                         time,
+                                                         update_timeout_);
 
     if (!success) {
         ROS_ERROR("Failed to get current transform in TakeoffController::update");
@@ -88,10 +88,10 @@ bool TakeoffController::update(const ros::Time& time,
     // Get the current transform (xyz) of the quad
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "base_footprint",
-                                                    "map",
-                                                    time,
-                                                    update_timeout_);
+                                                         "map",
+                                                         "base_footprint",
+                                                         time,
+                                                         update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in TakeoffController::update");
         return false;
@@ -147,10 +147,10 @@ bool TakeoffController::waitUntilReady()
 {
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                    "base_footprint",
-                                                    "map",
-                                                    ros::Time(0),
-                                                    startup_timeout_);
+                                                         "map",
+                                                         "base_footprint",
+                                                         ros::Time(0),
+                                                         startup_timeout_);
     if (!success)
     {
         ROS_ERROR("Failed to fetch transform");
