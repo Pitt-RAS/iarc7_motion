@@ -123,10 +123,7 @@ class MotionPlanner:
         self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
 
     def _handle_nop_command(self, nop_command):
-        velocity = TwistStamped()
-        velocity.header.frame_id = 'level_quad'
-        velocity.header.stamp = rospy.Time.now()
-        self._publish_twist(velocity)
+        pass
 
     def _handle_velocity_command(self, velocity_command):
         self._publish_twist(velocity_command.target_twist)
@@ -209,6 +206,7 @@ class MotionPlanner:
             elif isinstance(task_state, task_states.TaskDone):
                 self._action_server.set_succeeded(True)
                 self._task = None
+                return task_request[1:]
             else:
                 assert isinstance(task_state, task_states.TaskRunning)
                 return task_request[1:]
