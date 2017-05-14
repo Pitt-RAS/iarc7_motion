@@ -5,7 +5,7 @@ import rospy
 from geometry_msgs.msg import TwistStamped
 
 class VelocityCommand(object):
-    def __init__(self,  target_twist):
+    def __init__(self,  target_twist=None):
         if target_twist is None:
             self.target_twist = TwistStamped()
             self.target_twist.header.stamp = rospy.Time.now()
