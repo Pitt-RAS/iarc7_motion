@@ -16,6 +16,7 @@
 
 // ROS message headers
 #include "geometry_msgs/TwistStamped.h"
+#include "iarc7_msgs/LandingGearContactsStamped.h"
 
 namespace Iarc7Motion
 {
@@ -54,6 +55,18 @@ public:
     bool isDone();
 
 private:
+    // Handles incoming landing gear messages
+    void processLandingGearMessage(
+        const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message);
+
+    static bool allPressed(const iarc7_msgs::LandingGearContactsStamped& msg);
+
+    iarc7_msgs::LandingGearContactsStamped landing_gear_message_;
+
+    ros::Subscriber landing_gear_subscriber_;
+
+    bool landing_gear_message_received_;
+
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
     LandState state_;

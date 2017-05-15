@@ -16,7 +16,7 @@
 using namespace Iarc7Motion;
 
 LandPlanner::LandPlanner(
-        ros::NodeHandle& /*nh*/,
+        ros::NodeHandle& nh,
         ros::NodeHandle& private_nh)
     : transform_wrapper_(),
       state_(LandState::DONE),
@@ -47,6 +47,10 @@ LandPlanner::LandPlanner(
               private_nh,
               "update_timeout"))
 {
+    landing_gear_subscriber_ = nh.subscribe("landing_gear_contacts",
+                                 100,
+                                 &LandPlanner::processLandingGearMessage,
+                                 this);
 }
 
 // Used to prepare and check initial conditions for landing
@@ -54,7 +58,12 @@ LandPlanner::LandPlanner(
 bool LandPlanner::prepareForTakeover(const ros::Time& time)
 {
     if (time < last_update_time_) {
-        ROS_ERROR("Tried to reset TakeoffHandler with time before last update");
+        ROS_ERROR("Tried to reset LandPlanner with time before last update");
+        return false;
+    }
+
+    if(allPressed(landing_gear_message_)) {
+        ROS_ERROR("Tried to reset the LandPlanner while being on the ground");
         return false;
     }
 
@@ -108,7 +117,7 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
             ROS_ERROR("Land sequence failed, quad started going up again");
             return false;
         }
-        else if(transform.transform.translation.z < brace_impact_success_height_) {
+        else if(allPressed(landing_gear_message_)) {
             state_ = LandState::DONE;
         }
     }
@@ -145,16 +154,37 @@ bool LandPlanner::waitUntilReady()
         return false;
     }
 
-    // Mark the last update time the current time as we could not have
-    // received a message before this
-    // Note that this is not the same time as the transform.
-    // We get the last transform off the stack just to make sure there is something there.
+    const ros::Time start_time = ros::Time::now();
+    while (ros::ok()
+           && !landing_gear_message_received_
+           && ros::Time::now() < start_time + startup_timeout_) {
+        ros::spinOnce();
+        ros::Duration(0.005).sleep();
+    }
+
+    if (!landing_gear_message_received_) {
+        ROS_ERROR_STREAM("LandPlanner failed to fetch initial switch message");
+        return false;
+    }
+
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = ros::Time::now();
+    last_update_time_ = landing_gear_message_.header.stamp;
     return true;
 }
 
 bool LandPlanner::isDone()
 {
   return (state_ == LandState::DONE);
+}
+
+void LandPlanner::processLandingGearMessage(
+    const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message)
+{
+    landing_gear_message_received_ = true;
+    landing_gear_message_ = *message;
+}
+
+bool LandPlanner::allPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
+{
+    return msg.front && msg.back && msg.left && msg.right;
 }
