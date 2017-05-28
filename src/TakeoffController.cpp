@@ -10,8 +10,11 @@
 #include "iarc7_motion/TakeoffController.hpp"
 
 // ROS Headers
+#include <ros/ros.h>
 #include "ros_utils/ParamUtils.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
+#include <geometry_msgs/PointStamped.h>
 
 using namespace Iarc7Motion;
 
@@ -35,12 +38,49 @@ TakeoffController::TakeoffController(
               "startup_timeout")),
       update_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "update_timeout"))
+              "update_timeout")),
+      battery_timeout_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "battery_timeout")),
+      battery_interpolator_(nh,
+                            "fc_battery",
+                            update_timeout_,
+                            battery_timeout_,
+                            [](const iarc7_msgs::Float64Stamped& msg) {
+                                return msg.data;
+                            },
+                            100)
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contacts",
                                    100,
                                    &TakeoffController::processLandingGearMessage,
                                    this);
+}
+
+bool TakeoffController::calibrateThrustModel(const ros::Time& time)
+{
+    double voltage;
+    if (!battery_interpolator_.getInterpolatedMsgAtTime(voltage, time)) {
+        ROS_ERROR("Failed to get battery voltage to calibrate thrust model");
+        return false;
+    }
+
+    geometry_msgs::TransformStamped transform;
+    bool success = transform_wrapper_.getTransformAtTime(transform,
+                                                         "map",
+                                                         "center_of_lift",
+                                                         time,
+                                                         update_timeout_);
+    if (!success) {
+        ROS_ERROR("Failed to get current transform to calibrate thrust model");
+        return false;
+    }
+
+    geometry_msgs::PointStamped col_point;
+    tf2::doTransform(col_point, col_point, transform);
+
+    thrust_model_.calibrate(throttle_, voltage, col_point.point.z);
+    return true;
 }
 
 // Used to reset and check initial conditions for takeoff
@@ -103,7 +143,10 @@ bool TakeoffController::update(const ros::Time& time,
 
     if(state_ == TakeoffState::RAMP) {
         if(!allPressed(landing_gear_message_)) {
-          // Do something to modify the thrust model
+            if (!calibrateThrustModel(time)) {
+                ROS_ERROR("Failed to calibrate thrust model");
+                return false;
+            }
           state_ = TakeoffState::DONE;
         }
         else
@@ -161,6 +204,12 @@ bool TakeoffController::waitUntilReady()
         return false;
     }
 
+    success = battery_interpolator_.waitUntilReady(startup_timeout_);
+    if (!success) {
+        ROS_ERROR("Failed to fetch battery voltage");
+        return false;
+    }
+
     const ros::Time start_time = ros::Time::now();
     while (ros::ok()
            && !landing_gear_message_received_
@@ -175,7 +224,8 @@ bool TakeoffController::waitUntilReady()
     }
 
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = landing_gear_message_.header.stamp;
+    last_update_time_ = std::max(landing_gear_message_.header.stamp,
+                                 battery_interpolator_.getLastUpdateTime());
     return true;
 }
 
@@ -184,7 +234,7 @@ bool TakeoffController::isDone()
   return (state_ == TakeoffState::DONE);
 }
 
-ThrustModel TakeoffController::getThrustModel()
+const ThrustModel& TakeoffController::getThrustModel() const
 {
   return thrust_model_;
 }
