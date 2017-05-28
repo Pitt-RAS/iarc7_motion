@@ -27,3 +27,5 @@ max_translation_speed: 3.0
 translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
+# If there is no task for this many seconds a zero velocity command will be sent
+task_timeout: 1.0
