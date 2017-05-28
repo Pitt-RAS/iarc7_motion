@@ -1,0 +1,80 @@
+# PID values are positive for forward acting PID loops and negative for
+# reverse acting PID loops. P, I, and D should all be the same sign.
+throttle_p: 0.0
+throttle_i: 0.0
+throttle_d: 0.0
+throttle_accumulator_enable_threshold: 10.0
+throttle_accumulator_max: 5.0
+throttle_accumulator_min: -5.0
+
+thrust_model:
+    thrust_scale_factor: 0.1 # mass / g / num_props
+    A_ge: 0.132650296655
+    d0: 0.495494309272
+    voltage_polynomial: [-0.9279, 0.0923]
+    throttle_b: 0.8164
+    throttle_c: -0.0353
+
+# Thrust levels are in m/s^2
+min_thrust: 7.0
+max_thrust: 100.0
+
+battery_timeout: 0.5
+
+pitch_p: 0.0
+pitch_i: 0.0
+pitch_d: 0.0
+pitch_accumulator_max: 0.0
+pitch_accumulator_min: 0.0
+pitch_accumulator_enable_threshold: 0.0
+
+roll_p: 0.0
+roll_i: 0.0
+roll_d: 0.0
+roll_accumulator_max: 0.0
+roll_accumulator_min: 0.0
+roll_accumulator_enable_threshold: 0.0
+
+throttle_max      : 1.0
+throttle_min      : 0.0
+throttle_max_rate : 200.0
+
+pitch_max         : 0.5
+pitch_min         : -0.5
+pitch_max_rate    : 10.0
+
+roll_max          : 0.5
+roll_min          : -0.5
+roll_max_rate     : 10.0
+
+yaw_max           : 3.0
+yaw_min           : -3.0
+yaw_max_rate      : 600.0
+
+update_frequency: 60.0
+startup_timeout: 10.0
+update_timeout: 0.2
+
+# Rate at which to ramp the throttle during takeoff in percent a second
+takeoff_throttle_ramp_rate: 0.1
+
+# Rate at which to accelerate from 0 to descent velocity
+# must be positive (m/s^2)
+descend_acceleration: 0.1
+
+# Rate at which to descent
+# must be negative
+descend_rate: -0.3
+
+# How hard to brace
+brace_impact_velocity: 0.2
+
+# When to begin bracing
+brace_impact_start_height: 0.15
+
+# If we go above this height during brace low level motion considers
+# this an emergency situation. The land sequence didn't work.
+brace_impact_failure_height: 0.2
+
+# This parameter will be obsolete when the foot touch sensors are implemented
+brace_impact_success_height: 0.05
