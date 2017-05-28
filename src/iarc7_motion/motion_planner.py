@@ -51,6 +51,13 @@ class MotionPlanner:
             task_commands.GroundInteractionCommand: self._handle_ground_interaction_command
             }
 
+        self._time_of_last_task = None
+        try:
+            self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
+        except KeyError as e:
+            rospy.logerr('Could not lookup a parameter for motion_planner')
+            raise
+
     def run(self):
         rate = rospy.Rate(self._update_rate)
 
@@ -168,6 +175,7 @@ class MotionPlanner:
             self._task = self._action_server.get_new_task()
 
         if self._task:
+            self._time_of_last_task = None
             if self._action_server.is_canceled():
                 try:
                     self._task.cancel()
@@ -210,6 +218,19 @@ class MotionPlanner:
             else:
                 assert isinstance(task_state, task_states.TaskRunning)
                 return task_request[1:]
+        else:
+            # There is no current task running
+            if self._time_of_last_task is None:
+                self._time_of_last_task = rospy.Time.now()
+
+            if ((rospy.Time.now() - self._time_of_last_task)
+                > self._task_timeout):
+                # If past the timeout send a zero velocity command
+                self._handle_velocity_command(task_commands.VelocityCommand())
+                rospy.logerr('STOPPING')
+                # reset time so that a new command will be sent
+                self._time_of_last_task = None
+
         # No action to take return a nop
         return (task_commands.NopCommand(),)
 
