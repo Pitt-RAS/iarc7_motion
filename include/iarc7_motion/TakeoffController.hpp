@@ -17,6 +17,7 @@
 #include "iarc7_motion/ThrustModel.hpp"
 
 // ROS message headers
+#include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/LandingGearContactsStamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 
@@ -42,6 +43,9 @@ public:
     TakeoffController(const TakeoffController& rhs) = delete;
     TakeoffController& operator=(const TakeoffController& rhs) = delete;
 
+    bool __attribute__((warn_unused_result)) calibrateThrustModel(
+        const ros::Time& time);
+
     // Used to prepare and check initial conditions for takeoff
     bool __attribute__((warn_unused_result)) prepareForTakeover(
         const ros::Time& time);
@@ -56,7 +60,7 @@ public:
 
     bool isDone();
 
-    ThrustModel getThrustModel();
+    const ThrustModel& getThrustModel() const;
 
 private:
     // Handles incoming landing gear messages
@@ -91,6 +95,13 @@ private:
 
     // Max allowed timeout waiting for velocities and transforms
     const ros::Duration update_timeout_;
+
+    // Max allowed distance between battery messages
+    const ros::Duration battery_timeout_;
+
+    // Interpolator for battery voltage
+    ros_utils::LinearMsgInterpolator<iarc7_msgs::Float64Stamped, double>
+            battery_interpolator_;
 };
 
 } // End namespace Iarc7Motion
