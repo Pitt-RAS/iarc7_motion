@@ -76,7 +76,7 @@ QuadVelocityController::QuadVelocityController(
               },
               100),
       battery_interpolator_(nh,
-                            "fc_battery",
+                            "motor_battery",
                             update_timeout_,
                             battery_timeout,
                             [](const iarc7_msgs::Float64Stamped& msg) {
