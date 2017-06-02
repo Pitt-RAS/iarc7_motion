@@ -47,7 +47,7 @@ LandPlanner::LandPlanner(
               private_nh,
               "update_timeout"))
 {
-    landing_gear_subscriber_ = nh.subscribe("landing_gear_contacts",
+    landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                  100,
                                  &LandPlanner::processLandingGearMessage,
                                  this);
