@@ -51,7 +51,7 @@ TakeoffController::TakeoffController(
                             },
                             100)
 {
-    landing_gear_subscriber_ = nh.subscribe("landing_gear_contacts",
+    landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                    100,
                                    &TakeoffController::processLandingGearMessage,
                                    this);
