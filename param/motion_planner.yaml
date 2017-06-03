@@ -31,3 +31,5 @@ translation_xyz_tolerance : 0.3
 task_timeout: 1.0
 #height at which roomba tracking takes place
 track_roomba_height: 1.5
+#maximum x and y distance away from roomba at which track_roomba is successful
+roomba_max_acceptable_dist: .1
