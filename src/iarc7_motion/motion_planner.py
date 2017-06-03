@@ -227,7 +227,7 @@ class MotionPlanner:
                 > self._task_timeout):
                 # If past the timeout send a zero velocity command
                 self._handle_velocity_command(task_commands.VelocityCommand())
-                rospy.logerr('STOPPING')
+                rospy.logwarn('Task running timeout Setting zero velocity')
                 # reset time so that a new command will be sent
                 self._time_of_last_task = None
 
