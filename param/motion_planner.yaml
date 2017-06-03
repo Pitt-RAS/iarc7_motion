@@ -29,3 +29,5 @@ translation_position_hold_tolerance: 0.05
 translation_xyz_tolerance : 0.3
 # If there is no task for this many seconds a zero velocity command will be sent
 task_timeout: 1.0
+#height at which roomba tracking takes place
+track_roomba_height: 1.5
