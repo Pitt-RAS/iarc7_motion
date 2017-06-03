@@ -37,8 +37,8 @@ class TrackRoombaTask(AbstractTask):
 
         self.roomba_id = self.roomba_id  + '/base_link'
         
-        self.k_x = .5
-        self.k_y = .5
+        self.k_x = .3
+        self.k_y = .3
 
         if self.roomba_id is None or len(self.roomba_id) < 2:
             raise ValueError('An invalid or null roomba id was provided')
@@ -60,6 +60,7 @@ class TrackRoombaTask(AbstractTask):
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
+            self._MAX_ACCEPTABLE_DIST = rospy.get_param('~roomba_max_acceptable_dist')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
@@ -109,17 +110,17 @@ class TrackRoombaTask(AbstractTask):
 
             self.roomba_point =tf2_geometry_msgs.do_transform_point(stamped_point, roomba_transform)
 
-
-
-            if not self._check_roomba_range():
+            if not self._check_max_roomba_range():
                 return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
 
+            if self._check_min_roomba_range():
+                return (TaskDone(),)
+
             x_error = self.roomba_point.point.x * self.k_x + self.roomba_odometry.twist.twist.linear.x
-
             y_error = self.roomba_point.point.y * self.k_y + self.roomba_odometry.twist.twist.linear.y
-
             z_error = self._z_holder.get_height_hold_response()
 
+            #caps x and y velocities
             if abs(x_error) > self._MAX_TRANSLATION_SPEED:
                 x_error = x_error/abs(x_error) * self._MAX_TRANSLATION_SPEED
 
@@ -135,13 +136,22 @@ class TrackRoombaTask(AbstractTask):
             
             return (TaskRunning(), VelocityCommand(velocity)) 
 
-    def _check_roomba_range(self):
+    def _check_max_roomba_range(self):
         for odometry in self._roomba_array.data:
             if odometry.child_frame_id == self.roomba_id:
                 self.roomba_odometry = odometry
                 self.roomba_found =  True 
         return (abs(self.roomba_point.point.x) < 1.0 and abs(self.roomba_point.point.y) < 1.0 and self.roomba_found)
 
+    def _check_min_roomba_range(self):
+        _within_y = False
+        _within_x = False
+
+        _within_x = abs(self.roomba_point.point.x) <= self._MAX_ACCEPTABLE_DIST 
+        _within_y = abs(self.roomba_point.point.y) <= self._MAX_ACCEPTABLE_DIST
+
+        return _within_x and _within_y
+
     def cancel(self):
-        rospy.loginfo('TrackObject Task canceled')
+        rospy.loginfo('TrackRoomba Task canceled')
         self._canceled = True
