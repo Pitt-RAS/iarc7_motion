@@ -43,7 +43,7 @@ TakeoffController::TakeoffController(
               private_nh,
               "battery_timeout")),
       battery_interpolator_(nh,
-                            "fc_battery",
+                            "motor_battery",
                             update_timeout_,
                             battery_timeout_,
                             [](const iarc7_msgs::Float64Stamped& msg) {

@@ -352,6 +352,7 @@ int main(int argc, char **argv)
                     success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
+                    ROS_INFO("Finished takeoff, hover throttle is %f, model says %f", uav_command.throttle, new_model.throttleFromAccel(9.8, 23, .23));
                 }
             }
             else if(motion_state == MotionState::LAND)
