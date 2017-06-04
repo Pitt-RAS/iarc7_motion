@@ -41,7 +41,12 @@ struct ThrustModel
     }
 
     void calibrate(double hover_throttle, double voltage, double height) {
-        ROS_INFO("Calibrating thrust model with throttle = (%f), voltage = (%f), height = (%f)", hover_throttle, voltage, height);
+        ROS_INFO("Calibrating thrust model with throttle = (%f), "
+                 "voltage = (%f), "
+                 "height = (%f)",
+                 hover_throttle,
+                 voltage,
+                 height);
         double thrust = vPoly(voltage)
                       * groundEffect(height)
                       * controlPoly(hover_throttle);
