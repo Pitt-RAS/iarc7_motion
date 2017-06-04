@@ -268,7 +268,7 @@ int main(int argc, char **argv)
                         bool success = takeoffController.prepareForTakeover(current_time);
                         if(success)
                         {
-                            ROS_DEBUG("Transitioning to takeoff mode");
+                            ROS_INFO("Transitioning to takeoff mode");
                             motion_state = MotionState::TAKEOFF;
                         }
                         else
@@ -291,7 +291,7 @@ int main(int argc, char **argv)
                         bool success = landPlanner.prepareForTakeover(current_time);
                         if(success)
                         {
-                            ROS_DEBUG("Transitioning to land mode");
+                            ROS_INFO("Transitioning to land mode");
                             motion_state = MotionState::LAND;
                         }
                         else
@@ -352,6 +352,8 @@ int main(int argc, char **argv)
                     success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
                     motion_state = MotionState::VELOCITY_CONTROL;
+                    ROS_INFO("Finished takeoff, hover throttle is %f",
+                             uav_command.throttle);
                 }
             }
             else if(motion_state == MotionState::LAND)
@@ -368,7 +370,7 @@ int main(int argc, char **argv)
 
                 if(landPlanner.isDone())
                 {
-                    ROS_DEBUG("Land completed");
+                    ROS_INFO("Land completed");
                     server.setSucceeded();
 
                     success = quadController.prepareForTakeover();

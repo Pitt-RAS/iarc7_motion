@@ -60,6 +60,7 @@ private:
         const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message);
 
     static bool allPressed(const iarc7_msgs::LandingGearContactsStamped& msg);
+    static bool anyPressed(const iarc7_msgs::LandingGearContactsStamped& msg);
 
     iarc7_msgs::LandingGearContactsStamped landing_gear_message_;
 

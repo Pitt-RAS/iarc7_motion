@@ -117,7 +117,7 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
             ROS_ERROR("Land sequence failed, quad started going up again");
             return false;
         }
-        else if(allPressed(landing_gear_message_)) {
+        else if(anyPressed(landing_gear_message_)) {
             state_ = LandState::DONE;
         }
     }
@@ -187,4 +187,9 @@ void LandPlanner::processLandingGearMessage(
 bool LandPlanner::allPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
 {
     return msg.front && msg.back && msg.left && msg.right;
+}
+
+bool LandPlanner::anyPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
+{
+    return msg.front || msg.back || msg.left || msg.right;
 }
