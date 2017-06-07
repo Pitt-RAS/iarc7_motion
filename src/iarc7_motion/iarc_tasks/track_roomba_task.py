@@ -53,7 +53,9 @@ class TrackRoombaTask(AbstractTask):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
 
-        self._roomba_status_sub = rospy.Subscriber('roombas', OdometryArray, self._receive_roomba_status)
+        self._roomba_status_sub = rospy.Subscriber(
+            'roombas', OdometryArray, 
+            self._receive_roomba_status)
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -79,7 +81,8 @@ class TrackRoombaTask(AbstractTask):
         self._roomba_array = data
 
     def get_desired_command(self):
-        if self._state == TrackObjectTaskState.init or self._state == TrackObjectTaskState.waiting:
+        if (self._state == TrackObjectTaskState.init or 
+            self._state == TrackObjectTaskState.waiting):
             self._state = TrackObjectTaskState.track
 
         if self._canceled:
@@ -108,7 +111,8 @@ class TrackRoombaTask(AbstractTask):
             stamped_point.point.y = 0
             stamped_point.point.z = 0
 
-            self.roomba_point =tf2_geometry_msgs.do_transform_point(stamped_point, roomba_transform)
+            self.roomba_point =tf2_geometry_msgs.do_transform_point(
+                                                stamped_point, roomba_transform)
 
             if not self._check_max_roomba_range():
                 return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
@@ -116,8 +120,10 @@ class TrackRoombaTask(AbstractTask):
             if self._check_min_roomba_range():
                 return (TaskDone(),)
 
-            x_error = self.roomba_point.point.x * self.k_x + self.roomba_odometry.twist.twist.linear.x
-            y_error = self.roomba_point.point.y * self.k_y + self.roomba_odometry.twist.twist.linear.y
+            x_error = (self.roomba_point.point.x * self.k_x + 
+                        self.roomba_odometry.twist.twist.linear.x)
+            y_error = (self.roomba_point.point.y * self.k_y + 
+                        self.roomba_odometry.twist.twist.linear.y)
             z_error = self._z_holder.get_height_hold_response()
 
             #caps x and y velocities
@@ -141,7 +147,8 @@ class TrackRoombaTask(AbstractTask):
             if odometry.child_frame_id == self.roomba_id:
                 self.roomba_odometry = odometry
                 self.roomba_found =  True 
-        return (abs(self.roomba_point.point.x) < 1.0 and abs(self.roomba_point.point.y) < 1.0 and self.roomba_found)
+        return (abs(self.roomba_point.point.x) < 1.0 and 
+                abs(self.roomba_point.point.y) < 1.0 and self.roomba_found)
 
     def _check_min_roomba_range(self):
         _within_y = False
