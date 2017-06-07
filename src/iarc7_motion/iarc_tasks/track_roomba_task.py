@@ -33,21 +33,21 @@ class TrackRoombaTask(AbstractTask):
 
     def __init__(self, task_dictionary):
 
-        self.roomba_id = task_dictionary['frame_id']
+        self._roomba_id = task_dictionary['frame_id']
 
-        self.roomba_id = self.roomba_id  + '/base_link'
+        self._roomba_id = self._roomba_id  + '/base_link'
         
-        self.k_x = .3
-        self.k_y = .3
+        self._k_x = .3
+        self._k_y = .3
 
-        if self.roomba_id is None or len(self.roomba_id) < 2:
+        if self._roomba_id is None or len(self._roomba_id) < 2:
             raise ValueError('An invalid or null roomba id was provided')
 
-        self.roomba_odometry = None
+        self._roomba_odometry = None
         self._roomba_array = None
-        self.roomba_point = None
+        self._roomba_point = None
 
-        self.roomba_found = False
+        self._roomba_found = False
         self._canceled = False
 
         self._tf_buffer = tf2_ros.Buffer()
@@ -96,7 +96,7 @@ class TrackRoombaTask(AbstractTask):
             try:
                 roomba_transform = self._tf_buffer.lookup_transform(
                                     'level_quad',
-                                    self.roomba_id,
+                                    self._roomba_id,
                                     rospy.Time.now(),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
             except (tf2_ros.LookupException,
@@ -111,7 +111,7 @@ class TrackRoombaTask(AbstractTask):
             stamped_point.point.y = 0
             stamped_point.point.z = 0
 
-            self.roomba_point =tf2_geometry_msgs.do_transform_point(
+            self._roomba_point =tf2_geometry_msgs.do_transform_point(
                                                 stamped_point, roomba_transform)
 
             if not self._check_max_roomba_range():
@@ -120,10 +120,10 @@ class TrackRoombaTask(AbstractTask):
             if self._check_min_roomba_range():
                 return (TaskDone(),)
 
-            x_error = (self.roomba_point.point.x * self.k_x + 
-                        self.roomba_odometry.twist.twist.linear.x)
-            y_error = (self.roomba_point.point.y * self.k_y + 
-                        self.roomba_odometry.twist.twist.linear.y)
+            x_error = (self._roomba_point.point.x * self._k_x + 
+                        self._roomba_odometry.twist.twist.linear.x)
+            y_error = (self._roomba_point.point.y * self._k_y + 
+                        self._roomba_odometry.twist.twist.linear.y)
             z_error = self._z_holder.get_height_hold_response()
 
             #caps x and y velocities
@@ -144,18 +144,18 @@ class TrackRoombaTask(AbstractTask):
 
     def _check_max_roomba_range(self):
         for odometry in self._roomba_array.data:
-            if odometry.child_frame_id == self.roomba_id:
-                self.roomba_odometry = odometry
-                self.roomba_found =  True 
-        return (abs(self.roomba_point.point.x) < 1.0 and 
-                abs(self.roomba_point.point.y) < 1.0 and self.roomba_found)
+            if odometry.child_frame_id == self._roomba_id:
+                self._roomba_odometry = odometry
+                self._roomba_found =  True 
+        return (abs(self._roomba_point.point.x) < 1.0 and 
+                abs(self._roomba_point.point.y) < 1.0 and self._roomba_found)
 
     def _check_min_roomba_range(self):
         _within_y = False
         _within_x = False
 
-        _within_x = abs(self.roomba_point.point.x) <= self._MAX_ACCEPTABLE_DIST 
-        _within_y = abs(self.roomba_point.point.y) <= self._MAX_ACCEPTABLE_DIST
+        _within_x = abs(self._roomba_point.point.x) <= self._MAX_ACCEPTABLE_DIST 
+        _within_y = abs(self._roomba_point.point.y) <= self._MAX_ACCEPTABLE_DIST
 
         return _within_x and _within_y
 
