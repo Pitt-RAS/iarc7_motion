@@ -37,8 +37,8 @@ class TrackRoombaTask(AbstractTask):
 
         self._roomba_id = self._roomba_id  + '/base_link'
         
-        self._k_x = .3
-        self._k_y = .3
+        self._k_x = .4
+        self._k_y = .4
 
         if self._roomba_id is None or len(self._roomba_id) < 2:
             raise ValueError('An invalid or null roomba id was provided')
@@ -151,13 +151,10 @@ class TrackRoombaTask(AbstractTask):
                 abs(self._roomba_point.point.y) < 1.0 and self._roomba_found)
 
     def _check_min_roomba_range(self):
-        _within_y = False
-        _within_x = False
-
-        _within_x = abs(self._roomba_point.point.x) <= self._MAX_ACCEPTABLE_DIST 
-        _within_y = abs(self._roomba_point.point.y) <= self._MAX_ACCEPTABLE_DIST
-
-        return _within_x and _within_y
+        _distance_to_roomba = (self._roomba_point.point.x**2 + 
+                            self._roomba_point.point.y**2)**(.5)
+        
+        return (_distance_to_roomba <= self._MAX_ACCEPTABLE_DIST)
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
