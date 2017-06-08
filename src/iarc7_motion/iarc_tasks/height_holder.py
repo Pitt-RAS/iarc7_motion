@@ -12,8 +12,7 @@ from nav_msgs.msg import Odometry
 
 class HeightHolder():
     def __init__(self):
-
-        self._k_z = .1
+        self._k_z = .1 #p-term for z-height
         self._odometry = None
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
@@ -26,11 +25,6 @@ class HeightHolder():
 
         while self._odometry is None:
             pass
-
-        #current z-height of drone to map 
-        current_z = self._odometry.pose.pose.position.z
-
-        self._last_vel_z = None
 
     #uses a p-controller to return a velocity to maintain a height
     #that is set as the param _track_roomba_height

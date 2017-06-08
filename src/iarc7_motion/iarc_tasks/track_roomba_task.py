@@ -38,8 +38,8 @@ class TrackRoombaTask(AbstractTask):
         self._roomba_id = self._roomba_id  + '/base_link'
         
         #p-terms
-        self._k_x = .4
-        self._k_y = .4
+        self._k_x = .35
+        self._k_y = .35
 
         if self._roomba_id is None or len(self._roomba_id) < 2:
             raise ValueError('An invalid or null roomba id was provided')
