@@ -37,6 +37,7 @@ class TrackRoombaTask(AbstractTask):
 
         self._roomba_id = self._roomba_id  + '/base_link'
         
+        #p-terms
         self._k_x = .4
         self._k_y = .4
 
@@ -106,11 +107,13 @@ class TrackRoombaTask(AbstractTask):
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg='Exception when looking up transform during roomba track'),)
 
+            #Creat point centered at drone's center
             stamped_point = PointStamped()
             stamped_point.point.x = 0
             stamped_point.point.y = 0
             stamped_point.point.z = 0
 
+            #returns point distances of roomba to center point of level quad
             self._roomba_point =tf2_geometry_msgs.do_transform_point(
                                                 stamped_point, roomba_transform)
 
@@ -120,6 +123,7 @@ class TrackRoombaTask(AbstractTask):
             if self._check_min_roomba_range():
                 return (TaskDone(),)
 
+            #p-controller
             x_error = (self._roomba_point.point.x * self._k_x + 
                         self._roomba_odometry.twist.twist.linear.x)
             y_error = (self._roomba_point.point.y * self._k_y + 
@@ -142,6 +146,8 @@ class TrackRoombaTask(AbstractTask):
             
             return (TaskRunning(), VelocityCommand(velocity)) 
 
+    #checks to see if passed in roomba id is available and
+    #that the drone and roomba are both within a 1 meter square
     def _check_max_roomba_range(self):
         for odometry in self._roomba_array.data:
             if odometry.child_frame_id == self._roomba_id:
@@ -150,6 +156,7 @@ class TrackRoombaTask(AbstractTask):
         return (abs(self._roomba_point.point.x) < 1.0 and 
                 abs(self._roomba_point.point.y) < 1.0 and self._roomba_found)
 
+    #checks the radial distance from the drone to the roomba
     def _check_min_roomba_range(self):
         _distance_to_roomba = (self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)**(.5)

@@ -2,6 +2,7 @@
 
 # A helper class for a task that will spit out a velocity that's appropriate
 # to reach and hold a desired position in the z dimension
+# Uses a simple p-controller
 
 import math
 import rospy
@@ -26,12 +27,14 @@ class HeightHolder():
         while self._odometry is None:
             pass
 
+        #current z-height of drone to map 
         current_z = self._odometry.pose.pose.position.z
 
         self._last_vel_z = None
 
+    #uses a p-controller to return a velocity to maintain a height
+    #that is set as the param _track_roomba_height
     def get_height_hold_response(self):
-
         delta_z = self._TRACK_HEIGHT - self._odometry.pose.pose.position.z 
         response = self._k_z * delta_z + self._odometry.twist.twist.linear.z
         return response
