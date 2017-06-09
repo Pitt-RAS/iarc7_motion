@@ -6,6 +6,7 @@
 
 import math
 import rospy
+import threading
 
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
@@ -13,6 +14,7 @@ from nav_msgs.msg import Odometry
 class HeightHolder():
     def __init__(self):
         self._odometry = None
+        self._lock = threading.RLock()
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
                                               self._current_velocity_callback)
@@ -30,12 +32,14 @@ class HeightHolder():
     # uses a p-controller to return a velocity to maintain a height
     # that is set as the param _track_roomba_height
     def get_height_hold_response(self):
-        if self._odometry.pose.pose.position.z  < self._MIN_MANEUVER_HEIGHT:
-            raise ValueError('Drone height was below the minimum maneuver height')
+        with self._lock:
+            if self._odometry.pose.pose.position.z  < self._MIN_MANEUVER_HEIGHT:
+                raise ValueError('Drone height was below the minimum maneuver height')
 
-        delta_z = self._TRACK_HEIGHT - self._odometry.pose.pose.position.z 
-        response = self._K_Z * delta_z + self._odometry.twist.twist.linear.z
-        return response
+            delta_z = self._TRACK_HEIGHT - self._odometry.pose.pose.position.z 
+            response = self._K_Z * delta_z + self._odometry.twist.twist.linear.z
+            return response
 
     def _current_velocity_callback(self, odometry):
-        self._odometry = odometry
+        with self._lock:
+            self._odometry = odometry
