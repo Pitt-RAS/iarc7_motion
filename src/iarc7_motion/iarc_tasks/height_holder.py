@@ -33,9 +33,7 @@ class HeightHolder():
         with self._lock:
             self._current_height = height
             self._current_velocity = velocity
-            #rospy.logerr(str(self._current_height))
+            
             delta_z = self._TRACK_HEIGHT - self._current_height
-            rospy.logerr("CURRENT HEIGHT: " + str(self._current_height))
-            response = self._K_Z * delta_z + self._current_velocity 
-            rospy.logerr(str(response))
+            response = self._K_Z * delta_z + self._current_velocity
             return response

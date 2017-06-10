@@ -137,8 +137,6 @@ class TrackRoombaTask(AbstractTask):
                         self._roomba_odometry.twist.twist.linear.x)
             y_vel_target = (self._roomba_point.point.y * self._K_Y + 
                         self._roomba_odometry.twist.twist.linear.y)
-            
-            
             z_vel_target = self._z_holder.get_height_hold_response(
                 self._drone_odometry.pose.pose.position.z,
                 self._drone_odometry.twist.twist.linear.z)
