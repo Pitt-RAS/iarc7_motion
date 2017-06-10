@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-# A helper class for a task that will spit out a velocity that's appropriate
-# to reach and hold a desired position in the z dimension
-# Uses a simple p-controller
+# A helper class for a task that will determine if 
+# the drone is above min maneuver height 
+# and if the z error is too high 
 
 import math
 import rospy
