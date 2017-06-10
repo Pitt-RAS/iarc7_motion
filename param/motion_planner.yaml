@@ -42,4 +42,6 @@ k_term_tracking_x: .35
 # p-term for Y direction when tracking roombas 
 k_term_tracking_y: .35
 # p-term for holding Z height
-k_term_hold_z: 1.0
+k_term_hold_z: 1.25
+#maximum z error for heigth holder
+max_z_error: .5
