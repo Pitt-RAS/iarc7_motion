@@ -97,7 +97,8 @@ class TrackRoombaTask(AbstractTask):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = TrackObjectTaskState.track
-            elif not (self._height_checker.above_min_maneuver_height(self._drone_odometry.pose.pose.position.z)):
+            elif not (self._height_checker.above_min_maneuver_height(
+                        self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Drone is too low'),)
 
             if self._canceled:
