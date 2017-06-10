@@ -20,9 +20,7 @@ class HeightChecker():
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
-
-    # uses a p-controller to return a velocity to maintain a height
-    # that is set as the param _track_roomba_height
+            
     def above_min_maneuver_height(self, current_height):
         with self._lock:
             if (current_height < self._MIN_MANEUVER_HEIGHT):
