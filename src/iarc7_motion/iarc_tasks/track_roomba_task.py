@@ -66,6 +66,7 @@ class TrackRoombaTask(AbstractTask):
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
+            self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~roomba_max_start_task_dist')
             self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
@@ -100,6 +101,9 @@ class TrackRoombaTask(AbstractTask):
             elif not (self._height_checker.above_min_maneuver_height(
                         self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Drone is too low'),)
+            elif not (self._height_checker.check_z_error(
+                self._drone_odometry.pose.pose.position.z, self._TRACK_HEIGHT)):
+                return (TaskAborted(msg='Z error is too high'),)
 
             if self._canceled:
                 return (TaskCanceled(),)
