@@ -13,11 +13,9 @@ from nav_msgs.msg import Odometry
 
 class HeightHolder():
     def __init__(self):
-        self._odometry = None
         self._lock = threading.RLock()
-        self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
-                                              Odometry,
-                                              self._current_velocity_callback)
+        self._current_height = None
+        self._current_velocity = None
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
@@ -27,19 +25,17 @@ class HeightHolder():
             raise
 
         if self._TRACK_HEIGHT < self._MIN_MANEUVER_HEIGHT:
-            raise ValueError('Track Roomba height was below the minimum maneuver height')
+            raise ValueError('Track Roomba Param height was below the minimum maneuver height')
 
     # uses a p-controller to return a velocity to maintain a height
     # that is set as the param _track_roomba_height
-    def get_height_hold_response(self):
+    def get_height_hold_response(self, height, velocity):
         with self._lock:
-            if self._odometry.pose.pose.position.z  < self._MIN_MANEUVER_HEIGHT:
-                raise ValueError('Drone height was below the minimum maneuver height')
-
-            delta_z = self._TRACK_HEIGHT - self._odometry.pose.pose.position.z 
-            response = self._K_Z * delta_z + self._odometry.twist.twist.linear.z
+            self._current_height = height
+            self._current_velocity = velocity
+            #rospy.logerr(str(self._current_height))
+            delta_z = self._TRACK_HEIGHT - self._current_height
+            rospy.logerr("CURRENT HEIGHT: " + str(self._current_height))
+            response = self._K_Z * delta_z + self._current_velocity 
+            rospy.logerr(str(response))
             return response
-
-    def _current_velocity_callback(self, odometry):
-        with self._lock:
-            self._odometry = odometry
