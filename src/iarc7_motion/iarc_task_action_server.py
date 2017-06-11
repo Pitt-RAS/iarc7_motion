@@ -10,6 +10,7 @@ from iarc_tasks.takeoff_task import TakeoffTask
 from iarc_tasks.land_task import LandTask
 from iarc_tasks.test_task import TestTask
 from iarc_tasks.xyztranslation_task import XYZTranslationTask
+from iarc_tasks.track_roomba_task import TrackRoombaTask
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -32,6 +33,7 @@ class IarcTaskActionServer:
         self._task_dict = {'takeoff': TakeoffTask,
                            'land': LandTask,
                            'xyztranslate': XYZTranslationTask,
+                           'track_roomba': TrackRoombaTask,
                            'test_task': TestTask}
 
     # Private method
@@ -53,7 +55,8 @@ class IarcTaskActionServer:
                                      'movement_type': task_request.movement_type ,
                                      'x_position': task_request.x_position ,
                                      'y_position': task_request.y_position ,
-                                     'z_position': task_request.z_position}
+                                     'z_position': task_request.z_position ,
+                                     'frame_id': task_request.frame_id}
                 new_task = new_task_type(actionvalues_dict)
             except Exception as e:
                 rospy.logerr("Could not construct task: %s", task_request.movement_type)

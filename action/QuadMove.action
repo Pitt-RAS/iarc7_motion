@@ -1,5 +1,6 @@
 #goal definition
 string movement_type
+string frame_id
 bool preempt
 float64 takeoff_height
 float64 x_position
