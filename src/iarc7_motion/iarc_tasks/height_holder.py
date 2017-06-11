@@ -14,10 +14,9 @@ from nav_msgs.msg import Odometry
 class HeightHolder():
     def __init__(self):
         self._lock = threading.RLock()
-        self._current_height = None
-        self._current_velocity = None
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
+            self._MAX_Z_ERROR = rospy.get_param('~max_z_error')
             self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
             self._K_Z = rospy.get_param('~k_term_hold_z')
         except KeyError as e:
@@ -29,10 +28,15 @@ class HeightHolder():
 
     # uses a p-controller to return a velocity to maintain a height
     # that is set as the param _track_roomba_height
-    def get_height_hold_response(self, height, velocity):
+    def get_height_hold_response(self, height):
         with self._lock:
-            self._current_height = height
-            self._current_velocity = velocity
-            delta_z = self._TRACK_HEIGHT - self._current_height
+            delta_z = self._TRACK_HEIGHT - height
             response = self._K_Z * delta_z
             return response
+
+    def check_z_error(self, current_height):
+        z_error = abs(current_height-self._TRACK_HEIGHT)
+        if (z_error > self._MAX_Z_ERROR):
+            return False
+        else:
+            return True

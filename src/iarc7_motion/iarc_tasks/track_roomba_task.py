@@ -25,7 +25,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
 from height_holder import HeightHolder
-from height_checker import HeightChecker
+from height_settings_checker import HeightSettingsChecker
 
 class TrackObjectTaskState:
     init = 0
@@ -66,7 +66,6 @@ class TrackRoombaTask(AbstractTask):
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
-            self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~roomba_max_start_task_dist')
             self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
@@ -78,7 +77,7 @@ class TrackRoombaTask(AbstractTask):
             raise
 
         self._z_holder = HeightHolder()
-        self._height_checker = HeightChecker()
+        self._height_checker = HeightSettingsChecker()
 
         self._state = TrackObjectTaskState.init
 
@@ -101,8 +100,8 @@ class TrackRoombaTask(AbstractTask):
             elif not (self._height_checker.above_min_maneuver_height(
                         self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Drone is too low'),)
-            elif not (self._height_checker.check_z_error(
-                self._drone_odometry.pose.pose.position.z, self._TRACK_HEIGHT)):
+            elif not (self._z_holder.check_z_error(
+                self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Z error is too high'),)
 
             if self._canceled:
@@ -143,8 +142,7 @@ class TrackRoombaTask(AbstractTask):
             y_vel_target = (self._roomba_point.point.y * self._K_Y + 
                         self._roomba_odometry.twist.twist.linear.y)
             z_vel_target = self._z_holder.get_height_hold_response(
-                self._drone_odometry.pose.pose.position.z,
-                self._drone_odometry.twist.twist.linear.z)
+                self._drone_odometry.pose.pose.position.z)
 
             #caps velocity
             vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
