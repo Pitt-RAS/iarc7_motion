@@ -51,13 +51,7 @@ class IarcTaskActionServer:
                 return
 
             try:
-                actionvalues_dict = {'preempt': task_request.preempt ,
-                                     'movement_type': task_request.movement_type ,
-                                     'x_position': task_request.x_position ,
-                                     'y_position': task_request.y_position ,
-                                     'z_position': task_request.z_position ,
-                                     'frame_id': task_request.frame_id}
-                new_task = new_task_type(actionvalues_dict)
+                new_task = new_task_type(task_request)
             except Exception as e:
                 rospy.logerr("Could not construct task: %s", task_request.movement_type)
                 rospy.logerr(str(e))

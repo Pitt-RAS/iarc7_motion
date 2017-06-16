@@ -20,14 +20,14 @@ class XYZTranslationTaskState:
 
 class XYZTranslationTask(AbstractTask):
 
-    def __init__(self, actionvalues_dict):
+    def __init__(self, task_request):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False;
 
-        self._x_position = actionvalues_dict['x_position']
-        self._y_position = actionvalues_dict['y_position']
-        self._z_position = actionvalues_dict['z_position']
+        self._x_position = task_request.x_position
+        self._y_position = task_request.y_position
+        self._z_position = task_request.z_position
 
         try:
             self._TRANSLATION_XYZ_TOLERANCE = rospy.get_param('~translation_xyz_tolerance')

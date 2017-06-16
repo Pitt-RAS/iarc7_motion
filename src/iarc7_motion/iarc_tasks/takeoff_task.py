@@ -30,7 +30,7 @@ class TakeoffTaskState:
 
 class TakeoffTask(AbstractTask):
 
-    def __init__(self, actionvalues_dict):
+    def __init__(self, task_request):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False;

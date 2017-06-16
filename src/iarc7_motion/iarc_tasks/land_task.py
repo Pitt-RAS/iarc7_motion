@@ -23,8 +23,8 @@ class LandTaskState:
     failed = 3
 
 class LandTask(AbstractTask):
-
-    def __init__(self, actionvalues_dict):
+    
+    def __init__(self, task_request):
         self._canceled = False;
 
         self._fc_status = None
