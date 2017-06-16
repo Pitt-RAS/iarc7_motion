@@ -34,9 +34,9 @@ class TrackObjectTaskState:
 
 class TrackRoombaTask(AbstractTask):
 
-    def __init__(self, task_dictionary):
+    def __init__(self, task_request):
 
-        self._roomba_id = task_dictionary['frame_id']
+        self._roomba_id = task_request.frame_id
 
         self._roomba_id = self._roomba_id  + '/base_link'
 
