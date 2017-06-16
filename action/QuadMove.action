@@ -9,6 +9,7 @@ float64 z_position
 ---
 #result definition
 bool success
+bool hold_current_position
 
 ---
 #feedback
