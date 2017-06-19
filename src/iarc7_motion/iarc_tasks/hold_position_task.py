@@ -33,38 +33,42 @@ class HoldPostionTaskStates:
 class HoldPositionTask(AbstractTask):
 
     def __init__(self, task_request):
-        self._x_position = task_request.x_position
-        self._y_position = task_request.y_position
-        self._z_position = task_request.z_position
-
         self._hold_current_position = task_request.hold_current_position
+
+        if not self._hold_current_position:
+            self._x_position = task_request.x_position
+            self._y_position = task_request.y_position
+            self._z_position = task_request.z_position
+        else: 
+            self._x_position = None
+            self._y_position = None
+            self._z_position = None
 
         self._drone_odometry = None
         self._canceled = False
 
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
-
         self._lock = threading.RLock()
+        self._height_checker = HeightChecker()
 
         self._current_velocity_sub = rospy.Subscriber(
             '/odometry/filtered', Odometry,
             self._current_velocity_callback)
 
+        if not self._hold_current_position:
+            if not self._check_inputs():
+                raise ValueError('An invalid position was provided')
+
         try:
-            self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
-            self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
+            self._MAX_RANGE = rospy.get_param('~max_holding_range')
+            self._END_TASK_RANGE = rospy.get_param('~finished_holding_range')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_position_z')
             self._K_Y = rospy.get_param('~k_position_z')
-            self._K_Z = rospy.get_param('`k_position_z')
+            self._K_Z = rospy.get_param('~k_position_z')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for hold position task')
             raise
-
-        self._z_holder = HeightHolder()
-        self._height_checker = HeightChecker()
 
         self._state = HoldPostionTaskStates.init
 
@@ -79,12 +83,13 @@ class HoldPositionTask(AbstractTask):
                     self._state = HoldPostionTaskStates.waiting
                     return (TaskRunning(), NopCommand())
                 else:
+                    self._set_targets()
                     self._state = HoldPostionTaskStates.holding
             elif not (self._height_checker.above_min_maneuver_height(
                         self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Drone is too low'),)
-            elif not (self._check_z_error()):
-                return (TaskAborted(msg='Z error is too high'),)
+            elif not (self._check_max_error()):
+                return (TaskAborted(msg='Position holder is not for translating'),)
 
             if self._canceled:
                 return (TaskCanceled(),)
@@ -96,13 +101,9 @@ class HoldPositionTask(AbstractTask):
                 return (TaskDone(),)
 
             # p-controller
-            x_vel_target = (self._roomba_point.point.x * self._K_X + 
-                        self._roomba_odometry.twist.twist.linear.x)
-            y_vel_target = (self._roomba_point.point.y * self._K_Y + 
-                        self._roomba_odometry.twist.twist.linear.y)
-            z_vel_target = self._z_holder.get_height_hold_response(
-                self._drone_odometry.pose.pose.position.z,
-                self._drone_odometry.twist.twist.linear.z)
+            x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x) * self._K_X
+            y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y) * self._K_Y
+            z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z) * self._K_Z
 
             #caps velocity
             vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
@@ -124,8 +125,41 @@ class HoldPositionTask(AbstractTask):
             return (TaskRunning(), VelocityCommand(velocity)) 
             
     def cancel(self):
-        rospy.loginfo('TrackRoomba Task canceled')
+        rospy.loginfo('HoldPosition Task canceled')
         self._canceled = True
 
-    def _check_z_error(self):
+    def _check_max_error(self):
+        x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)
+        y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
+        z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
+
+        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target)
+        
+        return (_distance_to_point <= self._MAX_RANGE)
+
+    def _check_max_ending_hold_range(self):
+        x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)
+        y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
+        z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
+
+        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target)
+        
+        return (_distance_to_point <= self._END_TASK_RANGE)
+
+
+    def _check_inputs(self):
+        if (self._z_position <= 0 or not 
+            self._height_checker.above_min_maneuver_height(self._z_position)):
+            return False
+        else: 
+            return True
+
+    def _set_targets(self):
+        if (self._x_position is None and self._y_position is None
+                                     and self._z_position is None):
+            self._x_position = self._drone_odometry.pose.pose.position.x
+            self._y_position = self._drone_odometry.pose.pose.position.y
+            self._z_position = self._drone_odometry.pose.pose.position.z
+
+
 
