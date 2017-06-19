@@ -51,3 +51,7 @@ k_position_x: 1.25
 k_position_y: 1.25
 # p-term for z height for position holder task
 k_position_z: 1.25
+# Hold position is considered finished if x,y,z is within this range of target
+finished_holding_range: .1
+# maximum radial distance from target poimnt at which hold position task is allowed to run
+max_holding_range: 1
