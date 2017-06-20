@@ -97,9 +97,12 @@ class HoldPositionTask(AbstractTask):
                 return (TaskAborted(msg='The provided hold position is too far'),)
 
             # p-controller
-            x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x) * self._K_X
-            y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y) * self._K_Y
-            z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z) * self._K_Z
+            x_vel_target = ((self._x_position - self._drone_odometry.pose.pose.position.x)
+                                * self._K_X)
+            y_vel_target = ((self._y_position - self._drone_odometry.pose.pose.position.y) 
+                                * self._K_Y)
+            z_vel_target = ((self._z_position - self._drone_odometry.pose.pose.position.z) 
+                                * self._K_Z)
 
             #caps velocity
             vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
@@ -155,6 +158,3 @@ class HoldPositionTask(AbstractTask):
             self._x_position = self._drone_odometry.pose.pose.position.x
             self._y_position = self._drone_odometry.pose.pose.position.y
             self._z_position = self._drone_odometry.pose.pose.position.z
-
-
-
