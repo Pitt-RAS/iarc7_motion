@@ -60,7 +60,6 @@ class HoldPositionTask(AbstractTask):
 
         try:
             self._MAX_RANGE = rospy.get_param('~max_holding_range')
-            self._END_TASK_RANGE = rospy.get_param('~finished_holding_range')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_position_z')
@@ -97,9 +96,6 @@ class HoldPositionTask(AbstractTask):
             if not self._check_max_start_hold_range():
                 return (TaskAborted(msg='The provided hold position is too far'),)
 
-            if self._check_max_ending_hold_range():
-                return (TaskDone(),)
-
             # p-controller
             x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x) * self._K_X
             y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y) * self._K_Y
@@ -133,19 +129,18 @@ class HoldPositionTask(AbstractTask):
         y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
         z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
 
-        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target)
+        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target**2)
         
         return (_distance_to_point <= self._MAX_RANGE)
 
-    def _check_max_ending_hold_range(self):
+    def _check_max_start_hold_range(self):
         x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)
         y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
         z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
 
-        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target)
+        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target**2)
         
-        return (_distance_to_point <= self._END_TASK_RANGE)
-
+        return (_distance_to_point <= self._MAX_RANGE)
 
     def _check_inputs(self):
         if (self._z_position <= 0 or not 
