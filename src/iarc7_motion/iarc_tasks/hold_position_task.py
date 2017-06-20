@@ -25,7 +25,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 from height_checker import HeightChecker
 
-class HoldPostionTaskStates:
+class HoldPositionTaskStates:
     init = 0
     waiting = 1
     holding = 2
@@ -39,6 +39,9 @@ class HoldPositionTask(AbstractTask):
             self._x_position = task_request.x_position
             self._y_position = task_request.y_position
             self._z_position = task_request.z_position
+
+            if not self._height_checker.above_min_maneuver_height(self._z_position):
+                raise ValueError('An invalid position was provided')
         else: 
             self._x_position = None
             self._y_position = None
@@ -54,10 +57,6 @@ class HoldPositionTask(AbstractTask):
             '/odometry/filtered', Odometry,
             self._current_velocity_callback)
 
-        if not self._hold_current_position:
-            if not self._check_inputs():
-                raise ValueError('An invalid position was provided')
-
         try:
             self._MAX_RANGE = rospy.get_param('~max_holding_range')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
@@ -69,7 +68,7 @@ class HoldPositionTask(AbstractTask):
             rospy.logerr('Could not lookup a parameter for hold position task')
             raise
 
-        self._state = HoldPostionTaskStates.init
+        self._state = HoldPositionTaskStates.init
 
     def _current_velocity_callback(self, data):
         with self._lock:
@@ -77,24 +76,29 @@ class HoldPositionTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
-            if (self._state != HoldPostionTaskStates.holding):
+
+            if (self._state == HoldPositionTaskStates.init
+                    or self._state == HoldPositionTaskStates.waiting):
                 if self._drone_odometry is None:
-                    self._state = HoldPostionTaskStates.waiting
+                    self._state = HoldPositionTaskStates.waiting
                     return (TaskRunning(), NopCommand())
                 else:
                     self._set_targets()
-                    self._state = HoldPostionTaskStates.holding
-            elif not (self._height_checker.above_min_maneuver_height(
+
+                if not self._check_max_error():
+                    return (TaskAborted(msg='Desired position is too far away, task not for translation.'),)
+
+                self._state = HoldPositionTaskStates.holding
+
+            if not (self._height_checker.above_min_maneuver_height(
                         self._drone_odometry.pose.pose.position.z)):
                 return (TaskAborted(msg='Drone is too low'),)
-            elif not (self._check_max_error()):
-                return (TaskAborted(msg='Position holder is not for translating'),)
+
+            if not (self._check_max_error()):
+                return (TaskAborted(msg='Error from desired point is too great'),)
 
             if self._canceled:
                 return (TaskCanceled(),)
-
-            if not self._check_max_start_hold_range():
-                return (TaskAborted(msg='The provided hold position is too far'),)
 
             # p-controller
             x_vel_target = ((self._x_position - self._drone_odometry.pose.pose.position.x)
@@ -135,22 +139,6 @@ class HoldPositionTask(AbstractTask):
         _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target**2)
         
         return (_distance_to_point <= self._MAX_RANGE)
-
-    def _check_max_start_hold_range(self):
-        x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)
-        y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
-        z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
-
-        _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target**2)
-        
-        return (_distance_to_point <= self._MAX_RANGE)
-
-    def _check_inputs(self):
-        if (self._z_position <= 0 or not 
-            self._height_checker.above_min_maneuver_height(self._z_position)):
-            return False
-        else: 
-            return True
 
     def _set_targets(self):
         if (self._x_position is None and self._y_position is None

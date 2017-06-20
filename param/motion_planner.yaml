@@ -42,7 +42,7 @@ k_term_tracking_x: .35
 # p-term for Y direction when tracking roombas 
 k_term_tracking_y: .35
 # p-term for height holder helper for Z height
-k_term_hold_z: .90
+p_term_height_hold_z: .90
 # maximum z error for heigth holder
 max_z_error: .7
 # p-term for x height for position holder task
@@ -51,5 +51,5 @@ k_position_x: 1.25
 k_position_y: 1.25
 # p-term for z height for position holder task
 k_position_z: .90
-# maximum radial distance from target poimnt at which hold position task is allowed to run
+# maximum radial distance from target point at which hold position task is allowed to run
 max_holding_range: 1
