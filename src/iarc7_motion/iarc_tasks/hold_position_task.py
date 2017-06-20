@@ -35,6 +35,12 @@ class HoldPositionTask(AbstractTask):
     def __init__(self, task_request):
         self._hold_current_position = task_request.hold_current_position
 
+        self._drone_odometry = None
+        self._canceled = False
+
+        self._lock = threading.RLock()
+        self._height_checker = HeightChecker()
+
         if not self._hold_current_position:
             self._x_position = task_request.x_position
             self._y_position = task_request.y_position
@@ -46,12 +52,6 @@ class HoldPositionTask(AbstractTask):
             self._x_position = None
             self._y_position = None
             self._z_position = None
-
-        self._drone_odometry = None
-        self._canceled = False
-
-        self._lock = threading.RLock()
-        self._height_checker = HeightChecker()
 
         self._current_velocity_sub = rospy.Subscriber(
             '/odometry/filtered', Odometry,
@@ -76,7 +76,6 @@ class HoldPositionTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
-
             if (self._state == HoldPositionTaskStates.init
                     or self._state == HoldPositionTaskStates.waiting):
                 if self._drone_odometry is None:
@@ -84,48 +83,53 @@ class HoldPositionTask(AbstractTask):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._set_targets()
+                    return (TaskRunning(), NopCommand())
 
                 if not self._check_max_error():
                     return (TaskAborted(msg='Desired position is too far away, task not for translation.'),)
 
                 self._state = HoldPositionTaskStates.holding
 
-            if not (self._height_checker.above_min_maneuver_height(
-                        self._drone_odometry.pose.pose.position.z)):
-                return (TaskAborted(msg='Drone is too low'),)
+            elif (self._state == HoldPositionTaskStates.holding):
+                if not (self._height_checker.above_min_maneuver_height(
+                            self._drone_odometry.pose.pose.position.z)):
+                    return (TaskAborted(msg='Drone is too low'),)
 
-            if not (self._check_max_error()):
-                return (TaskAborted(msg='Error from desired point is too great'),)
+                if not (self._check_max_error()):
+                    return (TaskAborted(msg='Error from desired point is too great'),)
 
-            if self._canceled:
-                return (TaskCanceled(),)
+                if self._canceled:
+                    return (TaskCanceled(),)
 
-            # p-controller
-            x_vel_target = ((self._x_position - self._drone_odometry.pose.pose.position.x)
-                                * self._K_X)
-            y_vel_target = ((self._y_position - self._drone_odometry.pose.pose.position.y) 
-                                * self._K_Y)
-            z_vel_target = ((self._z_position - self._drone_odometry.pose.pose.position.z) 
-                                * self._K_Z)
+                # p-controller
+                x_vel_target = ((self._x_position - self._drone_odometry.pose.pose.position.x)
+                                    * self._K_X)
+                y_vel_target = ((self._y_position - self._drone_odometry.pose.pose.position.y) 
+                                    * self._K_Y)
+                z_vel_target = ((self._z_position - self._drone_odometry.pose.pose.position.z) 
+                                    * self._K_Z)
 
-            #caps velocity
-            vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
+                #caps velocity
+                vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
-            if vel_target > self._MAX_TRANSLATION_SPEED:
-                x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-                y_vel_target = y_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-            
-            if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                if vel_target > self._MAX_TRANSLATION_SPEED:
+                    x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
+                    y_vel_target = y_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
+                
+                if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
+                    z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
 
-            velocity = TwistStamped()
-            velocity.header.frame_id = 'level_quad'
-            velocity.header.stamp = rospy.Time.now()
-            velocity.twist.linear.x = x_vel_target
-            velocity.twist.linear.y = y_vel_target
-            velocity.twist.linear.z = z_vel_target
-            
-            return (TaskRunning(), VelocityCommand(velocity)) 
+                velocity = TwistStamped()
+                velocity.header.frame_id = 'level_quad'
+                velocity.header.stamp = rospy.Time.now()
+                velocity.twist.linear.x = x_vel_target
+                velocity.twist.linear.y = y_vel_target
+                velocity.twist.linear.z = z_vel_target
+                
+                return (TaskRunning(), VelocityCommand(velocity))
+
+            else:
+                return (TaskAborted(msg='Illegal State Reached'),)
             
     def cancel(self):
         rospy.loginfo('HoldPosition Task canceled')
