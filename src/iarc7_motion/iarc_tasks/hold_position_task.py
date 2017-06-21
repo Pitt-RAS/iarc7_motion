@@ -81,14 +81,14 @@ class HoldPositionTask(AbstractTask):
                 if self._drone_odometry is None:
                     self._state = HoldPositionTaskStates.waiting
                     return (TaskRunning(), NopCommand())
-                else:
-                    self._set_targets()
-                    return (TaskRunning(), NopCommand())
-
+                
+                self._set_targets()
+                self._state = HoldPositionTaskStates.holding
+                
                 if not self._check_max_error():
                     return (TaskAborted(msg='Desired position is too far away, task not for translation.'),)
 
-                self._state = HoldPositionTaskStates.holding
+                return (TaskRunning(), NopCommand())
 
             elif (self._state == HoldPositionTaskStates.holding):
                 if not (self._height_checker.above_min_maneuver_height(
