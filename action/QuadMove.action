@@ -2,6 +2,7 @@
 string movement_type
 string frame_id
 bool preempt
+bool hold_current_position
 float64 takeoff_height
 float64 x_position
 float64 y_position
@@ -9,7 +10,6 @@ float64 z_position
 ---
 #result definition
 bool success
-
 ---
 #feedback
 float64 completion

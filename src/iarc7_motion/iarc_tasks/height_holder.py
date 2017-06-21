@@ -18,7 +18,7 @@ class HeightHolder():
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_Z_ERROR = rospy.get_param('~max_z_error')
             self._TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
-            self._K_Z = rospy.get_param('~k_term_hold_z')
+            self._K_Z = rospy.get_param('~p_term_height_hold_z')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise

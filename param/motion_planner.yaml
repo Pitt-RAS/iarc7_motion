@@ -24,7 +24,7 @@ desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
 max_translation_speed: 3.0
 #maximum z velocity 
-max_z_velocity: .5
+max_z_velocity: .3
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
@@ -41,7 +41,15 @@ roomba_max_end_task_dist: .1
 k_term_tracking_x: .35
 # p-term for Y direction when tracking roombas 
 k_term_tracking_y: .35
-# p-term for holding Z height
-k_term_hold_z: 1.25
-#maximum z error for heigth holder
+# p-term for height holder helper for Z height
+p_term_height_hold_z: .90
+# maximum z error for heigth holder
 max_z_error: .7
+# p-term for x height for position holder task
+k_position_x: 1.25
+# p-term for y height for position holder task
+k_position_y: 1.25
+# p-term for z height for position holder task
+k_position_z: .90
+# maximum radial distance from target point at which hold position task is allowed to run
+max_holding_range: 1
