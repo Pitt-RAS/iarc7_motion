@@ -23,7 +23,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
                                       NopCommand)
 
-from height_checker import HeightChecker
+from height_settings_checker import HeightSettingsChecker
 
 class HoldPositionTaskStates:
     init = 0
@@ -39,7 +39,7 @@ class HoldPositionTask(AbstractTask):
         self._canceled = False
 
         self._lock = threading.RLock()
-        self._height_checker = HeightChecker()
+        self._height_checker = HeightSettingsChecker()
 
         if not self._hold_current_position:
             self._x_position = task_request.x_position
