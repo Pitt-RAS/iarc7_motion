@@ -59,8 +59,6 @@ hit_roomba_max_start_dist: .1
 # height at which hit roomba task enters stage 2 descent
 stage_two_height: .75
 # descent velocity when hitting a roomba 
-hit_descent_velocity: -.25
-# time for descent seconds (min maneuver height divided by hit descent velocity)
-descent_time: 2
+hit_descent_velocity: -.2
 
 
