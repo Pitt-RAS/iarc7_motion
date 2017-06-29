@@ -53,3 +53,14 @@ k_position_y: 1.25
 k_position_z: .90
 # maximum radial distance from target point at which hold position task is allowed to run
 max_holding_range: 1
+
+# maximum radial distance from roomba at which hit_roomba task is allowed to run
+hit_roomba_max_start_dist: .1
+# height at which hit roomba task enters stage 2 descent
+stage_two_height: .75
+# descent velocity when hitting a roomba 
+hit_descent_velocity: -.25
+# time for descent seconds (min maneuver height divided by hit descent velocity)
+descent_time: 2
+
+
