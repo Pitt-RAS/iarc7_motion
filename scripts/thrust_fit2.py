@@ -4,6 +4,8 @@ from scipy.optimize import curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
+import os.path
 
 '''
 Thrust model data and curve fitting script
@@ -28,14 +30,6 @@ where $d_2$ and $d_1$ are the respective measured distances and $t_1$ and $t_2$
 are the respective ratios of $T$ to $T_0$.
 '''
 
-t1 = 14./13.
-d1 = 0.27
-t2 = 11./10.
-d2 = 0.14
-
-d0 = (d2 - d1) / np.log((t1-1) / (t2-1))
-A_ge = (t1 - t2) / (np.exp(-d1/d0) - np.exp(-d2/d0))
-
 def poly(x, a):
     '''
     Returns a[0]*x**n + a[1]*x**(n-1) + ... + a[n]
@@ -46,6 +40,9 @@ def poly(x, a):
 
 def make_surface_from_degrees(deg1, deg2):
     def f(x, *args):
+        A_ge = args[-2]
+        d0 = args[-1]
+        args = args[:-2]
         if len(args) != deg1 + deg2 + 1:
             raise TypeError, "Wrong number of arguments"
         return ((x[:,0]**deg1 + poly(x[:,0], args[:deg1]))
@@ -58,13 +55,16 @@ def make_surface_from_degrees(deg1, deg2):
 # Each array here is one sweep
 #
 # Points are in the form (force, throttle, vbat, dist to ground)
+data_dir = 'thrust_testing_data2'
 data = []
-for i in range(1, 7):
-    data.append(np.loadtxt('Thrust_Testing_Data/thrust_data{}.csv'.format(i), delimiter=','))
-    data[-1] = np.concatenate((data[-1], 1.5*np.ones((data[-1].shape[0], 1), dtype=np.float)), axis=1)
+for filename in os.listdir(data_dir):
+    data.append(np.loadtxt(os.path.join(data_dir, filename),
+                           delimiter=','))
     data[-1][:,(0, 1)] = data[-1][:,(1, 0)]
-    data[-1][:,0] -= 3.13e5
-    data[-1][:,0] /= 397756
+    if data_dir == 'Thrust_Testing_Data':
+        data[-1] = np.concatenate((data[-1], 1.5*np.ones((data[-1].shape[0], 1), dtype=np.float)), axis=1)
+        data[-1][:,0] -= 3.13e5
+        data[-1][:,0] /= 397756
 data = tuple(data)
 
 if __name__ == '__main__':
@@ -85,13 +85,16 @@ if __name__ == '__main__':
     fit = curve_fit(f,
                     data[:,1:],
                     data[:,0],
-                    p0=tuple(1 for _ in range(deg_command + deg_voltage + 1)),
+                    p0=tuple(1 for _ in range(deg_command + deg_voltage + 1)) + (0.13, 0.5),
                     maxfev=10000)
 
     print 'Fit:'
     print fit[0]
     print 'Uncertainty:'
     print fit[1]
+
+    A_ge = fit[0][-2]
+    d0 = fit[0][-1]
 
     print 'Result:'
     print 'A_ge = {}'.format(A_ge)
@@ -102,7 +105,7 @@ if __name__ == '__main__':
 
     samples = np.mgrid[min(data[:,1]):max(data[:,1]):50j,
                        min(data[:,2]):max(data[:,2]):50j]
-    for gdist, color in ((1.5,'yellow'),):
+    for gdist, color in ((0.3, 'r'), (0.7, 'g'), (1.5,'yellow'), (2.5, 'b')):
         axes.plot_surface(samples[0],
                           samples[1],
                           f(np.concatenate((
