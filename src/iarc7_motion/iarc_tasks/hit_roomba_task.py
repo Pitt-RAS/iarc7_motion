@@ -25,9 +25,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
                                       NopCommand)
 
-from height_holder import HeightHolder
-from height_settings_checker import HeightSettingsChecker
-
 class HitRoombaTaskState:
     init = 0
     waiting = 1
@@ -97,7 +94,7 @@ class HitRoombaTask(AbstractTask):
         with self._lock:
             self._roomba_array = data
 
-     def _receive_switch_status(self, data):
+    def _receive_switch_status(self, data):
         with self._lock:
             self._switch_message = data
 
@@ -248,7 +245,7 @@ class HitRoombaTask(AbstractTask):
         
         return (_distance_to_point <= self._MAX_DIST_DESCENT)
 
-     def _on_ground(self):
+    def _on_ground(self):
         if self._switch_message is None:
             return False
         else: 
@@ -256,6 +253,5 @@ class HitRoombaTask(AbstractTask):
             return data.front or data.back or data.left or data.right
 
     def _height_controller(self):
-        self._current_height
-        self.
+        return -.2
    
