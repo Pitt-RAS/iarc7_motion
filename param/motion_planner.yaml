@@ -60,5 +60,8 @@ hit_roomba_max_start_dist: .1
 stage_two_height: .75
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -.2
-
+# max distance tolerance before full descent in hit roomba
+max_dist_tolerance: .1 
+# desired x-y decelration when in full descent for hit roomba
+x_y_deceleration_in_descent: -1.0
 
