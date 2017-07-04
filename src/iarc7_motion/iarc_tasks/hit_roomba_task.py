@@ -45,6 +45,7 @@ class HitRoombaTask(AbstractTask):
         self._roomba_odometry = None
         self._roomba_array = None
         self._roomba_point = None
+        self._last_roomba_point = None
         self._transitioning = False
 
         self._drone_odometry = None
@@ -52,6 +53,7 @@ class HitRoombaTask(AbstractTask):
         self._last_height = None
         self._canceled = False
         self._switch_message = None
+        self._last_update_time = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -79,8 +81,8 @@ class HitRoombaTask(AbstractTask):
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
-            self._descent_velocity = rospy.get_param('hit_descent_velocity')
-            self._XY_DECERLATION = rospy.get_param('x_y_deceleration_in_descent')
+            self._descent_velocity = rospy.get_param('~hit_descent_velocity')
+            self._XY_DECERLATION = rospy.get_param('~x_y_deceleration_in_descent')
             update_rate = rospy.get_param('~update_rate', False)
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for hit roomba task')
@@ -149,14 +151,18 @@ class HitRoombaTask(AbstractTask):
                                                     stamped_point, roomba_transform)
 
                 if not self._check_max_start_roomba_range():
-                    return (TaskAborted(msg='The provided roomba is not found or not close enough to the quad'),)
+                    testing = True
+                    #return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
 
+                self._last_roomba_point = self._roomba_point
                 roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
+                rel_x_velocity = roomba_x_velocity
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
+                rel_y_velocity = roomba_y_velocity
 
                 # p-controller
-                x_vel_target = ((self._roomba_point.point.x + self._descent_time * roomba_x_velocity) * self._K_X + roomba_x_velocity)
-                y_vel_target = ((self._roomba_point.point.y + self._descent_time * roomba_y_velocity) * self._K_Y + roomba_y_velocity)
+                x_vel_target = ((self._roomba_point.point.x + self._descent_time * rel_x_velocity) * self._K_X + roomba_x_velocity)
+                y_vel_target = ((self._roomba_point.point.y + self._descent_time * rel_y_velocity) * self._K_Y + roomba_y_velocity)
                 
                 z_vel_target = self._height_controller()
 

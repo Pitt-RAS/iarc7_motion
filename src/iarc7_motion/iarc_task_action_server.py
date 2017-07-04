@@ -36,7 +36,7 @@ class IarcTaskActionServer:
                            'land': LandTask,
                            'xyztranslate': XYZTranslationTask,
                            'track_roomba': TrackRoombaTask,
-                           'hit_roomba': HitRoombaTask
+                           'hit_roomba': HitRoombaTask,
                            'hold_position': HoldPositionTask,
                            'test_task': TestTask}
 
