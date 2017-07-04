@@ -45,7 +45,6 @@ class HitRoombaTask(AbstractTask):
         self._roomba_odometry = None
         self._roomba_array = None
         self._roomba_point = None
-        self._last_roomba_point = None
         self._transitioning = False
 
         self._drone_odometry = None
@@ -154,15 +153,15 @@ class HitRoombaTask(AbstractTask):
                     testing = True
                     #return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
 
-                self._last_roomba_point = self._roomba_point
                 roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
-                rel_x_velocity = roomba_x_velocity
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
-                rel_y_velocity = roomba_y_velocity
 
+
+#self._descent_time * roomba_x_velocity
+#self._descent_time * roomba_y_velocity
                 # p-controller
-                x_vel_target = ((self._roomba_point.point.x + self._descent_time * rel_x_velocity) * self._K_X + roomba_x_velocity)
-                y_vel_target = ((self._roomba_point.point.y + self._descent_time * rel_y_velocity) * self._K_Y + roomba_y_velocity)
+                x_vel_target = (self._roomba_point.point.x * self._K_X + roomba_x_velocity)
+                y_vel_target = (self._roomba_point.point.y * self._K_Y + roomba_y_velocity)
                 
                 z_vel_target = self._height_controller()
 
