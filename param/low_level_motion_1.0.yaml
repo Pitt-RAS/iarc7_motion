@@ -9,11 +9,11 @@ throttle_accumulator_min: -5.0
 
 thrust_model:
     thrust_scale_factor: 0.1 # mass / g / num_props
-    A_ge: 0.05416562
-    d0: 0.85436625
-    voltage_polynomial: [0.13361803, -1.79896652]
-    throttle_b: 0.84583293
-    throttle_c: -0.04020974
+    A_ge: 0.05975282
+    d0: 0.71113612
+    voltage_polynomial: [0.14499186, -2.04582824]
+    throttle_b: 0.81567238
+    throttle_c: -0.03798856
 
 # Thrust levels are in m/s^2
 min_thrust: 7.0
