@@ -28,8 +28,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
 class HitRoombaTaskState:
     init = 0
     waiting = 1
-    stage_one_descent = 2
-    full_descent = 3
+    descent = 2
 
 class HitRoombaTask(AbstractTask):
 
@@ -76,12 +75,10 @@ class HitRoombaTask(AbstractTask):
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~hit_roomba_max_start_dist')
-            self._MAX_DIST_DESCENT = rospy.get_param('~max_dist_tolerance')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
             self._descent_velocity = rospy.get_param('~hit_descent_velocity')
-            self._XY_DECERLATION = rospy.get_param('~x_y_deceleration_in_descent')
             update_rate = rospy.get_param('~update_rate', False)
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for hit roomba task')
@@ -115,17 +112,17 @@ class HitRoombaTask(AbstractTask):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = HitRoombaTaskState.waiting
                 else:
-                    self._state = HitRoombaTaskState.stage_one_descent
+                    self._state = HitRoombaTaskState.descent
                 return (TaskRunning(), NopCommand())
 
             elif (self._state == HitRoombaTaskState.waiting):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = HitRoombaTaskState.waiting
                 else:
-                    self._state = HitRoombaTaskState.stage_one_descent
+                    self._state = HitRoombaTaskState.descent
                 return (TaskRunning(), NopCommand())
 
-            elif (self._state == HitRoombaTaskState.stage_one_descent):
+            elif (self._state == HitRoombaTaskState.descent):
                 try:
                     roomba_transform = self._tf_buffer.lookup_transform(
                                         'level_quad',
@@ -137,7 +134,7 @@ class HitRoombaTask(AbstractTask):
                         tf2_ros.ExtrapolationException) as ex:
                     rospy.logerr('ObjectTrackTask: Exception when looking up transform')
                     rospy.logerr(ex.message)
-                    return (TaskAborted(msg='Exception when looking up transform during roomba track'),)
+                    return (TaskAborted(msg='Exception when looking up transform during hit roomba'),)
 
                 # Creat point centered at drone's center
                 stamped_point = PointStamped()
@@ -149,25 +146,17 @@ class HitRoombaTask(AbstractTask):
                 self._roomba_point = tf2_geometry_msgs.do_transform_point(
                                                     stamped_point, roomba_transform)
 
-                if not self._check_max_start_roomba_range():
-                    testing = True
-                    #return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
+                if not self._check_max_roomba_range():
+                    return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
 
                 roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
 
-
-#self._descent_time * roomba_x_velocity
-#self._descent_time * roomba_y_velocity
                 # p-controller
                 x_vel_target = (self._roomba_point.point.x * self._K_X + roomba_x_velocity)
                 y_vel_target = (self._roomba_point.point.y * self._K_Y + roomba_y_velocity)
                 
-                z_vel_target = self._height_controller()
-
-                #if self._current_height <= self._MIN_MANEUVER_HEIGHT and self._check_distance_tolerances():
-                    #self._state = HitRoombaTaskState.full_descent
-                    #self._transitioning = True
+                z_vel_target = self._descent_velocity
 
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
@@ -188,39 +177,13 @@ class HitRoombaTask(AbstractTask):
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            # elif self._state == HitRoombaTaskState.full_descent:
-            #     if not self._check_roomba_visible():
-            #         return (TaskAborted('Roomba is no longer in view'), )
-            #     elif self._on_ground():
-            #         return (TaskDone(),)
-            #     else:
-            #         delta_velocity = self._XY_DECERLATION * self._update_period
-
-            #         if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
-            #             x_vel_target = 0
-            #         else:
-            #             x_vel_target = self._drone_odometry.twist.twist.linear.x + delta_velocity
-
-            #         if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
-            #             y_vel_target = 0
-            #         else:
-            #             y_vel_target = self._drone_odometry.twist.twist.linear.y + delta_velocity
-                    
-            #         z_vel_target = self._descent_velocity
-
-            #         velocity = TwistStamped()
-            #         velocity.header.frame_id = 'level_quad'
-            #         velocity.header.stamp = rospy.Time.now()
-            #         velocity.twist.linear.x = x_vel_target
-            #         velocity.twist.linear.y = y_vel_target
-            #         velocity.twist.linear.z = z_vel_target
-                    
-            #         return (TaskRunning(), VelocityCommand(velocity))
+            else:
+                return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
 
     # checks to see if passed in roomba id is available and
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
-    def _check_max_start_roomba_range(self):
+    def _check_max_roomba_range(self):
         for odometry in self._roomba_array.data:
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
@@ -230,25 +193,9 @@ class HitRoombaTask(AbstractTask):
                 return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
         return False
 
-    # only checks to see if roomba is still in view 
-    def _check_roomba_visible(self):
-        for odometry in self._roomba_array.data:
-            if odometry.child_frame_id == self._roomba_id:
-                self._roomba_odometry = odometry
-                return True
-        return False
-
     def cancel(self):
         rospy.loginfo('HitRoomba Task canceled')
         self._canceled = True
-
-    def _check_distance_tolerances(self):
-        x = self._drone_odometry.pose.pose.position.x
-        y = self._drone_odometry.pose.pose.position.y
-
-        _distance_to_point = math.sqrt(x**2 + y**2)
-        
-        return (_distance_to_point <= self._MAX_DIST_DESCENT)
 
     def _on_ground(self):
         if self._switch_message is None:
@@ -256,7 +203,4 @@ class HitRoombaTask(AbstractTask):
         else: 
             data = self._switch_message
             return data.front or data.back or data.left or data.right
-
-    def _height_controller(self):
-        return -.2
    

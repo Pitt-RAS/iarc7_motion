@@ -36,7 +36,7 @@ track_roomba_height: 1.5
 # maximum radial distance from roomba at which track_roomba task is allowed to run
 roomba_max_start_task_dist: 1.1
 # maximum radial distance from roomba at which track_roomba is successful
-roomba_max_end_task_dist: .06
+roomba_max_end_task_dist: .05
 # p-term for X direction when tracking roombas 
 k_term_tracking_x: .55
 # p-term for Y direction when tracking roombas 
@@ -57,7 +57,3 @@ max_holding_range: 1
 hit_roomba_max_start_dist: .5
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
-# max distance tolerance before full descent in hit roomba
-max_dist_tolerance: .1 
-# desired x-y decelration when in full descent for hit roomba
-x_y_deceleration_in_descent: -1.0
