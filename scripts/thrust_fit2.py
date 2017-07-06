@@ -9,25 +9,6 @@ import os.path
 
 '''
 Thrust model data and curve fitting script
-
-Ground effect seems to be consistent across all prop speeds, so it is accounted
-for outside of the curve fitting process.  Ground effect model is as follows:
-
-    $$ T = T_0 (A e^{-data/d_0} + 1) $$
-
-$T_0$ is the thrust without ground effect, d_0 is the characteristic distance
-for the effect, and A is the strength of the effect.  Measured results give
-$T/T_0 = 14/13$ at $data = 0.27$ and $T/T_0 = 11/10$ at $data = 0.14$.  Solving the
-system gives
-
-    $$ d_0 = \\frac{d_2 - d_1}{\\log \\frac{t_1 - 1}{t_2 - 1}} $$
-
-and
-
-    $$ A = \\frac{t_1 - t_2}{e^{-d_1/d_0} - e^{-d_2/d_0}}, $$
-
-where $d_2$ and $d_1$ are the respective measured distances and $t_1$ and $t_2$
-are the respective ratios of $T$ to $T_0$.
 '''
 
 def poly(x, a):
@@ -77,6 +58,13 @@ if __name__ == '__main__':
                   color=plt.get_cmap('gnuplot')(line_index / float(len(data))))
 
     data = np.concatenate(data)
+
+    # Add csv files here to be displayed in bold
+    extra_files = tuple()
+    for filename in extra_files:
+        data2 = np.loadtxt(filename, delimiter=',')
+        data2[:,(0,1)] = data2[:,(1,0)]
+        axes.plot(data2[:,1], data2[:,2], data2[:,0], 'red', linewidth=5)
 
     deg_command = 2
     deg_voltage = 1
