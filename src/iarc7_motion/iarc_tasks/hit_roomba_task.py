@@ -165,9 +165,9 @@ class HitRoombaTask(AbstractTask):
                 
                 z_vel_target = self._height_controller()
 
-                if self._current_height <= self._MIN_MANEUVER_HEIGHT and self._check_distance_tolerances():
-                    self._state = HitRoombaTaskState.full_descent
-                    self._transitioning = True
+                #if self._current_height <= self._MIN_MANEUVER_HEIGHT and self._check_distance_tolerances():
+                    #self._state = HitRoombaTaskState.full_descent
+                    #self._transitioning = True
 
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
