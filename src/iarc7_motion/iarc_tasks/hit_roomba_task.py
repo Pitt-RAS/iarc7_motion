@@ -188,34 +188,34 @@ class HitRoombaTask(AbstractTask):
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            elif self._state == HitRoombaTaskState.full_descent:
-                if not self._check_roomba_visible():
-                    return (TaskAborted('Roomba is no longer in view'), )
-                elif self._on_ground():
-                    return (TaskDone(),)
-                else:
-                    delta_velocity = self._XY_DECERLATION * self._update_period
+            # elif self._state == HitRoombaTaskState.full_descent:
+            #     if not self._check_roomba_visible():
+            #         return (TaskAborted('Roomba is no longer in view'), )
+            #     elif self._on_ground():
+            #         return (TaskDone(),)
+            #     else:
+            #         delta_velocity = self._XY_DECERLATION * self._update_period
 
-                    if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
-                        x_vel_target = 0
-                    else:
-                        x_vel_target = self._drone_odometry.twist.twist.linear.x + delta_velocity
+            #         if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
+            #             x_vel_target = 0
+            #         else:
+            #             x_vel_target = self._drone_odometry.twist.twist.linear.x + delta_velocity
 
-                    if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
-                        y_vel_target = 0
-                    else:
-                        y_vel_target = self._drone_odometry.twist.twist.linear.y + delta_velocity
+            #         if self._drone_odometry.twist.twist.linear.x  <= abs(delta_velocity):
+            #             y_vel_target = 0
+            #         else:
+            #             y_vel_target = self._drone_odometry.twist.twist.linear.y + delta_velocity
                     
-                    z_vel_target = self._descent_velocity
+            #         z_vel_target = self._descent_velocity
 
-                    velocity = TwistStamped()
-                    velocity.header.frame_id = 'level_quad'
-                    velocity.header.stamp = rospy.Time.now()
-                    velocity.twist.linear.x = x_vel_target
-                    velocity.twist.linear.y = y_vel_target
-                    velocity.twist.linear.z = z_vel_target
+            #         velocity = TwistStamped()
+            #         velocity.header.frame_id = 'level_quad'
+            #         velocity.header.stamp = rospy.Time.now()
+            #         velocity.twist.linear.x = x_vel_target
+            #         velocity.twist.linear.y = y_vel_target
+            #         velocity.twist.linear.z = z_vel_target
                     
-                    return (TaskRunning(), VelocityCommand(velocity))
+            #         return (TaskRunning(), VelocityCommand(velocity))
 
     # checks to see if passed in roomba id is available and
     # that the drone and roomba are both within a specified distance
