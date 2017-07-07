@@ -44,11 +44,8 @@ class HitRoombaTask(AbstractTask):
         self._roomba_odometry = None
         self._roomba_array = None
         self._roomba_point = None
-        self._transitioning = False
 
         self._drone_odometry = None
-        self._current_height = None
-        self._last_height = None
         self._canceled = False
         self._switch_message = None
         self._last_update_time = None
@@ -79,12 +76,9 @@ class HitRoombaTask(AbstractTask):
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
             self._descent_velocity = rospy.get_param('~hit_descent_velocity')
-            update_rate = rospy.get_param('~update_rate', False)
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for hit roomba task')
             raise
-        self._update_period = 1.0/update_rate
-        self._descent_time = abs(self._MIN_MANEUVER_HEIGHT/self._descent_velocity)
 
         self._state = HitRoombaTaskState.init
 
@@ -99,9 +93,6 @@ class HitRoombaTask(AbstractTask):
     def _current_velocity_callback(self, data):
         with self._lock:
             self._drone_odometry = data
-            self._current_height = data.pose.pose.position.z
-            if self._last_height is None:
-                self._last_height = data.pose.pose.position.z
 
     def get_desired_command(self):
         with self._lock:
@@ -148,6 +139,8 @@ class HitRoombaTask(AbstractTask):
 
                 if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
+                if self._on_ground():
+                    return (TaskDone(),)
 
                 roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
@@ -202,5 +195,5 @@ class HitRoombaTask(AbstractTask):
             return False
         else: 
             data = self._switch_message
-            return data.front or data.back or data.left or data.right
+            return (data.front or data.back or data.left or data.right)
    
