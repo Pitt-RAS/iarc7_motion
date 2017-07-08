@@ -36,7 +36,8 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
 bool PidController::update(double current_value,
                            const ros::Time& time,
                            double& response,
-                           double derivative)
+                           double derivative,
+                           bool log_debug)
 {
     if (time < last_time_) {
         ROS_WARN("Time passed in to PidController is less than the last time.");
@@ -85,6 +86,10 @@ bool PidController::update(double current_value,
 
         double d_term = d_gain_ * derivative;
         response -= d_term;
+
+        if (log_debug) {
+            ROS_WARN("p %f i %f d %f", p_term, i_accumulator_, d_term);
+        }
     }
 
     last_current_value_ = current_value;
