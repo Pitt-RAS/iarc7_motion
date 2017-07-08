@@ -11,6 +11,8 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Odometry
 
+from acceleration_limiter import AccerlationLimiter 
+
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped
@@ -44,6 +46,7 @@ class HitRoombaTask(AbstractTask):
         self._roomba_odometry = None
         self._roomba_array = None
         self._roomba_point = None
+        self._limiter = AccerlationLimiter()
 
         self._drone_odometry = None
         self._canceled = False
@@ -161,12 +164,24 @@ class HitRoombaTask(AbstractTask):
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
 
+                desired_vel = []
+                desired_vel.append(x_vel_target)
+                desired_vel.append(y_vel_target)
+                desired_vel.append(z_vel_target)
+
+                curr_vel = []
+                curr_vel.append(self._drone_odometry.twist.twist.linear.x)
+                curr_vel.append(self._drone_odometry.twist.twist.linear.y)
+                curr_vel.append(self._drone_odometry.twist.twist.linear.z)
+
+                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
                 velocity.header.stamp = rospy.Time.now()
-                velocity.twist.linear.x = x_vel_target
-                velocity.twist.linear.y = y_vel_target
-                velocity.twist.linear.z = z_vel_target
+                velocity.twist.linear.x = desired_vel[0]
+                velocity.twist.linear.y = desired_vel[1]
+                velocity.twist.linear.z = desired_vel[2]
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
