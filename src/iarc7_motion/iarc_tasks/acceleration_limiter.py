@@ -34,9 +34,12 @@ class AccerlationLimiter():
         velocity_overall = math.sqrt(desired_x**2 + desired_y**2 + desired_z**2)
 
         if accel_overall > self._MAX_TRANSLATION_ACCELERATION:
-            return_velocities.append(desired_x * (self._MAX_TRANSLATION_ACCELERATION * self._update_period)/velocity_overall)
-            return_velocities.append(desired_y * (self._MAX_TRANSLATION_ACCELERATION * self._update_period)/velocity_overall)
-            return_velocities.append(desired_z * (self._MAX_TRANSLATION_ACCELERATION * self._update_period)/velocity_overall)
+            return_velocities.append(desired_x * (self._MAX_TRANSLATION_ACCELERATION * 
+                self._update_period)/velocity_overall)
+            return_velocities.append(desired_y * (self._MAX_TRANSLATION_ACCELERATION * 
+                self._update_period)/velocity_overall)
+            return_velocities.append(desired_z * (self._MAX_TRANSLATION_ACCELERATION * 
+                self._update_period)/velocity_overall)
         else:
             return_velocities.append(desired_x)
             return_velocities.append(desired_y)
