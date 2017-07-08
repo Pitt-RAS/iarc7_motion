@@ -26,6 +26,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 from height_holder import HeightHolder
 from height_settings_checker import HeightSettingsChecker
+from acceleration_limiter import AccerlationLimiter
 
 class TrackObjectTaskState:
     init = 0
@@ -78,6 +79,7 @@ class TrackRoombaTask(AbstractTask):
 
         self._z_holder = HeightHolder()
         self._height_checker = HeightSettingsChecker()
+        self._limiter = AccerlationLimiter()
 
         self._state = TrackObjectTaskState.init
 
@@ -91,77 +93,102 @@ class TrackRoombaTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
-            if (self._state != TrackObjectTaskState.track):
+            if (self._state == TrackObjectTaskState.init):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = TrackObjectTaskState.waiting
-                    return (TaskRunning(), NopCommand())
                 else:
                     self._state = TrackObjectTaskState.track
-            elif not (self._height_checker.above_min_maneuver_height(
-                        self._drone_odometry.pose.pose.position.z)):
-                return (TaskAborted(msg='Drone is too low'),)
-            elif not (self._z_holder.check_z_error(
-                self._drone_odometry.pose.pose.position.z)):
-                return (TaskAborted(msg='Z error is too high'),)
+                return (TaskRunning(), NopCommand())
 
-            if self._canceled:
+            elif (self._state == TrackObjectTaskState.waiting):
+                if self._roomba_array is None or self._drone_odometry is None:
+                    self._state = TrackObjectTaskState.waiting
+                else:
+                    self._state = TrackObjectTaskState.track
+                return (TaskRunning(), NopCommand())
+
+            elif self._canceled:
                 return (TaskCanceled(),)
 
-            try:
-                roomba_transform = self._tf_buffer.lookup_transform(
-                                    'level_quad',
-                                    self._roomba_id,
-                                    rospy.Time.now(),
-                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
-            except (tf2_ros.LookupException,
-                    tf2_ros.ConnectivityException,
-                    tf2_ros.ExtrapolationException) as ex:
-                rospy.logerr('ObjectTrackTask: Exception when looking up transform')
-                rospy.logerr(ex.message)
-                return (TaskAborted(msg='Exception when looking up transform during roomba track'),)
+            elif self._state == TrackObjectTaskState.track:
 
-            # Creat point centered at drone's center
-            stamped_point = PointStamped()
-            stamped_point.point.x = 0
-            stamped_point.point.y = 0
-            stamped_point.point.z = 0
+                if not (self._height_checker.above_min_maneuver_height(
+                            self._drone_odometry.pose.pose.position.z)):
+                    return (TaskAborted(msg='Drone is too low'),)
+                elif not (self._z_holder.check_z_error(
+                    self._drone_odometry.pose.pose.position.z)):
+                    return (TaskAborted(msg='Z error is too high'),)
+                    
 
-            # returns point distances of roomba to center point of level quad
-            self._roomba_point = tf2_geometry_msgs.do_transform_point(
-                                                stamped_point, roomba_transform)
+                try:
+                    roomba_transform = self._tf_buffer.lookup_transform(
+                                        'level_quad',
+                                        self._roomba_id,
+                                        rospy.Time.now(),
+                                        rospy.Duration(self._TRANSFORM_TIMEOUT))
+                except (tf2_ros.LookupException,
+                        tf2_ros.ConnectivityException,
+                        tf2_ros.ExtrapolationException) as ex:
+                    rospy.logerr('ObjectTrackTask: Exception when looking up transform')
+                    rospy.logerr(ex.message)
+                    return (TaskAborted(msg='Exception when looking up transform during roomba track'),)
 
-            if not self._check_max_start_roomba_range():
-                return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
+                # Creat point centered at drone's center
+                stamped_point = PointStamped()
+                stamped_point.point.x = 0
+                stamped_point.point.y = 0
+                stamped_point.point.z = 0
 
-            if self._check_max_ending_roomba_range():
-                return (TaskDone(),)
+                # returns point distances of roomba to center point of level quad
+                self._roomba_point = tf2_geometry_msgs.do_transform_point(
+                                                    stamped_point, roomba_transform)
 
-            # p-controller
-            x_vel_target = (self._roomba_point.point.x * self._K_X + 
-                        self._roomba_odometry.twist.twist.linear.x)
-            y_vel_target = (self._roomba_point.point.y * self._K_Y + 
-                        self._roomba_odometry.twist.twist.linear.y)
-            z_vel_target = self._z_holder.get_height_hold_response(
-                self._drone_odometry.pose.pose.position.z)
+                if not self._check_max_start_roomba_range():
+                    return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
 
-            #caps velocity
-            vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
+                if self._check_max_ending_roomba_range():
+                    return (TaskDone(),)
 
-            if vel_target > self._MAX_TRANSLATION_SPEED:
-                x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-                y_vel_target = y_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-            
-            if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                # p-controller
+                x_vel_target = (self._roomba_point.point.x * self._K_X + 
+                            self._roomba_odometry.twist.twist.linear.x)
+                y_vel_target = (self._roomba_point.point.y * self._K_Y + 
+                            self._roomba_odometry.twist.twist.linear.y)
+                z_vel_target = self._z_holder.get_height_hold_response(
+                    self._drone_odometry.pose.pose.position.z)
 
-            velocity = TwistStamped()
-            velocity.header.frame_id = 'level_quad'
-            velocity.header.stamp = rospy.Time.now()
-            velocity.twist.linear.x = x_vel_target
-            velocity.twist.linear.y = y_vel_target
-            velocity.twist.linear.z = z_vel_target
-            
-            return (TaskRunning(), VelocityCommand(velocity)) 
+                #caps velocity
+                vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
+
+                if vel_target > self._MAX_TRANSLATION_SPEED:
+                    x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
+                    y_vel_target = y_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
+                
+                if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
+                    z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+
+                desired_vel = []
+                desired_vel.append(x_vel_target)
+                desired_vel.append(y_vel_target)
+                desired_vel.append(z_vel_target)
+
+                curr_vel = []
+                curr_vel.append(self._drone_odometry.twist.twist.linear.x)
+                curr_vel.append(self._drone_odometry.twist.twist.linear.y)
+                curr_vel.append(self._drone_odometry.twist.twist.linear.z)
+
+                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+
+                velocity = TwistStamped()
+                velocity.header.frame_id = 'level_quad'
+                velocity.header.stamp = rospy.Time.now()
+                velocity.twist.linear.x = desired_vel[0]
+                velocity.twist.linear.y = desired_vel[1]
+                velocity.twist.linear.z = desired_vel[2]
+                
+                return (TaskRunning(), VelocityCommand(velocity)) 
+            else:
+                return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
     # checks to see if passed in roomba id is available and
     # that the drone and roomba are both within a specified distance
