@@ -74,7 +74,19 @@ bool PidController::update(double current_value,
         if (std::abs(difference) < i_accumulator_enable_threshold_) {
             i_accumulator_ += i_gain_ * difference * time_delta;
 
+            if (log_debug) {
+                ROS_WARN("Set accumulator to %f (i_gain %f) (difference %f) (time_delta %f)", i_accumulator_, i_gain_, difference, time_delta);
+            }
+
             boost::algorithm::clamp(i_accumulator_, i_accumulator_min_, i_accumulator_max_);
+
+            if (log_debug) {
+                ROS_WARN("Accumulator clamped to %f (min %f, max %f)", i_accumulator_, i_accumulator_min_, i_accumulator_max_);
+            }
+        } else {
+            if (log_debug) {
+                ROS_WARN("Ignoring difference %f above threshold %f", difference, i_accumulator_enable_threshold_);
+            }
         }
 
         response += i_accumulator_;
