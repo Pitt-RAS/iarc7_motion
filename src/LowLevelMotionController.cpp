@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     private_nh.param("pitch_d", pitch_pid[2], 0.0);
     private_nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
     private_nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
-    private_nh.param("pitch_accumulator_enable_threshold", throttle_pid[5], 0.0);
+    private_nh.param("pitch_accumulator_enable_threshold", pitch_pid[5], 0.0);
 
     // Roll PID settings retrieve
     private_nh.param("roll_p", roll_pid[0], 0.0);
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
     private_nh.param("roll_d", roll_pid[2], 0.0);
     private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
-    private_nh.param("roll_accumulator_enable_threshold", throttle_pid[5], 0.0);
+    private_nh.param("roll_accumulator_enable_threshold", roll_pid[5], 0.0);
 
     // Thrust model settings retrieve
     ROS_ASSERT(private_nh.getParam("thrust_model/thrust_scale_factor",
