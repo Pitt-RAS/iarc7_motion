@@ -192,8 +192,8 @@ bool QuadVelocityController::update(const ros::Time& time,
     success = throttle_pid_.update(velocity.z(),
                                    time,
                                    vertical_accel_output,
-                                   accel.z(),
-                                   true);
+                                   accel.z());
+
     if (!success) {
         ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
         return false;
