@@ -57,3 +57,13 @@ max_holding_range: 1.0
 hit_roomba_max_start_dist: .5
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
+# roomba diameter in meters
+roomba_diameter: .33
+# drone landing gear width and length
+drone_landing_gear_width: .565
+# max angular velocity in rad/s
+max_angular_velocity: 1.04
+# max angle between drone and roomba directions in block roomba
+max_xy_angle_to_roomba: 0.392
+# p-term for angular velocity 
+k_angular: .5
