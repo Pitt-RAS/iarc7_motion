@@ -12,6 +12,7 @@ from iarc_tasks.test_task import TestTask
 from iarc_tasks.xyztranslation_task import XYZTranslationTask
 from iarc_tasks.track_roomba_task import TrackRoombaTask
 from iarc_tasks.hit_roomba_task import HitRoombaTask
+from iarc_tasks.block_roomba_task import BlockRoombaTask
 from iarc_tasks.hold_position_task import HoldPositionTask
 from iarc_tasks.velocity_task import VelocityTask
 
@@ -38,6 +39,7 @@ class IarcTaskActionServer:
                            'xyztranslate': XYZTranslationTask,
                            'track_roomba': TrackRoombaTask,
                            'hit_roomba': HitRoombaTask,
+                           'block_roomba': BlockRoombaTask,
                            'hold_position': HoldPositionTask,
                            'velocity_test': VelocityTask,
                            'test_task': TestTask}
