@@ -185,13 +185,13 @@ class BlockRoombaTask(AbstractTask):
 
                 crossing_vector = [1,0]
 
-                angle_err_cos = math.acos(drone_x)
-                angle_err_sin = np.cross(crossing_vector, drone_vector)
-                tan = angle_err_sin/angle_err_cos
-                angle_err = math.atan(tan)
+                angle_err = math.acos(drone_x)
+                # angle_err_sin = np.cross(crossing_vector, drone_vector)
+                # tan = angle_err_sin/angle_err_cos
+                # angle_err = math.atan(tan)
 
-                num_sides = angle_err/(math.pi/8)
-                num_rotations = 0
+                # num_sides = angle_err/(math.pi/8)
+                # num_rotations = 0
 
                 #if num_sides > .5 and num_sides < 
 
@@ -232,7 +232,7 @@ class BlockRoombaTask(AbstractTask):
                 return (TaskRunning(), VelocityCommand(velocity))
 
             else:
-                return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
+                return (TaskAborted(msg='Illegal state reached in Block Roomba Task' ),)
 
     # checks to see if passed in roomba id is available and
     # that the drone and roomba are both within a specified distance
