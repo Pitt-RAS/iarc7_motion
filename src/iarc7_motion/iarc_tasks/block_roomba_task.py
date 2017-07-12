@@ -5,6 +5,7 @@ import rospy
 import tf2_ros
 import tf2_geometry_msgs
 import threading
+import numpy as np
 
 from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
@@ -180,8 +181,19 @@ class BlockRoombaTask(AbstractTask):
                 drone_vector_magnitude = math.sqrt(drone_vector.vector.x**2 + drone_vector.vector.y**2)
 
                 drone_x = drone_vector.vector.x/drone_vector_magnitude
+                #drone_y = drone_vector.vector.y/drone_vector_magnitude
 
-                angle_err = math.acos(drone_x)
+                crossing_vector = [1,0]
+
+                angle_err_cos = math.acos(drone_x)
+                angle_err_sin = np.cross(crossing_vector, drone_vector)
+                tan = angle_err_sin/angle_err_cos
+                angle_err = math.atan(tan)
+
+                num_sides = angle_err/(math.pi/8)
+                num_rotations = 0
+
+                #if num_sides > .5 and num_sides < 
 
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)

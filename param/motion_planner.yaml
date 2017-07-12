@@ -72,6 +72,6 @@ drone_landing_gear_width: .565
 # max angular velocity in rad/s
 max_angular_velocity: 1.04
 # max angle between drone and roomba directions in block roomba
-max_xy_angle_to_roomba: 0.392
+max_xy_angle_to_roomba: 0.196
 # p-term for angular velocity 
 k_angular: .5
