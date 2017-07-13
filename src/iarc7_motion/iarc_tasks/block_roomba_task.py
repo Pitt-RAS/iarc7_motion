@@ -181,19 +181,20 @@ class BlockRoombaTask(AbstractTask):
                 drone_vector_magnitude = math.sqrt(drone_vector.vector.x**2 + drone_vector.vector.y**2)
 
                 drone_x = drone_vector.vector.x/drone_vector_magnitude
-                #drone_y = drone_vector.vector.y/drone_vector_magnitude
+                drone_y = drone_vector.vector.y/drone_vector_magnitude
 
-                crossing_vector = [1,0]
+                crossing_vector = np.array([1,0])
+                drone_vector = np.array([drone_x, drone_y])
 
-                angle_err = math.acos(drone_x)
-                # angle_err_sin = np.cross(crossing_vector, drone_vector)
-                # tan = angle_err_sin/angle_err_cos
-                # angle_err = math.atan(tan)
+                angle_err_cos = math.acos(drone_x)
+                angle_err_sin = np.cross(crossing_vector, drone_vector)
 
-                # num_sides = angle_err/(math.pi/8)
-                # num_rotations = 0
+                angle_err = np.arctan2(angle_err_sin, angle_err_cos)
 
-                #if num_sides > .5 and num_sides < 
+                num_sides = angle_err/(math.pi/4)
+                num_rotations = 0
+
+                
 
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
