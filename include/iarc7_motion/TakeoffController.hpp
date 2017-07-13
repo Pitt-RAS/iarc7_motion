@@ -102,6 +102,9 @@ private:
     // Interpolator for battery voltage
     ros_utils::LinearMsgInterpolator<iarc7_msgs::Float64Stamped, double>
             battery_interpolator_;
+
+    //height from the short ranger LIDAR to the point at which the foot switches should be open
+    const double switch_toggle_height_;
 };
 
 } // End namespace Iarc7Motion

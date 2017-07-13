@@ -12,7 +12,7 @@ class HeightSettingsChecker():
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
         except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for track roomba task')
+            rospy.logerr('Could not lookup a parameter Height Settings Checker')
             raise
 
     def above_min_maneuver_height(self, current_height):
