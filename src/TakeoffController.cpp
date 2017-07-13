@@ -49,7 +49,10 @@ TakeoffController::TakeoffController(
                             [](const iarc7_msgs::Float64Stamped& msg) {
                                 return msg.data;
                             },
-                            100)
+                            100),
+      takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
+                  private_nh,
+                  "takeoff_max_height_switch_pressed"))
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                    100,
@@ -148,6 +151,12 @@ bool TakeoffController::update(const ros::Time& time,
                 return false;
             }
           state_ = TakeoffState::DONE;
+        }
+        //Check if UAV is above switch sensing height, if it is go to safety response
+        else if(transform.transform.translation.z > takeoff_max_height_switch_pressed_)
+        {
+            ROS_ERROR("Takeoff handler failed, quad's switches are toggled, but quad is above toggle height");
+            return false;
         }
         else
         {

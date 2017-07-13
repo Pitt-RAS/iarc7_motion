@@ -81,3 +81,6 @@ brace_impact_failure_height: 0.2
 
 # This parameter will be obsolete when the foot touch sensors are implemented
 brace_impact_success_height: 0.05
+
+#height at which the contact switches must be unpressed
+takeoff_max_height_switch_pressed: 0.25
