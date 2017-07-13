@@ -36,15 +36,15 @@ track_roomba_height: 1.5
 # maximum radial distance from roomba at which track_roomba task is allowed to run
 roomba_max_start_task_dist: 1.1
 # maximum radial distance from roomba at which track_roomba is successful
-roomba_max_end_task_dist: .05
+roomba_max_end_task_dist: .1
 # p-term for X direction when tracking roombas 
-k_term_tracking_x: .55
+k_term_tracking_x: .35
 # p-term for Y direction when tracking roombas 
-k_term_tracking_y: .55
+k_term_tracking_y: .35
 # p-term for height holder helper for Z height
 p_term_height_hold_z: .90
 # maximum z error for heigth holder
-max_z_error: 1.0
+max_z_error: .7
 # p-term for x height for position holder task
 k_position_x: 1.25
 # p-term for y height for position holder task
@@ -52,18 +52,4 @@ k_position_y: 1.25
 # p-term for z height for position holder task
 k_position_z: .90
 # maximum radial distance from target point at which hold position task is allowed to run
-max_holding_range: 1.0
-# maximum radial distance from roomba at which hit_roomba task is allowed to run
-hit_roomba_max_start_dist: .5
-# descent velocity when hitting a roomba 
-hit_descent_velocity: -0.2
-# roomba diameter in meters
-roomba_diameter: .33
-# drone landing gear width and length
-drone_landing_gear_width: .565
-# max angular velocity in rad/s
-max_angular_velocity: 1.04
-# max angle between drone and roomba directions in block roomba
-max_xy_angle_to_roomba: 0.392
-# p-term for angular velocity 
-k_angular: .5
+max_holding_range: 1
