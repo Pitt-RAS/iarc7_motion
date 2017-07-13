@@ -153,7 +153,7 @@ bool TakeoffController::update(const ros::Time& time,
           state_ = TakeoffState::DONE;
         }
         //Check if UAV is above switch sensing height, if it is go to safety response
-        else if(transform.transform.translation.z > switch_toggle_height_)
+        else if(transform.transform.translation.z > takeoff_max_height_switch_pressed_)
         {
             ROS_ERROR("Takeoff handler failed, quad's switches are toggled, but quad is above toggle height");
             return false;

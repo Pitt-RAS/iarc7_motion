@@ -102,7 +102,7 @@ private:
     // Interpolator for battery voltage
     ros_utils::LinearMsgInterpolator<iarc7_msgs::Float64Stamped, double>
             battery_interpolator_;
-    const double switch_toggle_height_;
+    const double takeoff_max_height_switch_pressed_;
 };
 
 } // End namespace Iarc7Motion
