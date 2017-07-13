@@ -23,14 +23,14 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 from height_holder import HeightHolder
 from height_settings_checker import HeightSettingsChecker
-from acceleration_limiter import AccerlationLimiter
+from acceleration_limiter import AccelerationLimiter
 
-class VelocityTestTaskState:
+class VelocityTaskState(object):
     init = 0
     moving = 1
     waiting = 2
 
-class VelocityTestTask(AbstractTask):
+class VelocityTask(object, AbstractTask):
 
     def __init__(self, task_request):
 
@@ -50,18 +50,19 @@ class VelocityTestTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
-            self._TRANSLATION_SPEED_X = rospy.get_param('~test_velocity_x')
-            self._TRANSLATION_SPEED_Y = rospy.get_param('~test_velocity_y')
+            self._HORIZ_X_VEL = rospy.get_param('~velocity_x')
+            self._HORIZ_Y_VEL = rospy.get_param('~velocity_y')
+            _DESIRED_HEIGHT = rospy.get_param('~velocity_task_height')
 
         except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for constant velocity test task')
+            rospy.logerr('Could not lookup a parameter for velocity task')
             raise
 
-        self._z_holder = HeightHolder(True)
+        self._z_holder = HeightHolder(_DESIRED_HEIGHT)
         self._height_checker = HeightSettingsChecker()
-        self._limiter = AccerlationLimiter()
+        self._limiter = AccelerationLimiter()
 
-        self._state = VelocityTestTaskState.init
+        self._state = VelocityTaskState.init
 
     def _current_velocity_callback(self, data):
         with self._lock:
@@ -69,31 +70,31 @@ class VelocityTestTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
-            if (self._state == VelocityTestTaskState.init):
+            if (self._state == VelocityTaskState.init):
                 if self._drone_odometry is None:
-                    self._state = VelocityTestTaskState.waiting
+                    self._state = VelocityTaskState.waiting
                 else:
-                    self._state = VelocityTestTaskState.moving
+                    self._state = VelocityTaskState.moving
                 return (TaskRunning(), NopCommand())
 
-            elif (self._state == VelocityTestTaskState.waiting):
+            elif (self._state == VelocityTaskState.waiting):
                 if self._drone_odometry is None:
-                    self._state = VelocityTestTaskState.waiting
+                    self._state = VelocityTaskState.waiting
                 else:
-                    self._state = VelocityTestTaskState.moving
+                    self._state = VelocityTaskState.moving
                 return (TaskRunning(), NopCommand())
 
             elif self._canceled:
                 return (TaskCanceled(),)
 
-            elif self._state == VelocityTestTaskState.moving:
+            elif self._state == VelocityTaskState.moving:
 
                 if not (self._height_checker.above_min_maneuver_height(
                             self._drone_odometry.pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
 
-                x_vel_target = self._TRANSLATION_SPEED_X
-                y_vel_target = self._TRANSLATION_SPEED_Y
+                x_vel_target = self._HORIZ_X_VEL
+                y_vel_target = self._HORIZ_Y_VEL
                 z_vel_target = self._z_holder.get_height_hold_response(
                     self._drone_odometry.pose.pose.position.z)
 
