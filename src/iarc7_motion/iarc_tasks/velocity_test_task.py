@@ -11,8 +11,6 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Odometry
 
-from iarc7_msgs.msg import OdometryArray
-
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
                                     TaskDone,
@@ -52,18 +50,18 @@ class VelocityTestTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
-            self._TRANSLATION_SPEED = rospy.get_param('~test_velocity')
+            self._TRANSLATION_SPEED_X = rospy.get_param('~test_velocity_x')
+            self._TRANSLATION_SPEED_Y = rospy.get_param('~test_velocity_y')
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for constant velocity test task')
             raise
 
-        self._z_holder = HeightHolder()
+        self._z_holder = HeightHolder(True)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccerlationLimiter()
 
         self._state = VelocityTestTaskState.init
-
 
     def _current_velocity_callback(self, data):
         with self._lock:
@@ -94,16 +92,11 @@ class VelocityTestTask(AbstractTask):
                             self._drone_odometry.pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
 
-                # p-controller
-                x_vel_target = self._TRANSLATION_SPEED
-                y_vel_target = 0
+                x_vel_target = self._TRANSLATION_SPEED_X
+                y_vel_target = self._TRANSLATION_SPEED_Y
                 z_vel_target = self._z_holder.get_height_hold_response(
                     self._drone_odometry.pose.pose.position.z)
 
-                #caps velocity
-                if x_vel_target > self._MAX_TRANSLATION_SPEED:
-                    x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-                
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
 
@@ -128,7 +121,7 @@ class VelocityTestTask(AbstractTask):
                 
                 return (TaskRunning(), VelocityCommand(velocity)) 
             else:
-                return (TaskAborted(msg='Illegal state reached in Test Constant Velocity task'),)
+                return (TaskAborted(msg='Illegal state reached in Velocity test task'),)
 
     def cancel(self):
         rospy.loginfo('VelocityTestTask Task canceled')

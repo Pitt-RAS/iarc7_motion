@@ -12,8 +12,11 @@ from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
 class HeightHolder():
-    def __init__(self):
+    def __init__(self, use_current = False):
         self._lock = threading.RLock()
+        self._delta_z = 0
+        self._USE_CURRENT_HEIGHT = use_current
+        self._current_height = None
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_Z_ERROR = rospy.get_param('~max_z_error')
@@ -30,13 +33,17 @@ class HeightHolder():
     # that is set as the param _track_roomba_height
     def get_height_hold_response(self, height):
         with self._lock:
-            delta_z = self._TRACK_HEIGHT - height
-            response = self._K_Z * delta_z
+            if self._current_height is None:
+                self._current_height = height
+
+            if not self._USE_CURRENT_HEIGHT:
+                self._delta_z = self._TRACK_HEIGHT - height
+            else:
+                self._delta_z = self._current_height - height
+
+            response = self._K_Z * self._delta_z
+            
             return response
 
     def check_z_error(self, current_height):
-        z_error = abs(current_height-self._TRACK_HEIGHT)
-        if (z_error > self._MAX_Z_ERROR):
-            return False
-        else:
-            return True
+        return (self._delta_z < self._MAX_Z_ERROR)
