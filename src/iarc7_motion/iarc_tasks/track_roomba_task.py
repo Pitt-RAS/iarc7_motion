@@ -26,20 +26,18 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 from height_holder import HeightHolder
 from height_settings_checker import HeightSettingsChecker
-from acceleration_limiter import AccerlationLimiter
+from acceleration_limiter import AccelerationLimiter
 
-class TrackObjectTaskState:
+class TrackObjectTaskState(object):
     init = 0
     track = 1
     waiting = 2
 
-class TrackRoombaTask(AbstractTask):
+class TrackRoombaTask(object, AbstractTask):
 
     def __init__(self, task_request):
 
-        self._roomba_id = task_request.frame_id
-
-        self._roomba_id = self._roomba_id  + '/base_link'
+        self._roomba_id = task_request.frame_id  + '/base_link'
 
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
@@ -67,7 +65,7 @@ class TrackRoombaTask(AbstractTask):
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
-            self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
+            self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~roomba_max_start_task_dist')
             self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
@@ -79,7 +77,7 @@ class TrackRoombaTask(AbstractTask):
 
         self._z_holder = HeightHolder()
         self._height_checker = HeightSettingsChecker()
-        self._limiter = AccerlationLimiter()
+        self._limiter = AccelerationLimiter()
 
         self._state = TrackObjectTaskState.init
 
@@ -93,7 +91,10 @@ class TrackRoombaTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
-            if (self._state == TrackObjectTaskState.init):
+            if self._canceled:
+                return (TaskCanceled(),)
+
+            elif (self._state == TrackObjectTaskState.init):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = TrackObjectTaskState.waiting
                 else:
@@ -107,9 +108,6 @@ class TrackRoombaTask(AbstractTask):
                     self._state = TrackObjectTaskState.track
                 return (TaskRunning(), NopCommand())
 
-            elif self._canceled:
-                return (TaskCanceled(),)
-
             elif self._state == TrackObjectTaskState.track:
 
                 if not (self._height_checker.above_min_maneuver_height(
@@ -118,7 +116,8 @@ class TrackRoombaTask(AbstractTask):
                 elif not (self._z_holder.check_z_error(
                     self._drone_odometry.pose.pose.position.z)):
                     return (TaskAborted(msg='Z error is too high'),)
-                    
+                elif not self._check_roomba_in_sight():
+                    return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
 
                 try:
                     roomba_transform = self._tf_buffer.lookup_transform(
@@ -143,7 +142,7 @@ class TrackRoombaTask(AbstractTask):
                 self._roomba_point = tf2_geometry_msgs.do_transform_point(
                                                     stamped_point, roomba_transform)
 
-                if not self._check_max_start_roomba_range():
+                if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
 
                 if self._check_max_ending_roomba_range():
@@ -160,22 +159,20 @@ class TrackRoombaTask(AbstractTask):
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
-                if vel_target > self._MAX_TRANSLATION_SPEED:
-                    x_vel_target = x_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
-                    y_vel_target = y_vel_target * (self._MAX_TRANSLATION_SPEED/vel_target)
+                if vel_target > self._MAX_HORIZ_SPEED:
+                    x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
+                    y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
                 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
 
-                desired_vel = []
-                desired_vel.append(x_vel_target)
-                desired_vel.append(y_vel_target)
-                desired_vel.append(z_vel_target)
+                desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                curr_vel = []
-                curr_vel.append(self._drone_odometry.twist.twist.linear.x)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.y)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.z)
+                drone_vel_x = self._drone_odometry.twist.twist.linear.x
+                drone_vel_y = self._drone_odometry.twist.twist.linear.y
+                drone_vel_z = self._drone_odometry.twist.twist.linear.z
+
+                curr_vel = [drone_vel_x, drone_vel_y, drone_vel_z]
 
                 desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
 
@@ -190,18 +187,21 @@ class TrackRoombaTask(AbstractTask):
             else:
                 return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
-    # checks to see if passed in roomba id is available and
-    # that the drone and roomba are both within a specified distance
-    # in order to start the task
-    def _check_max_start_roomba_range(self):
+    ## checks to see if passed in roomba id is in sight of quad
+    def _check_roomba_in_sight(self):
         for odometry in self._roomba_array.data:
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
-                self._roomba_found =  True 
-                _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
-                            self._roomba_point.point.y**2)
-                return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
+                return True
         return False
+
+    # that the drone and roomba are both within a specified distance
+    # in order to start/continue the task
+    def _check_max_roomba_range(self):
+        _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
+                            self._roomba_point.point.y**2)
+        
+        return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
 
     # checks the radial distance from the drone to the roomba
     # in order to end the task as successful

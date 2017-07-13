@@ -5,7 +5,7 @@
 import math
 import rospy
 
-class AccerlationLimiter():
+class AccelerationLimiter(object):
     def __init__(self):
         try:
             self._MAX_TRANSLATION_ACCELERATION = rospy.get_param('~max_translation_acceleration')
