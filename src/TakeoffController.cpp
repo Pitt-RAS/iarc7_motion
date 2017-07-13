@@ -50,9 +50,9 @@ TakeoffController::TakeoffController(
                                 return msg.data;
                             },
                             100),
-      switch_toggle_height_(ros_utils::ParamUtils::getParam<double>(
+      takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
                   private_nh,
-                  "switch_toggle_height"))
+                  "takeoff_max_height_switch_pressed"))
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                    100,
