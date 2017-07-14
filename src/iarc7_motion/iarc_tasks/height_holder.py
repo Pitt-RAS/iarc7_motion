@@ -15,7 +15,7 @@ class HeightHolder(object):
     def __init__(self, desired_height):
         self._lock = threading.RLock()
         self._delta_z = 0
-        self._DESIRED_HEIGHT
+        self._DESIRED_HEIGHT = desired_height
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_Z_ERROR = rospy.get_param('~max_z_error')

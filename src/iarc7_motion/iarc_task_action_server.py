@@ -13,7 +13,7 @@ from iarc_tasks.xyztranslation_task import XYZTranslationTask
 from iarc_tasks.track_roomba_task import TrackRoombaTask
 from iarc_tasks.hit_roomba_task import HitRoombaTask
 from iarc_tasks.hold_position_task import HoldPositionTask
-from iarc_tasks.velocity_test_task import VelocityTestTask
+from iarc_tasks.velocity_task import VelocityTask
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -39,7 +39,7 @@ class IarcTaskActionServer:
                            'track_roomba': TrackRoombaTask,
                            'hit_roomba': HitRoombaTask,
                            'hold_position': HoldPositionTask,
-                           'velocity_test': VelocityTestTask,
+                           'velocity_test': VelocityTask,
                            'test_task': TestTask}
 
     # Private method
