@@ -72,11 +72,12 @@ class TrackRoombaTask(object, AbstractTask):
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
+            TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
 
-        self._z_holder = HeightHolder()
+        self._z_holder = HeightHolder(TRACK_HEIGHT)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
 
