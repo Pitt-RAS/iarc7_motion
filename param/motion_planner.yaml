@@ -57,3 +57,5 @@ max_holding_range: 1.0
 hit_roomba_max_start_dist: .5
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
+# test task velocity, m/s
+test_velocity: 1.0
