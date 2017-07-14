@@ -50,6 +50,7 @@ class HitRoombaTask(object, AbstractTask):
         self._canceled = False
         self._switch_message = None
         self._last_update_time = None
+        self._current_velocity = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -70,7 +71,6 @@ class HitRoombaTask(object, AbstractTask):
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
-            self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~hit_roomba_max_start_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
@@ -166,7 +166,7 @@ class HitRoombaTask(object, AbstractTask):
                     y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
                 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                    z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                    z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
@@ -174,9 +174,10 @@ class HitRoombaTask(object, AbstractTask):
                 drone_vel_y = self._drone_odometry.twist.twist.linear.y
                 drone_vel_z = self._drone_odometry.twist.twist.linear.z
 
-                curr_vel = [drone_vel_x, drone_vel_y, drone_vel_z]
+                if self._current_velocity is None:
+                    self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -184,11 +185,12 @@ class HitRoombaTask(object, AbstractTask):
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
+
+                self._current_velocity = desired_vel
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            else:
-                return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
+            return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
 
     # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):

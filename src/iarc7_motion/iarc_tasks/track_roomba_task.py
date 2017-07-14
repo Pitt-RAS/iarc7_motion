@@ -46,6 +46,7 @@ class TrackRoombaTask(object, AbstractTask):
         self._roomba_array = None
         self._roomba_point = None
         self._roomba_found = False
+        self._current_velocity = None
 
         self._drone_odometry = None
         self._canceled = False
@@ -164,7 +165,7 @@ class TrackRoombaTask(object, AbstractTask):
                     y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
                 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                    z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                    z_vel_target =  math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
@@ -172,9 +173,10 @@ class TrackRoombaTask(object, AbstractTask):
                 drone_vel_y = self._drone_odometry.twist.twist.linear.y
                 drone_vel_z = self._drone_odometry.twist.twist.linear.z
 
-                curr_vel = [drone_vel_x, drone_vel_y, drone_vel_z]
+                if self._current_velocity is None:
+                    self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -182,10 +184,12 @@ class TrackRoombaTask(object, AbstractTask):
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
+
+                self._current_velocity = desired_vel
                 
                 return (TaskRunning(), VelocityCommand(velocity)) 
-            else:
-                return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
+            
+            return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
     ## checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):

@@ -8,7 +8,7 @@ import rospy
 class AccelerationLimiter(object):
     def __init__(self):
         try:
-            self._MAX_TRANSLATION_ACCELERATION = rospy.get_param('~max_translation_acceleration')
+            self._MAX_3D_TRANSLATION_ACCELERATION = rospy.get_param('~max_translation_acceleration')
             update_rate = rospy.get_param('~update_rate', False)
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for Acceleration Limiter')
@@ -33,13 +33,15 @@ class AccelerationLimiter(object):
         accel_overall = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
         velocity_overall = math.sqrt(desired_x**2 + desired_y**2 + desired_z**2)
 
-        if accel_overall > self._MAX_TRANSLATION_ACCELERATION:
-            return_velocities.append(desired_x * (self._MAX_TRANSLATION_ACCELERATION * 
-                self._update_period)/velocity_overall)
-            return_velocities.append(desired_y * (self._MAX_TRANSLATION_ACCELERATION * 
-                self._update_period)/velocity_overall)
-            return_velocities.append(desired_z * (self._MAX_TRANSLATION_ACCELERATION * 
-                self._update_period)/velocity_overall)
+        if accel_overall > self._MAX_3D_TRANSLATION_ACCELERATION:
+            return_velocities.append(current_x + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
+                self._update_period) * (desired_x/velocity_overall)))
+
+            return_velocities.append(current_y + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
+                self._update_period) * (desired_y/velocity_overall)))
+
+            return_velocities.append(current_z + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
+                self._update_period) * (desired_z/velocity_overall)))
         else:
             return_velocities.append(desired_x)
             return_velocities.append(desired_y)
