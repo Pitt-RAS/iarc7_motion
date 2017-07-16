@@ -8,6 +8,9 @@ import rospy
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
 
+from geometry_msgs.msg import Twist
+from std_srvs.srv import SetBool
+
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
@@ -60,6 +63,7 @@ class MotionPlanner:
             }
 
         self._time_of_last_task = None
+        self._last_twist = None
         try:
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
         except KeyError as e:
@@ -99,7 +103,7 @@ class MotionPlanner:
             for task_command in task_commands:
                 try:
                     self._command_implementations[type(task_command)](task_command)
-                except KeyError as e:
+                except (KeyError, TypeError) as e:
                     rospy.logerr("Task requested unimplemented command, noping: %s", type(task_command))
                     self._handle_nop_command(None)
 
@@ -199,9 +203,17 @@ class MotionPlanner:
             rospy.logerr('Task requested a passthrough command when not in passthrough mode')
 
     def _publish_twist(self, twist):
-        velocity_msg = TwistStampedArray()
-        velocity_msg.twists = [twist]
-        self._velocity_pub.publish(velocity_msg)
+
+        if type(twist) is TwistStampedArray:
+            self._last_twist = twist.twists[-1]
+            self._velocity_pub.publish(velocity_msg)
+        elif type(twist) is TwistStamped:
+            self._last_twist = twist
+            velocity_msg = TwistStampedArray()
+            velocity_msg.twists = [twist]
+            self._velocity_pub.publish(velocity_msg)
+        else:
+            raise TypeError('Illegal type provided in Motion Planner')
 
     def _safety_task_complete_callback(self, status, response):
         if response.success:
