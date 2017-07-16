@@ -25,8 +25,9 @@ class TakeoffTaskState:
     pause_before_takeoff = 2
     takeoff = 3
     ascend = 4
-    done = 5
-    failed = 6
+    ascend_angle = 5
+    done = 6
+    failed = 7
 
 class TakeoffTask(AbstractTask):
 
@@ -38,6 +39,7 @@ class TakeoffTask(AbstractTask):
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             self._TAKEOFF_COMPLETE_HEIGHT = rospy.get_param('~takeoff_complete_height')
+            self._ANGLE_MODE_HEIGHT = rospy.get_param('~takeoff_angle_mode_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
@@ -89,7 +91,7 @@ class TakeoffTask(AbstractTask):
                 self.pause_start_time = rospy.Time.now()
                 self._state = TakeoffTaskState.pause_before_takeoff
             else:
-                return (TaskRunning(), ArmCommand(True, self.arm_callback))
+                return (TaskRunning(), ArmCommand(True, True, False, self.arm_callback))
 
         # Pause before ramping up the motors
         if self._state == TakeoffTaskState.pause_before_takeoff:
@@ -105,7 +107,8 @@ class TakeoffTask(AbstractTask):
         if self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
 
-        if self._state == TakeoffTaskState.ascend:
+        if (self._state == TakeoffTaskState.ascend
+         or self._state == TakeoffTaskState.ascend_angle):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
@@ -124,6 +127,11 @@ class TakeoffTask(AbstractTask):
             if(transStamped.transform.translation.z > self._TAKEOFF_COMPLETE_HEIGHT):
                 self._state = TakeoffTaskState.done
                 return (TaskDone(), NopCommand())
+            elif (self._state == TakeoffTaskState.ascend
+              and transStamped.transform.translation.z
+                > self._ANGLE_MODE_HEIGHT):
+                self._state = TakeoffTaskState.ascend_angle
+                return (TaskRunning(), ArmCommand(True, True, True, lambda _ : None))
             else:
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'

@@ -7,11 +7,11 @@ import rospy
 
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
-from std_srvs.srv import SetBool
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 from iarc7_msgs.msg import TwistStampedArray
+from iarc7_msgs.srv import Arm
 from iarc7_safety.SafetyClient import SafetyClient
 
 from iarc_task_action_server import IarcTaskActionServer
@@ -28,7 +28,7 @@ class MotionPlanner:
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
                                              TwistStampedArray,
                                              queue_size=0)
-        self._arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+        self._arm_service = rospy.ServiceProxy('uav_arm', Arm)
         self._safety_client = SafetyClient('motion_planner')
         self._safety_land_complete = False
         self._safety_land_requested = False
@@ -136,7 +136,7 @@ class MotionPlanner:
         self._publish_twist(velocity_command.target_twist)
 
     def _handle_arm_command(self, arm_command):
-        arm_result = self._use_arm_service(arm_command.arm_state)
+        arm_result = self._use_arm_service(arm_command.arm_state, arm_command.set_mode, arm_command.angle)
         self._call_tasks_arm_service_callback(arm_command.completion_callback, arm_result)
 
     def _call_tasks_arm_service_callback(self, callback, arm_result):
@@ -150,9 +150,9 @@ class MotionPlanner:
             self._action_server.set_aborted()
             self._task = None
 
-    def _use_arm_service(self, arm):
+    def _use_arm_service(self, arm, set_mode, angle):
         try:
-            armed = self._arm_service(arm)
+            armed = self._arm_service(arm, set_mode, angle)
         except rospy.ServiceException as exc:
             rospy.logerr("Could not arm: " + str(exc))
             armed = False

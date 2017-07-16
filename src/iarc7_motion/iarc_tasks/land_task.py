@@ -77,7 +77,7 @@ class LandTask(AbstractTask):
             if self._disarm_request_success:
                 return (TaskDone(), NopCommand())
             else:
-                return (TaskRunning(), ArmCommand(False, self.disarm_callback))
+                return (TaskRunning(), ArmCommand(False, True, False, self.disarm_callback))
 
         # Enter the disarming request stage
         if self._state == LandTaskState.failed:
@@ -86,7 +86,7 @@ class LandTask(AbstractTask):
                 return (TaskFailed(), NopCommand())
             else:
                 rospy.logerr('Low level motion action failed, disarming then exiting')
-                return (TaskRunning(), ArmCommand(False, self.disarm_callback))
+                return (TaskRunning(), ArmCommand(False, True, False, self.disarm_callback))
 
         # Impossible state reached
         return (TaskAborted(msg='Impossible state in takeoff task reached'))
