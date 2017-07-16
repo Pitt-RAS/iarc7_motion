@@ -68,10 +68,4 @@ velocity_task_height: 1.5
 # roomba diameter in meters
 roomba_diameter: .33
 # drone landing gear width and length
-drone_landing_gear_width: .565
-# max angular velocity in rad/s
-max_angular_velocity: 1.04
-# max angle between drone and roomba directions in block roomba
-max_xy_angle_to_roomba: 0.196
-# p-term for angular velocity 
-k_angular: .5
+drone_landing_gear_width: .775

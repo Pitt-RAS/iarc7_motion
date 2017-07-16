@@ -14,8 +14,7 @@ from geometry_msgs.msg import Vector3Stamped
 from geometry_msgs.msg import Vector3
 from nav_msgs.msg import Odometry
 
-from acceleration_limiter import AccerlationLimiter 
-
+from acceleration_limiter import AccelerationLimiter 
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped
@@ -49,7 +48,7 @@ class BlockRoombaTask(AbstractTask):
         self._roomba_odometry = None
         self._roomba_array = None
         self._roomba_point = None
-        self._limiter = AccerlationLimiter()
+        self._limiter = AccelerationLimiter()
 
         self._drone_odometry = None
         self._canceled = False
@@ -82,8 +81,6 @@ class BlockRoombaTask(AbstractTask):
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
             self._descent_velocity = rospy.get_param('~hit_descent_velocity')
-            self._REASONABLE_ANGLE = rospy.get_param('~max_xy_angle_to_roomba')
-            self._K_ANGULAR = rospy.get_param('~k_angular')
             _roomba_diameter = rospy.get_param('~roomba_diameter')
             _drone_width = rospy.get_param('~drone_landing_gear_width') 
         except KeyError as e:
@@ -175,27 +172,6 @@ class BlockRoombaTask(AbstractTask):
                 
                 z_vel_target = self._descent_velocity
 
-                drone_vector = tf2_geometry_msgs.do_transform_vector3(roomba_vector, drone_transform)
-
-                # projects down to horizontal plane, for ignores z vector
-                drone_vector_magnitude = math.sqrt(drone_vector.vector.x**2 + drone_vector.vector.y**2)
-
-                drone_x = drone_vector.vector.x/drone_vector_magnitude
-                drone_y = drone_vector.vector.y/drone_vector_magnitude
-
-                crossing_vector = np.array([1,0])
-                drone_vector = np.array([drone_x, drone_y])
-
-                angle_err_cos = math.acos(drone_x)
-                angle_err_sin = np.cross(crossing_vector, drone_vector)
-
-                angle_err = np.arctan2(angle_err_sin, angle_err_cos)
-
-                num_sides = angle_err/(math.pi/4)
-                num_rotations = 0
-
-                
-
                 #caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
@@ -224,11 +200,6 @@ class BlockRoombaTask(AbstractTask):
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
-
-                if (abs(angle_err) > self._REASONABLE_ANGLE):
-                    velocity.twist.angular.z = angle_err*self._K_ANGULAR
-                else:
-                    velocity.twist.angular.z = 0
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
@@ -245,7 +216,7 @@ class BlockRoombaTask(AbstractTask):
                 self._roomba_found =  True 
                 _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
-                return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
+                return (_distance_to_roomba <= (self._MAX_START_TASK_DIST + self._overshoot))
         return False
 
     def cancel(self):
