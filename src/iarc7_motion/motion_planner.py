@@ -244,8 +244,10 @@ if __name__ == '__main__':
     try:
         motion_planner.run()
     except Exception, e:
+        import traceback
         rospy.logfatal("Error in motion planner while running.")
         rospy.logfatal(str(e))
+        rospy.logfatal(traceback.format_exc())
         raise
     finally:
         rospy.signal_shutdown("Motion Planner shutdown")
