@@ -9,10 +9,9 @@ from actionlib_msgs.msg import GoalStatus
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_msgs.msg import TwistStampedArray
+from iarc7_msgs.srv import Arm
 from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
-
-from std_srvs.srv import SetBool
 
 def constrain(x, l, h):
     return min(h, max(x, l))
@@ -30,12 +29,12 @@ if __name__ == '__main__':
         pass
     start_time = rospy.Time.now()
 
-    arm_service = rospy.ServiceProxy('uav_arm', SetBool)
+    arm_service = rospy.ServiceProxy('uav_arm', Arm)
     arm_service.wait_for_service()
     armed = False
     while not rospy.is_shutdown() and not armed:
         try:
-            armed = arm_service(True)
+            armed = arm_service(True, True, True)
         except rospy.ServiceException as exc:
             print("Could not arm: " + str(exc))
 
