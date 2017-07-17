@@ -46,7 +46,7 @@ k_term_tracking_y: .55
 # p-term for height holder helper for Z height
 p_term_height_hold_z: .90
 # maximum z error for heigth holder
-max_z_error: .7
+max_z_error: 1.0
 # p-term for x height for position holder task
 k_position_x: 1.25
 # p-term for y height for position holder task
