@@ -229,4 +229,3 @@ class BlockRoombaTask(AbstractTask):
         else: 
             data = self._switch_message
             return (data.front or data.back or data.left or data.right)
-   
