@@ -41,6 +41,7 @@ class MotionPlanner:
         self._safety_client = SafetyClient('motion_planner')
         self._safety_land_complete = False
         self._safety_land_requested = False
+        self._timeout_vel_sent = False
         # Create action client to request a landing
         self._action_client = actionlib.SimpleActionClient(
                                         "motion_planner_server",
@@ -64,8 +65,10 @@ class MotionPlanner:
 
         self._time_of_last_task = None
         self._last_twist = None
+        self._time_of_timeout = None
         try:
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
+            self._time_until_nop = rospy.Duration(rospy.get_param('~time_until_nop_velocity'))
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for motion_planner')
             raise
@@ -145,6 +148,7 @@ class MotionPlanner:
         pass
 
     def _handle_velocity_command(self, velocity_command):
+        self._timeout_vel_sent = False
         self._publish_twist(velocity_command.target_twist)
 
     def _handle_arm_command(self, arm_command):
@@ -206,7 +210,7 @@ class MotionPlanner:
 
         if type(twist) is TwistStampedArray:
             self._last_twist = twist.twists[-1]
-            self._velocity_pub.publish(velocity_msg)
+            self._velocity_pub.publish(twist)
         elif type(twist) is TwistStamped:
             self._last_twist = twist
             velocity_msg = TwistStampedArray()
@@ -275,13 +279,36 @@ class MotionPlanner:
             if self._time_of_last_task is None:
                 self._time_of_last_task = rospy.Time.now()
 
-            if ((rospy.Time.now() - self._time_of_last_task)
-                > self._task_timeout):
-                # If past the timeout send a zero velocity command
-                self._handle_velocity_command(task_commands.VelocityCommand())
-                rospy.logwarn('Task running timeout Setting zero velocity')
-                # reset time so that a new command will be sent
-                self._time_of_last_task = None
+            if ((rospy.Time.now() - self._time_of_last_task) > self._task_timeout):
+                
+                self._time_of_timeout = self._time_of_last_task + self._task_timeout
+
+                if ((rospy.Time.now() - self._time_of_timeout) >= self._time_until_nop):
+                     self._handle_velocity_command(task_commands.VelocityCommand())
+                     self._time_of_timeout = rospy.Time.now()
+                else:
+                    if not self._timeout_vel_sent:
+                        commands = TwistStampedArray()
+
+                        if self._last_twist is None:
+                            self._last_twist = TwistStamped()
+                        self._last_twist.header.stamp = rospy.Time.now() + rospy.Duration(1)
+
+                        future_time = rospy.Time.now() + self._time_until_nop
+
+                        future_twist = TwistStamped()
+                        future_twist.header.stamp = future_time
+
+                        commands.twists = [self._last_twist, future_twist]
+
+                        # If past the timeout send a zero velocity command
+                        self._publish_twist(commands)
+
+                        # reset time so that a new command will be sent
+                        self._time_of_last_task = None
+
+                self._timeout_vel_sent = True
+                rospy.logwarn('Task running timeout. Setting zero velocity')
 
         # No action to take return a nop
         return (task_commands.NopCommand(),)
