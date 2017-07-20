@@ -39,7 +39,8 @@ typedef actionlib::SimpleActionServer<iarc7_motion::GroundInteractionAction> Ser
 enum class MotionState { TAKEOFF,
                          LAND,
                          VELOCITY_CONTROL,
-                         GROUNDED };
+                         GROUNDED,
+                         PASSTHROUGH };
 
 // This is a helper function that will limit a
 // iarc7_msgs::OrientationThrottleStamped using the twist limiter
@@ -226,6 +227,18 @@ int main(int argc, char **argv)
                                     max_velocity,
                                     max_velocity_slew_rate);
 
+    ros::Time passthrough_start_time;
+    boost::shared_ptr<const iarc7_msgs::OrientationThrottleStamped> last_msg;
+    boost::function<void(const boost::shared_ptr<const iarc7_msgs::OrientationThrottleStamped>&)> passthrough_callback =
+        [&](const boost::shared_ptr<const iarc7_msgs::OrientationThrottleStamped>& msg) -> void {
+            if (last_msg == nullptr || last_msg->header.stamp < msg->header.stamp) {
+                last_msg = msg;
+            } else {
+                ROS_ERROR("Bad stamp on passthrough message");
+            }
+        };
+    ros::Subscriber passthrough_sub = nh.subscribe("passthrough_command", 2, passthrough_callback);
+
     // Form a connection with the node monitor. If no connection can be made
     // assert because we don't know what's going on with the other nodes.
     ROS_INFO("low_level_motion: Attempting to form safety bond");
@@ -258,6 +271,13 @@ int main(int argc, char **argv)
         {
             last_time = current_time;
 
+            ROS_INFO_STREAM("server active: " << server.isPreemptRequested());
+            if (server.isPreemptRequested() && motion_state == MotionState::PASSTHROUGH) {
+                ROS_WARN("Transitioning out of PASSTHROUGH");
+                motion_state = MotionState::VELOCITY_CONTROL;
+                server.setSucceeded();
+            }
+
             if(server.isNewGoalAvailable() && !server.isActive())
             {
                 const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();
@@ -286,7 +306,7 @@ int main(int argc, char **argv)
                 }
                 else if("land" == goal->interaction_type)
                 {
-                    if (motion_state == MotionState::VELOCITY_CONTROL)
+                    if (motion_state == MotionState::VELOCITY_CONTROL || motion_state == MotionState::PASSTHROUGH)
                     {
                         bool success = landPlanner.prepareForTakeover(current_time);
                         if(success)
@@ -304,6 +324,17 @@ int main(int argc, char **argv)
                     else
                     {
                         ROS_ERROR("Attempt to land off without LLM in the velocity control state");
+                        server.setAborted();
+                    }
+                }
+                else if ("passthrough" == goal->interaction_type)
+                {
+                    if (motion_state == MotionState::VELOCITY_CONTROL) {
+                        ROS_INFO("Transitioning to passthrough mode");
+                        passthrough_start_time = current_time;
+                        motion_state = MotionState::PASSTHROUGH;
+                    } else {
+                        ROS_ERROR("Attempt to passthrough when not in velocity control state");
                         server.setAborted();
                     }
                 }
@@ -381,6 +412,20 @@ int main(int argc, char **argv)
             else if(motion_state == MotionState::GROUNDED)
             {
                 ROS_DEBUG("Low level motion is grounded");
+            } else if (motion_state == MotionState::PASSTHROUGH) {
+                if (last_msg != nullptr && last_msg->header.stamp >= passthrough_start_time) {
+                    geometry_msgs::Twist twist;
+                    twist.linear.z = last_msg->throttle;
+                    quadController.setTargetVelocity(twist);
+                    bool success = quadController.update(current_time,
+                                                         uav_command,
+                                                         true,
+                                                         last_msg->data.pitch,
+                                                         last_msg->data.roll);
+                    ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
+                } else {
+                    ROS_WARN("No recent passthrough messages available");
+                }
             }
             else
             {
