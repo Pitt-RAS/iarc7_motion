@@ -54,6 +54,7 @@ class BlockRoombaTask(AbstractTask):
         self._canceled = False
         self._switch_message = None
         self._last_update_time = None
+        self._current_velocity = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -181,18 +182,18 @@ class BlockRoombaTask(AbstractTask):
                 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                    rospy.logwarn("Max Z velocity reached in block roomba")
 
-                desired_vel = []
-                desired_vel.append(x_vel_target)
-                desired_vel.append(y_vel_target)
-                desired_vel.append(z_vel_target)
+                desired_vel = [x_vel_target, y_vel_target, z_vel_target]
+               
+                drone_vel_x = self._drone_odometry.twist.twist.linear.x
+                drone_vel_y = self._drone_odometry.twist.twist.linear.y
+                drone_vel_z = self._drone_odometry.twist.twist.linear.z
 
-                curr_vel = []
-                curr_vel.append(self._drone_odometry.twist.twist.linear.x)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.y)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.z)
+                if self._current_velocity is None:
+                    self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -200,6 +201,8 @@ class BlockRoombaTask(AbstractTask):
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
+
+                self._current_velocity = desired_vel
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
