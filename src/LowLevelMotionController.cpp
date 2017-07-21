@@ -274,8 +274,14 @@ int main(int argc, char **argv)
             ROS_INFO_STREAM("server active: " << server.isPreemptRequested());
             if (server.isPreemptRequested() && motion_state == MotionState::PASSTHROUGH) {
                 ROS_WARN("Transitioning out of PASSTHROUGH");
-                motion_state = MotionState::VELOCITY_CONTROL;
-                server.setSucceeded();
+                bool success = quadController.prepareForTakeover();
+                if (success) {
+                    motion_state = MotionState::VELOCITY_CONTROL;
+                    server.setSucceeded();
+                } else {
+                    ROS_ERROR("Failed to transition to quadController from passthrough mode");
+                    server.setAborted();
+                }
             }
 
             if(server.isNewGoalAvailable() && !server.isActive())
