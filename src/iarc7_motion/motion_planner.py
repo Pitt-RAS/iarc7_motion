@@ -55,8 +55,8 @@ class MotionPlanner:
             task_commands.ArmCommand: self._handle_arm_command,
             task_commands.NopCommand: self._handle_nop_command,
             task_commands.GroundInteractionCommand: self._handle_ground_interaction_command,
-            task_commands.PassthroughMode: self._handle_passthrough_mode_command,
-            task_commands.PassthroughCommand: self._handle_passthrough_command
+            task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
+            task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
 
         self._time_of_last_task = None

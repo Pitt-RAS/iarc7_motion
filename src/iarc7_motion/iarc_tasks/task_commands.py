@@ -28,12 +28,12 @@ class GroundInteractionCommand(object):
         self.interaction_type = interaction_type
         self.completion_callback = completion_callback
 
-class PassthroughMode(object):
+class ConfigurePassthroughMode(object):
     def __init__(self, enable, completion_callback):
         self.enable = enable
         self.completion_callback = completion_callback
 
-class PassthroughCommand(object):
+class AngleThrottleCommand(object):
     def __init__(self, pitch, roll, vyaw, vz):
         self.pitch = pitch
         self.roll = roll
