@@ -61,7 +61,10 @@ public:
     // Return the uav_command it wants sent to the flight controller.
     bool __attribute__((warn_unused_result)) update(
         const ros::Time& time,
-        iarc7_msgs::OrientationThrottleStamped& uav_command);
+        iarc7_msgs::OrientationThrottleStamped& uav_command,
+        bool z_only=false,
+        double pitch=0,
+        double roll=0);
 
     /// Waits until this object is ready to begin normal operation
     bool __attribute__((warn_unused_result)) waitUntilReady();

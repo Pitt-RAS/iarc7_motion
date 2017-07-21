@@ -10,7 +10,7 @@ from geometry_msgs.msg import TwistStamped
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
-from iarc7_msgs.msg import TwistStampedArray
+from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_msgs.srv import Arm
 from iarc7_safety.SafetyClient import SafetyClient
 
@@ -28,6 +28,12 @@ class MotionPlanner:
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
                                              TwistStampedArray,
                                              queue_size=0)
+
+        self._in_passthrough = False
+        self._passthrough_pub = rospy.Publisher('passthrough_command',
+                                                OrientationThrottleStamped,
+                                                queue_size=10)
+
         self._arm_service = rospy.ServiceProxy('uav_arm', Arm)
         self._safety_client = SafetyClient('motion_planner')
         self._safety_land_complete = False
@@ -48,7 +54,9 @@ class MotionPlanner:
             task_commands.VelocityCommand: self._handle_velocity_command,
             task_commands.ArmCommand: self._handle_arm_command,
             task_commands.NopCommand: self._handle_nop_command,
-            task_commands.GroundInteractionCommand: self._handle_ground_interaction_command
+            task_commands.GroundInteractionCommand: self._handle_ground_interaction_command,
+            task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
+            task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
 
         self._time_of_last_task = None
@@ -157,6 +165,38 @@ class MotionPlanner:
             rospy.logerr("Could not arm: " + str(exc))
             armed = False
         return armed
+
+    def _handle_passthrough_mode_command(self, passthrough_mode_command):
+        if passthrough_mode_command.enable:
+            if self._ground_interaction_task_callback is not None:
+                rospy.logerr('Task requested a passthrough action before the last was completed')
+                rospy.logwarn('Motion planner aborted task')
+                self._action_server.set_aborted()
+                self._task = None
+                self._ground_interaction_task_callback = None
+                self._ground_interaction_client.cancel_goal()
+                self._ground_interaction_client.stop_tracking_goal()
+                return
+
+            self._ground_interaction_task_callback = passthrough_mode_command.completion_callback
+            goal = GroundInteractionGoal(interaction_type='passthrough')
+            self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
+            self._in_passthrough = True
+        else:
+            self._ground_interaction_client.cancel_goal()
+            self._in_passthrough = False
+
+    def _handle_passthrough_command(self, passthrough_command):
+        if self._in_passthrough:
+            msg = OrientationThrottleStamped()
+            msg.header.stamp = rospy.Time.now()
+            msg.data.pitch = passthrough_command.pitch
+            msg.data.roll = passthrough_command.roll
+            msg.data.yaw = passthrough_command.vyaw
+            msg.throttle = passthrough_command.vz
+            self._passthrough_pub.publish(msg)
+        else:
+            rospy.logerr('Task requested a passthrough command when not in passthrough mode')
 
     def _publish_twist(self, twist):
         velocity_msg = TwistStampedArray()

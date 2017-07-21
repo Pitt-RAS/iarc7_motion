@@ -119,7 +119,10 @@ void QuadVelocityController::setThrustModel(const ThrustModel& thrust_model)
 // Main update, runs all PID calculations and returns a desired uav_command
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
 bool QuadVelocityController::update(const ros::Time& time,
-                                    iarc7_msgs::OrientationThrottleStamped& uav_command)
+                                    iarc7_msgs::OrientationThrottleStamped& uav_command,
+                                    bool z_only,
+                                    double pitch,
+                                    double roll)
 {
     if (time < last_update_time_) {
         ROS_ERROR("Tried to update QuadVelocityController with time before last update");
@@ -210,24 +213,29 @@ bool QuadVelocityController::update(const ros::Time& time,
     double local_y_accel = -std::sin(current_yaw) * accel.x()
                          +  std::cos(current_yaw) * accel.y();
 
-    // Update pitch PID loop
-    success = pitch_pid_.update(local_x_velocity,
-                                time,
-                                pitch_output,
-                                local_x_accel);
-    if (!success) {
-        ROS_ERROR("Pitch PID update failed in QuadVelocityController::update");
-        return false;
-    }
+    if (!z_only) {
+        // Update pitch PID loop
+        success = pitch_pid_.update(local_x_velocity,
+                                    time,
+                                    pitch_output,
+                                    local_x_accel);
+        if (!success) {
+            ROS_ERROR("Pitch PID update failed in QuadVelocityController::update");
+            return false;
+        }
 
-    // Update roll PID loop
-    success = roll_pid_.update(-local_y_velocity,
-                               time,
-                               roll_output,
-                               -local_y_accel);
-    if (!success) {
-        ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
-        return false;
+        // Update roll PID loop
+        success = roll_pid_.update(-local_y_velocity,
+                                   time,
+                                   roll_output,
+                                   -local_y_accel);
+        if (!success) {
+            ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
+            return false;
+        }
+    } else {
+        pitch_output = pitch;
+        roll_output = roll;
     }
 
     // Fill in the uav_command's information
