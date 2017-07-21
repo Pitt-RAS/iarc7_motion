@@ -17,7 +17,9 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       ArmCommand,
                                       NopCommand,
-                                      GroundInteractionCommand)
+                                      GroundInteractionCommand,
+                                      PassthroughMode,
+                                      PassthroughCommand)
 
 class TakeoffTaskState:
     init = 0
