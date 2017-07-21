@@ -3,6 +3,7 @@ string movement_type
 string frame_id
 bool preempt
 bool hold_current_position
+bool mode
 float64 takeoff_height
 float64 x_position
 float64 y_position
