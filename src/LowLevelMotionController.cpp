@@ -271,9 +271,8 @@ int main(int argc, char **argv)
         {
             last_time = current_time;
 
-            ROS_INFO_STREAM("server active: " << server.isPreemptRequested());
             if (server.isPreemptRequested() && motion_state == MotionState::PASSTHROUGH) {
-                ROS_WARN("Transitioning out of PASSTHROUGH");
+                ROS_INFO("Transitioning out of PASSTHROUGH");
                 bool success = quadController.prepareForTakeover();
                 if (success) {
                     motion_state = MotionState::VELOCITY_CONTROL;
