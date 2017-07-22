@@ -7,12 +7,12 @@ import tf2_geometry_msgs
 import threading
 
 from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
-from nav_msgs.msg import Odometry
-
-
+from geometry_msgs.msg import Point
 from iarc7_msgs.msg import OdometryArray
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Vector3Stamped
+from geometry_msgs.msg import Vector3
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -39,7 +39,7 @@ class TrackRoombaTask(object, AbstractTask):
 
         self._roomba_id = task_request.frame_id  + '/base_link'
         # true means hit roomba, false means block
-        #self._mode = task_request.mode
+        self._mode = task_request.mode
 
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
@@ -75,6 +75,8 @@ class TrackRoombaTask(object, AbstractTask):
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
             TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
+            _roomba_diameter = rospy.get_param('~roomba_diameter')
+            _drone_width = rospy.get_param('~drone_landing_gear_width') 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
@@ -82,6 +84,13 @@ class TrackRoombaTask(object, AbstractTask):
         self._z_holder = HeightHolder(TRACK_HEIGHT)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
+
+        # if self._mode:
+        #     self._overshoot = 0.0
+        # else:
+        #     self._overshoot = (_roomba_diameter + _drone_width)/2
+
+        self._overshoot = 0.0
 
         self._state = TrackObjectTaskState.init
 
@@ -147,16 +156,24 @@ class TrackRoombaTask(object, AbstractTask):
                                                     stamped_point, roomba_transform)
 
                 if not self._check_max_roomba_range():
-                    return (TaskAborted(msg='The provided roomba is not found or not within a meter of the quad'),)
+                    return (TaskAborted(msg='The provided roomba is not found or not close enough to the quad'),)
 
                 if self._check_max_ending_roomba_range():
                     return (TaskDone(),)
 
+                roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
+                roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
+                roomba_velocity = math.sqrt(roomba_x_velocity**2 + roomba_y_velocity**2)
+
+                x_overshoot = roomba_x_velocity/roomba_velocity * self._overshoot
+                y_overshoot = roomba_y_velocity/roomba_velocity * self._overshoot
+
                 # p-controller
-                x_vel_target = (self._roomba_point.point.x * self._K_X + 
-                            self._roomba_odometry.twist.twist.linear.x)
-                y_vel_target = (self._roomba_point.point.y * self._K_Y + 
-                            self._roomba_odometry.twist.twist.linear.y)
+                x_vel_target = ((self._roomba_point.point.x + x_overshoot)
+                                    * self._K_X + roomba_x_velocity)
+                y_vel_target = ((self._roomba_point.point.y + y_overshoot)
+                                    * self._K_Y + roomba_y_velocity)
+                
                 z_vel_target = self._z_holder.get_height_hold_response(
                     self._drone_odometry.pose.pose.position.z)
 
@@ -208,7 +225,7 @@ class TrackRoombaTask(object, AbstractTask):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
         
-        return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
+        return (_distance_to_roomba <= self._MAX_START_TASK_DIST + self._overshoot)
 
     # checks the radial distance from the drone to the roomba
     # in order to end the task as successful
@@ -216,7 +233,7 @@ class TrackRoombaTask(object, AbstractTask):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
         
-        return (_distance_to_roomba <= self._MAX_END_TASK_DIST)
+        return (_distance_to_roomba <= (self._MAX_END_TASK_DIST + self._overshoot))
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
