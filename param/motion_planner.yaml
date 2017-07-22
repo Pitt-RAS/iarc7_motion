@@ -20,12 +20,16 @@ update_rate             : 10
 # Anticipated control lag in seconds
 control_lag             : 0.3
 # Max acceleration in the xy plane in m/s^2
+<<<<<<< HEAD
 max_translation_acceleration: 1
+=======
+max_translation_acceleration: 2.0
+>>>>>>> Changed some params
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
 max_translation_speed: 3.0
-#maximum z velocity 
+# maximum z velocity 
 max_z_velocity: .3
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.05
@@ -40,9 +44,9 @@ roomba_max_start_task_dist: 1.1
 # maximum radial distance from roomba at which track_roomba is successful
 roomba_max_end_task_dist: .05
 # p-term for X direction when tracking roombas 
-k_term_tracking_x: .55
+k_term_tracking_x: .45
 # p-term for Y direction when tracking roombas 
-k_term_tracking_y: .55
+k_term_tracking_y: .45
 # p-term for height holder helper for Z height
 p_term_height_hold_z: .90
 # maximum z error for heigth holder
@@ -71,3 +75,5 @@ roomba_diameter: .33
 drone_landing_gear_width: .775
 # time until set 0 velocity, in seconds
 task_timeout_deceleration_time: 1.0
+# height offset above min man height that HeightRecover uses
+recover_height_offset: 0.25
