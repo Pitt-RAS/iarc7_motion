@@ -59,7 +59,8 @@ class HeightRecoveryTask(AbstractTask):
             self._state = HeightRecoveryTaskState.recover
             return (TaskRunning(),)
 
-        elif (self._state == HeightRecoveryTaskState.recover or self._state == HeightRecoveryTaskState.recover_angle):
+        elif (self._state == HeightRecoveryTaskState.recover or 
+            self._state == HeightRecoveryTaskState.recover_angle):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
@@ -79,7 +80,8 @@ class HeightRecoveryTask(AbstractTask):
                 self._state = HeightRecoveryTaskState.done
                 return (TaskDone(), NopCommand())
 
-            elif (self._state == HeightRecoveryTaskState.recover and transStamped.transform.translation.z > self._ANGLE_MODE_HEIGHT):
+            elif (self._state == HeightRecoveryTaskState.recover and 
+                transStamped.transform.translation.z > self._ANGLE_MODE_HEIGHT):
                 self._state = HeightRecoveryTaskState.recover_angle
                 return (TaskRunning(), ArmCommand(True, True, True, lambda _ : None))
 
