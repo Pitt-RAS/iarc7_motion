@@ -20,7 +20,7 @@ update_rate             : 10
 # Anticipated control lag in seconds
 control_lag             : 0.3
 # Max acceleration in the xy plane in m/s^2
-max_translation_acceleration: 2.5
+max_translation_acceleration: 1
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
@@ -60,9 +60,9 @@ hit_roomba_max_start_dist: .5
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
 # x velocity (m/s) for velocity task
-velocity_x: .2
+velocity_x: .3
 # y velocity (m/s) for velocity task
-velocity_y: .2
+velocity_y: .3
 # height to hold drone at when in velocity task
 velocity_task_height: 1.5
 # roomba diameter in meters
@@ -70,4 +70,4 @@ roomba_diameter: .33
 # drone landing gear width and length
 drone_landing_gear_width: .775
 # time until set 0 velocity, in seconds
-time_until_nop_velocity: 10.0
+task_timeout_deceleration_time: 1.0

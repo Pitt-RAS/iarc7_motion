@@ -31,17 +31,16 @@ class AccelerationLimiter(object):
         accel_z = (desired_z - current_z)/self._update_period
 
         accel_overall = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
-        velocity_overall = math.sqrt(desired_x**2 + desired_y**2 + desired_z**2)
 
         if accel_overall > self._MAX_3D_TRANSLATION_ACCELERATION:
             return_velocities.append(current_x + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
-                self._update_period) * (desired_x/velocity_overall)))
+                self._update_period) * (accel_x/accel_overall)))
 
             return_velocities.append(current_y + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
-                self._update_period) * (desired_y/velocity_overall)))
+                self._update_period) * (accel_y/accel_overall)))
 
             return_velocities.append(current_z + ((self._MAX_3D_TRANSLATION_ACCELERATION * 
-                self._update_period) * (desired_z/velocity_overall)))
+                self._update_period) * (accel_z/accel_overall)))
         else:
             return_velocities.append(desired_x)
             return_velocities.append(desired_y)
