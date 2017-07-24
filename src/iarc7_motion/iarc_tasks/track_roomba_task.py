@@ -85,11 +85,6 @@ class TrackRoombaTask(object, AbstractTask):
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
 
-        # if self._mode:
-        #     self._overshoot = 0.0
-        # else:
-        #     self._overshoot = (_roomba_diameter + _drone_width)/2
-
         self._overshoot = 0.0
 
         self._state = TrackObjectTaskState.init
