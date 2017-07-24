@@ -31,13 +31,15 @@ class HeightHolder(object):
     def get_height_hold_response(self, height):
         with self._lock:
             if self._DESIRED_HEIGHT is None:
-                if (height is None):
-                    raise ValueError('There is no height to hold at')
-                else:
-                    self._DESIRED_HEIGHT = height
-
+                raise ValueError('No height to hold')
             self._delta_z = self._DESIRED_HEIGHT - height
             return self._K_Z * self._delta_z
+
+    def set_height(self, desired_height):
+         if desired_height < self._MIN_MANEUVER_HEIGHT:
+            raise ValueError('Requested height is too low')
+
+         self._DESIRED_HEIGHT = desired_height
 
     def check_z_error(self, current_height):
         return (abs(self._delta_z) < self._MAX_Z_ERROR)

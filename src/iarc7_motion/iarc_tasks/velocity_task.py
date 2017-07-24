@@ -37,6 +37,7 @@ class VelocityTask(object, AbstractTask):
         self._drone_odometry = None
         self._canceled = False
         self._current_velocity = None
+        self._current_height = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -103,6 +104,10 @@ class VelocityTask(object, AbstractTask):
                     return (TaskAborted(msg='Exception when looking up transform during velocity task'),)
 
                 current_height = transStamped.transform.translation.z
+
+                if self._current_height is None:
+                    self._current_height = current_height
+                    self._z_holder.set_height(current_height)
 
                 if not (self._height_checker.above_min_maneuver_height(
                             current_height)):
