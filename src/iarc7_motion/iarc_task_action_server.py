@@ -14,6 +14,7 @@ from iarc_tasks.track_roomba_task import TrackRoombaTask
 from iarc_tasks.hit_roomba_task import HitRoombaTask
 from iarc_tasks.block_roomba_task import BlockRoombaTask
 from iarc_tasks.hold_position_task import HoldPositionTask
+from iarc_tasks.height_recovery_task import HeightRecoveryTask
 from iarc_tasks.velocity_task import VelocityTask
 
 class IarcTaskActionServer:
@@ -41,6 +42,7 @@ class IarcTaskActionServer:
                            'hit_roomba': HitRoombaTask,
                            'block_roomba': BlockRoombaTask,
                            'hold_position': HoldPositionTask,
+                           'height_recovery' : HeightRecoveryTask,
                            'velocity_test': VelocityTask,
                            'test_task': TestTask}
 
