@@ -52,12 +52,13 @@ class VelocityTask(object, AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
-            self._HORIZ_X_VEL = rospy.get_param('~velocity_x')
-            self._HORIZ_Y_VEL = rospy.get_param('~velocity_y')
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for velocity task')
             raise
+
+        self._HORIZ_X_VEL = task_request.x_velocity
+        self._HORIZ_Y_VEL = task_request.y_velocity
 
         self._z_holder = HeightHolder()
         self._height_checker = HeightSettingsChecker()
@@ -71,6 +72,10 @@ class VelocityTask(object, AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
+
+            if self._canceled:
+                return (TaskCanceled(),)
+
             if (self._state == VelocityTaskState.init):
                 if self._drone_odometry is None:
                     self._state = VelocityTaskState.waiting
@@ -84,9 +89,6 @@ class VelocityTask(object, AbstractTask):
                 else:
                     self._state = VelocityTaskState.moving
                 return (TaskRunning(), NopCommand())
-
-            elif self._canceled:
-                return (TaskCanceled(),)
 
             elif self._state == VelocityTaskState.moving:
 
