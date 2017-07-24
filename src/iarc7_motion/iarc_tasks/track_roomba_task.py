@@ -39,7 +39,7 @@ class TrackRoombaTask(object, AbstractTask):
 
         self._roomba_id = task_request.frame_id  + '/base_link'
         # true means hit roomba, false means block
-        self._mode = task_request.mode
+        self._tracking_mode = task_request.tracking_mode
 
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
