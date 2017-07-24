@@ -36,6 +36,7 @@ class VelocityTask(object, AbstractTask):
 
         self._drone_odometry = None
         self._canceled = False
+        self._current_velocity = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -52,13 +53,12 @@ class VelocityTask(object, AbstractTask):
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._HORIZ_X_VEL = rospy.get_param('~velocity_x')
             self._HORIZ_Y_VEL = rospy.get_param('~velocity_y')
-            _DESIRED_HEIGHT = rospy.get_param('~velocity_task_height')
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for velocity task')
             raise
 
-        self._z_holder = HeightHolder(_DESIRED_HEIGHT)
+        self._z_holder = HeightHolder()
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
 
@@ -89,29 +89,42 @@ class VelocityTask(object, AbstractTask):
 
             elif self._state == VelocityTaskState.moving:
 
+                try:
+                    transStamped = self._tf_buffer.lookup_transform(
+                                    'map',
+                                    'level_quad',
+                                    rospy.Time.now(),
+                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
+                except (tf2_ros.LookupException,
+                        tf2_ros.ConnectivityException,
+                        tf2_ros.ExtrapolationException) as ex:
+                    rospy.logerr('ObjectTrackTask: Exception when looking up transform')
+                    rospy.logerr(ex.message)
+                    return (TaskAborted(msg='Exception when looking up transform during velocity task'),)
+
+                current_height = transStamped.transform.translation.z
+
                 if not (self._height_checker.above_min_maneuver_height(
-                            self._drone_odometry.pose.pose.position.z)):
+                            current_height)):
                     return (TaskAborted(msg='Drone is too low'),)
 
                 x_vel_target = self._HORIZ_X_VEL
                 y_vel_target = self._HORIZ_Y_VEL
-                z_vel_target = self._z_holder.get_height_hold_response(
-                    self._drone_odometry.pose.pose.position.z)
+                z_vel_target = self._z_holder.get_height_hold_response(current_height)
 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                    z_vel_target = z_vel_target/abs(z_vel_target) * self._MAX_Z_VELOCITY
+                    z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
-                desired_vel = []
-                desired_vel.append(x_vel_target)
-                desired_vel.append(y_vel_target)
-                desired_vel.append(z_vel_target)
+                desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                curr_vel = []
-                curr_vel.append(self._drone_odometry.twist.twist.linear.x)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.y)
-                curr_vel.append(self._drone_odometry.twist.twist.linear.z)
+                drone_vel_x = self._drone_odometry.twist.twist.linear.x
+                drone_vel_y = self._drone_odometry.twist.twist.linear.y
+                drone_vel_z = self._drone_odometry.twist.twist.linear.z
 
-                desired_vel = self._limiter.limit_acceleration(curr_vel, desired_vel)
+                if self._current_velocity is None:
+                    self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
+
+                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -119,8 +132,11 @@ class VelocityTask(object, AbstractTask):
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
+
+                self._current_velocity = desired_vel
                 
-                return (TaskRunning(), VelocityCommand(velocity)) 
+                return (TaskRunning(), VelocityCommand(velocity))
+
             else:
                 return (TaskAborted(msg='Illegal state reached in Velocity test task'),)
 

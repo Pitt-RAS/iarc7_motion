@@ -12,7 +12,7 @@ from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
 class HeightHolder(object):
-    def __init__(self, desired_height):
+    def __init__(self, desired_height = None):
         self._lock = threading.RLock()
         self._delta_z = 0
         self._DESIRED_HEIGHT = desired_height
@@ -24,12 +24,18 @@ class HeightHolder(object):
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
 
-        if self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT:
+        if self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT and self._DESIRED_HEIGHT is not None:
             raise ValueError('Desired height was below the minimum maneuver height')
 
     # uses a p-controller to return a velocity to maintain a height
     def get_height_hold_response(self, height):
         with self._lock:
+            if self._DESIRED_HEIGHT is None:
+                if (height is None):
+                    raise ValueError('There is no height to hold at')
+                else:
+                    self._DESIRED_HEIGHT = height
+
             self._delta_z = self._DESIRED_HEIGHT - height
             return self._K_Z * self._delta_z
 
