@@ -251,6 +251,8 @@ int main(int argc, char **argv)
 
     ros::Rate rate (update_frequency);
 
+    iarc7_msgs::OrientationThrottleStamped last_uav_command;
+
     // Run until ROS says we need to shutdown
     while (ros::ok())
     {
@@ -430,6 +432,7 @@ int main(int argc, char **argv)
                     ROS_ASSERT_MSG(success, "LowLevelMotion quad velocity controller update failed");
                 } else {
                     ROS_WARN("No recent passthrough messages available");
+                    uav_command = last_uav_command;
                 }
             }
             else
@@ -445,6 +448,8 @@ int main(int argc, char **argv)
 
             // Publish the desired angles and throttle to the topic
             uav_control_.publish(uav_command);
+
+            last_uav_command = uav_command;
         }
 
         // Handle all ROS callbacks
