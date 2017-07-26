@@ -60,9 +60,9 @@ hit_roomba_max_start_dist: .5
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
 # x velocity (m/s) for velocity task
-velocity_x: .3
+velocity_x: 0.0
 # y velocity (m/s) for velocity task
-velocity_y: .3
+velocity_y: -0.3
 # height to hold drone at when in velocity task
 velocity_task_height: 1.5
 # roomba diameter in meters
