@@ -105,7 +105,7 @@ bool AccelerationPlanner::trimVelocityQueue(TwistStampedArray& twists, const ros
     // keep all going into the future.
 
     // Find the first time more than or equal
-    // Uses a lambda to compare the current time and a headers time stamp
+    // Uses a lambda (and an auto specifier) to compare the current time and a header's time stamp
     TwistStampedArray::iterator it = std::lower_bound(
                     twists.begin(),
                     twists.end(),
@@ -181,14 +181,28 @@ bool AccelerationPlanner::appendVelocityQueue(TwistStampedArray& current_twists,
 }
 
 // Receive a new list of velocities commands and call appendVelocityQueue to insert them into the queue
-// TODO: check that message is sorted properly, default to safe state if anythings wrong?
 void AccelerationPlanner::processVelocityCommand(const iarc7_msgs::TwistStampedArray::ConstPtr& message)
 {
+
+    for(TwistStampedArray::const_iterator checkMessageOrder = message->twists.begin();
+        checkMessageOrder != message->twists.end() - 1; 
+        checkMessageOrder++)
+    {
+        if(checkMessageOrder->header.stamp >= (checkMessageOrder+1)->header.stamp)
+        {
+            // messages[0] should have the earliest time
+            ROS_ERROR("Messages out of order at time %lf and time %lf, rejecting entire message", 
+            checkMessageOrder->header.stamp.toSec(), (checkMessageOrder+1)->header.stamp.toSec());
+            
+            return;
+        }
+    }
 
     // Check for empty message
     if(message->twists.empty())
     {
-        ROS_WARN("processVelocityCommand passed an empty array of TwistStampedArray, not accepting");
+        ROS_WARN("processVelocityCommand passed an empty array" 
+                  "of TwistStampedArray, not accepting");
         return;
     }
 
