@@ -93,6 +93,9 @@ if __name__ == '__main__':
 
     samples = np.mgrid[min(data[:,1]):max(data[:,1]):50j,
                        min(data[:,2]):max(data[:,2]):50j]
+    axes.set_xlabel('Command [%]')
+    axes.set_ylabel('Battery [V]')
+    axes.set_zlabel('Thrust [kg]')
     for gdist, color in ((0.3, 'r'), (0.7, 'g'), (1.5,'yellow'), (2.5, 'b')):
         axes.plot_surface(samples[0],
                           samples[1],
