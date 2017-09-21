@@ -16,6 +16,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand,
+                                      ArmCommand,
                                       GroundInteractionCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
