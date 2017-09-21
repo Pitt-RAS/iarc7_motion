@@ -15,21 +15,17 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
 
 class TakeoffTaskState:
-    init = 0
-    request_arm = 1
-    pause_before_takeoff = 2
-    takeoff = 3
-    ascend = 4
-    ascend_angle = 5
-    done = 6
-    failed = 7
+    takeoff = 0
+    ascend = 1
+    ascend_angle = 2
+    done = 3
+    failed = 4
 
 class TakeoffTask(AbstractTask):
 
@@ -71,39 +67,6 @@ class TakeoffTask(AbstractTask):
     def get_desired_command(self):
         if self._canceled:
             return (TaskCanceled(),)
-
-        if self._state == TakeoffTaskState.init:
-            # Check if we have an fc status
-            if self._fc_status is None:
-                return (TaskRunning(), NopCommand())
-            # Check that auto pilot is enabled
-            if not self._fc_status.auto_pilot:
-                return (TaskFailed(msg='flight controller not allowing auto pilot'),)
-            # Check that the FC is not already armed
-            if self._fc_status.armed:
-                return (TaskFailed(msg='flight controller armed prior to takeoff'),)
-
-            # All is good change state to request arm
-            self._state = TakeoffTaskState.request_arm
-
-        # Enter the arming request stage
-        if self._state == TakeoffTaskState.request_arm:
-            # Check that the FC is not already armed
-            if self._arm_request_success:
-                self.pause_start_time = rospy.Time.now()
-                self._state = TakeoffTaskState.pause_before_takeoff
-            else:
-                return (TaskRunning(), ArmCommand(True, True, False, self.arm_callback))
-
-        # Pause before ramping up the motors
-        if self._state == TakeoffTaskState.pause_before_takeoff:
-            if rospy.Time.now() - self.pause_start_time > rospy.Duration(self._DELAY_BEFORE_TAKEOFF):
-                self._state = TakeoffTaskState.takeoff
-                return (TaskRunning(), GroundInteractionCommand(
-                                       'takeoff',
-                                       self.takeoff_callback))
-            else:
-                return (TaskRunning(), NopCommand())
 
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:
