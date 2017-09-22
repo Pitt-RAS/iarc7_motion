@@ -22,11 +22,12 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       AngleThrottleCommand)
 
 class TakeoffTaskState:
-    takeoff = 0
-    ascend = 1
-    ascend_angle = 2
-    done = 3
-    failed = 4
+    init= 0
+    takeoff = 1
+    ascend = 2
+    ascend_angle = 3
+    done = 4
+    failed = 5
 
 class TakeoffTask(AbstractTask):
 
@@ -69,11 +70,18 @@ class TakeoffTask(AbstractTask):
         if self._canceled:
             return (TaskCanceled(),)
 
+        # Transition from init to takeoff phase
+        elif self._state == TakeoffTaskState.init:
+            self._state=TakeoffTaskState.takeoff
+            return (TaskRunning(), GroundInteractionCommand(
+                                       'takeoff',
+                                       self.takeoff_callback))
+
         # Enter the takeoff phase
-        if self._state == TakeoffTaskState.takeoff:
+        elif self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
 
-        if (self._state == TakeoffTaskState.ascend
+        elif (self._state == TakeoffTaskState.ascend
          or self._state == TakeoffTaskState.ascend_angle):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
@@ -105,14 +113,15 @@ class TakeoffTask(AbstractTask):
                 velocity.twist.linear.z = self._TAKEOFF_VELOCITY
                 return (TaskRunning(), VelocityCommand(velocity))
 
-        if self._state == TakeoffTaskState.done:
+        elif self._state == TakeoffTaskState.done:
             return (TaskDone(), NopCommand())
 
-        if self._state == TakeoffTaskState.failed:
+        elif self._state == TakeoffTaskState.failed:
             return (TaskFailed(msg='Take off task experienced failure'),)
 
         # Impossible state reached
-        return (TaskAborted(msg='Impossible state in takeoff task reached'),)
+        else:
+            return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
 
     def cancel(self):
