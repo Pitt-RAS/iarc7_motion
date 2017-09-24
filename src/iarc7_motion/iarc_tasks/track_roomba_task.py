@@ -98,7 +98,8 @@ class TrackRoombaTask(object, AbstractTask):
             if self._start_time is None:
                 self._start_time = rospy.Time.now()
             
-            if not self._time_to_track == 0 and (rospy.Time.now() - self._start_time >= rospy.Duration(self._time_to_track)):
+            if not self._time_to_track == 0 and (rospy.Time.now() 
+                - self._start_time >= rospy.Duration(self._time_to_track)):
                 return (TaskDone(),)
 
             if self._canceled:
@@ -159,7 +160,7 @@ class TrackRoombaTask(object, AbstractTask):
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
                 roomba_velocity = math.sqrt(roomba_x_velocity**2 + roomba_y_velocity**2)
 
-                # The overshoot is back in town
+                # The overshoot is taking in the x velocity normalizing it and applying overshoot
                 x_overshoot = roomba_x_velocity/roomba_velocity * self._overshoot
                 y_overshoot = roomba_y_velocity/roomba_velocity * self._overshoot
 
