@@ -38,7 +38,8 @@ class TrackRoombaTask(object, AbstractTask):
 
         self._roomba_id = task_request.frame_id  + '/base_link'
         self._time_to_track = task_request.time_to_track
-        self._overshoot = task_request.overshoot
+        self._x_overshoot = task_request.x_overshoot
+        self._y_overshoot = task_request.y_overshoot
 
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
@@ -98,8 +99,9 @@ class TrackRoombaTask(object, AbstractTask):
             if self._start_time is None:
                 self._start_time = rospy.Time.now()
             
-            if not self._time_to_track == 0 and (rospy.Time.now() 
+            if self._time_to_track != 0 and (rospy.Time.now() 
                 - self._start_time >= rospy.Duration(self._time_to_track)):
+                # ROS_INFO("Task cancelled due to time out")
                 return (TaskDone(),)
 
             if self._canceled:
@@ -161,8 +163,8 @@ class TrackRoombaTask(object, AbstractTask):
                 roomba_velocity = math.sqrt(roomba_x_velocity**2 + roomba_y_velocity**2)
 
                 # The overshoot is taking in the x velocity normalizing it and applying overshoot
-                x_overshoot = roomba_x_velocity/roomba_velocity * self._overshoot
-                y_overshoot = roomba_y_velocity/roomba_velocity * self._overshoot
+                x_overshoot = roomba_x_velocity/roomba_velocity * self._x_overshoot
+                y_overshoot = roomba_y_velocity/roomba_velocity * self._y_overshoot
 
                 # p-controller
                 x_vel_target = ((self._roomba_point.point.x + x_overshoot)
@@ -221,7 +223,7 @@ class TrackRoombaTask(object, AbstractTask):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
         
-        return (_distance_to_roomba <= self._MAX_START_TASK_DIST + self._overshoot)
+        return (_distance_to_roomba <= self._MAX_START_TASK_DIST + ((self._x_overshoot)**2 + (self._y_overshoot)**2)**(0.5))
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
