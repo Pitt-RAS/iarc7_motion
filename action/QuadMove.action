@@ -10,6 +10,7 @@ float64 y_position
 float64 z_position
 float64 x_velocity
 float64 y_velocity
+float64 ending_radius_to_roomba # How close to get to the roomba for go_to_roomba
 ---
 #result definition
 bool success
