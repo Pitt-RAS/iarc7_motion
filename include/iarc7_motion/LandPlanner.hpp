@@ -17,6 +17,7 @@
 // ROS message headers
 #include "geometry_msgs/TwistStamped.h"
 #include "iarc7_msgs/LandingGearContactsStamped.h"
+#include "iarc7_msgs/Arm.h"
 
 namespace Iarc7Motion
 {
@@ -24,6 +25,7 @@ namespace Iarc7Motion
 enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
                        DESCEND,
                        BRACE_FOR_IMPACT,
+                       DISARM,
                        DONE };
 
 class LandPlanner
@@ -101,6 +103,9 @@ private:
 
     // Max allowed timeout waiting for velocities and transforms
     const ros::Duration update_timeout_;
+
+    // Establishing service client used for disarm request
+    ros::ServiceClient uav_arm_client_;
 };
 
 } // End namespace Iarc7Motion

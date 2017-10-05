@@ -52,12 +52,15 @@ TakeoffController::TakeoffController(
                             100),
       takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
                   private_nh,
-                  "takeoff_max_height_switch_pressed"))
+                  "takeoff_max_height_switch_pressed")),
+      uav_arm_client_()
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                    100,
                                    &TakeoffController::processLandingGearMessage,
                                    this);
+    //Setting up the service client connection for arm request
+    uav_arm_client_ = nh.serviceClient<iarc7_msgs::Arm>("uav_arm");
 }
 
 bool TakeoffController::calibrateThrustModel(const ros::Time& time)
@@ -117,7 +120,7 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
     }
 
     throttle_ = 0;
-    state_ = TakeoffState::RAMP;
+    state_ = TakeoffState::ARM;
     // Mark the last update time as the current time to prevent large throttle spikes
     last_update_time_ = time;
     return true;
@@ -144,7 +147,24 @@ bool TakeoffController::update(const ros::Time& time,
         return false;
     }
 
-    if(state_ == TakeoffState::RAMP) {
+    if(state_ == TakeoffState::ARM) {
+      //Sending arm request to fc_comms
+      iarc7_msgs::Arm srv;
+      srv.request.data = true;
+      //Check if request was succesful
+      if(uav_arm_client_.call(srv)) {
+        if(srv.response.success == false) {
+          ROS_ERROR("Service could not arm the controller");
+          return false;
+        }
+      }
+      else {
+        ROS_ERROR("Arming service failed");
+        return false;
+      }
+      state_ = TakeoffState::RAMP;
+    }
+    else if(state_ == TakeoffState::RAMP) {
         if(!allPressed(landing_gear_message_)) {
             if (!calibrateThrustModel(time)) {
                 ROS_ERROR("Failed to calibrate thrust model");
