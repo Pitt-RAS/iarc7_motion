@@ -60,7 +60,6 @@ class LandTask(AbstractTask):
         elif self._state == LandTaskState.done:
             return (TaskDone(), NopCommand())
 
-
         # Change state to failed
         elif self._state == LandTaskState.failed:
             rospy.logerr('Low level motion failed landing sequence')

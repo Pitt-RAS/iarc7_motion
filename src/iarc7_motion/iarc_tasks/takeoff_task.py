@@ -21,7 +21,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       AngleThrottleCommand)
 
 class TakeoffTaskState:
-    init= 0
+    init = 0
     takeoff = 1
     ascend = 2
     done = 3

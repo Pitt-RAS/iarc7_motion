@@ -53,14 +53,12 @@ TakeoffController::TakeoffController(
       takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
                   private_nh,
                   "takeoff_max_height_switch_pressed")),
-      uav_arm_client_()
+      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                    100,
                                    &TakeoffController::processLandingGearMessage,
                                    this);
-    //Setting up the service client connection for arm request
-    uav_arm_client_ = nh.serviceClient<iarc7_msgs::Arm>("uav_arm");
 }
 
 bool TakeoffController::calibrateThrustModel(const ros::Time& time)
@@ -148,21 +146,21 @@ bool TakeoffController::update(const ros::Time& time,
     }
 
     if(state_ == TakeoffState::ARM) {
-      //Sending arm request to fc_comms
-      iarc7_msgs::Arm srv;
-      srv.request.data = true;
-      //Check if request was succesful
-      if(uav_arm_client_.call(srv)) {
-        if(srv.response.success == false) {
-          ROS_ERROR("Service could not arm the controller");
-          return false;
+        // Sending arm request to fc_comms
+        iarc7_msgs::Arm srv;
+        srv.request.data = true;
+        // Check if request was succesful
+        if(uav_arm_client_.call(srv)) {
+            if(srv.response.success == false) {
+                ROS_ERROR("Service could not arm the controller");
+                return false;
+            }
         }
-      }
-      else {
-        ROS_ERROR("Arming service failed");
-        return false;
-      }
-      state_ = TakeoffState::RAMP;
+        else {
+            ROS_ERROR("Arming service failed");
+            return false;
+        }
+        state_ = TakeoffState::RAMP;
     }
     else if(state_ == TakeoffState::RAMP) {
         if(!allPressed(landing_gear_message_)) {
@@ -172,7 +170,7 @@ bool TakeoffController::update(const ros::Time& time,
             }
           state_ = TakeoffState::DONE;
         }
-        //Check if UAV is above switch sensing height, if it is go to safety response
+        // Check if UAV is above switch sensing height, if it is go to safety response
         else if(transform.transform.translation.z > takeoff_max_height_switch_pressed_)
         {
             ROS_ERROR("Takeoff handler failed, quad's switches are toggled, but quad is above toggle height");
