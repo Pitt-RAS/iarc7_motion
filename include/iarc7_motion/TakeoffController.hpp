@@ -20,11 +20,13 @@
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/LandingGearContactsStamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
+#include "iarc7_msgs/Arm.h"
 
 namespace Iarc7Motion
 {
 
-enum class TakeoffState { RAMP,
+enum class TakeoffState { ARM,
+                          RAMP,
                           DONE };
 
 class TakeoffController
@@ -103,6 +105,9 @@ private:
     ros_utils::LinearMsgInterpolator<iarc7_msgs::Float64Stamped, double>
             battery_interpolator_;
     const double takeoff_max_height_switch_pressed_;
+
+    // Establishing service client used for arm request
+    ros::ServiceClient uav_arm_client_;
 };
 
 } // End namespace Iarc7Motion

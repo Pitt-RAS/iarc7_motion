@@ -45,7 +45,8 @@ LandPlanner::LandPlanner(
               "startup_timeout")),
       update_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "update_timeout"))
+              "update_timeout")),
+      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
     landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
                                  100,
@@ -118,6 +119,20 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
             return false;
         }
         else if(anyPressed(landing_gear_message_)) {
+            // Sending disarm request to fc_comms
+            iarc7_msgs::Arm srv;
+            srv.request.data = false;
+            // Check if request was succesful
+            if(uav_arm_client_.call(srv)) {
+                if(srv.response.success == false) {
+                    ROS_ERROR("Service could not disarm the controller");
+                    return false;
+                }
+            }
+            else {
+                ROS_ERROR("disarming service failed");
+                return false;
+            }
             state_ = LandState::DONE;
         }
     }

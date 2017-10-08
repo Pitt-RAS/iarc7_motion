@@ -15,7 +15,6 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand,
                                       ConfigurePassthroughMode,
@@ -23,13 +22,10 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 class TakeoffTaskState:
     init = 0
-    request_arm = 1
-    pause_before_takeoff = 2
-    takeoff = 3
-    ascend = 4
-    ascend_angle = 5
-    done = 6
-    failed = 7
+    takeoff = 1
+    ascend = 2
+    done = 3
+    failed = 4
 
 class TakeoffTask(AbstractTask):
 
@@ -41,7 +37,6 @@ class TakeoffTask(AbstractTask):
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             self._TAKEOFF_COMPLETE_HEIGHT = rospy.get_param('~takeoff_complete_height')
-            self._ANGLE_MODE_HEIGHT = rospy.get_param('~takeoff_angle_mode_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
@@ -72,45 +67,19 @@ class TakeoffTask(AbstractTask):
         if self._canceled:
             return (TaskCanceled(),)
 
-        if self._state == TakeoffTaskState.init:
-            # Check if we have an fc status
-            if self._fc_status is None:
-                return (TaskRunning(), NopCommand())
-            # Check that auto pilot is enabled
-            if not self._fc_status.auto_pilot:
-                return (TaskFailed(msg='flight controller not allowing auto pilot'),)
-            # Check that the FC is not already armed
-            if self._fc_status.armed:
-                return (TaskFailed(msg='flight controller armed prior to takeoff'),)
-
-            # All is good change state to request arm
-            self._state = TakeoffTaskState.request_arm
-
-        # Enter the arming request stage
-        if self._state == TakeoffTaskState.request_arm:
-            # Check that the FC is not already armed
-            if self._arm_request_success:
-                self.pause_start_time = rospy.Time.now()
-                self._state = TakeoffTaskState.pause_before_takeoff
-            else:
-                return (TaskRunning(), ArmCommand(True, True, False, self.arm_callback))
-
-        # Pause before ramping up the motors
-        if self._state == TakeoffTaskState.pause_before_takeoff:
-            if rospy.Time.now() - self.pause_start_time > rospy.Duration(self._DELAY_BEFORE_TAKEOFF):
-                self._state = TakeoffTaskState.takeoff
-                return (TaskRunning(), GroundInteractionCommand(
+        # Transition from init to takeoff phase
+        elif self._state == TakeoffTaskState.init:
+            self._state=TakeoffTaskState.takeoff
+            return (TaskRunning(), GroundInteractionCommand(
                                        'takeoff',
                                        self.takeoff_callback))
-            else:
-                return (TaskRunning(), NopCommand())
 
         # Enter the takeoff phase
-        if self._state == TakeoffTaskState.takeoff:
+        elif self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
 
-        if (self._state == TakeoffTaskState.ascend
-         or self._state == TakeoffTaskState.ascend_angle):
+        elif (self._state == TakeoffTaskState.ascend):
+            
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
@@ -129,11 +98,7 @@ class TakeoffTask(AbstractTask):
             if(transStamped.transform.translation.z > self._TAKEOFF_COMPLETE_HEIGHT):
                 self._state = TakeoffTaskState.done
                 return (TaskDone(), NopCommand())
-            elif (self._state == TakeoffTaskState.ascend
-              and transStamped.transform.translation.z
-                > self._ANGLE_MODE_HEIGHT):
-                self._state = TakeoffTaskState.ascend_angle
-                return (TaskRunning(), ArmCommand(True, True, True, lambda _ : None))
+        
             else:
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -141,14 +106,15 @@ class TakeoffTask(AbstractTask):
                 velocity.twist.linear.z = self._TAKEOFF_VELOCITY
                 return (TaskRunning(), VelocityCommand(velocity))
 
-        if self._state == TakeoffTaskState.done:
+        elif self._state == TakeoffTaskState.done:
             return (TaskDone(), NopCommand())
 
-        if self._state == TakeoffTaskState.failed:
+        elif self._state == TakeoffTaskState.failed:
             return (TaskFailed(msg='Take off task experienced failure'),)
 
         # Impossible state reached
-        return (TaskAborted(msg='Impossible state in takeoff task reached'),)
+        else:
+            return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
 
     def cancel(self):

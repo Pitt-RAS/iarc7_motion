@@ -21,7 +21,6 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
                                       NopCommand)
 
 from height_holder import HeightHolder

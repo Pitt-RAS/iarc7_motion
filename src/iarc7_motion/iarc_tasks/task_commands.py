@@ -12,13 +12,6 @@ class VelocityCommand(object):
         else:
             self.target_twist = target_twist
 
-class ArmCommand(object):
-    def __init__(self, arm_state, set_mode, angle, completion_callback):
-        self.arm_state = arm_state
-        self.set_mode = set_mode
-        self.angle = angle
-        self.completion_callback = completion_callback
-
 class NopCommand(object):
     def __init__(self):
         pass

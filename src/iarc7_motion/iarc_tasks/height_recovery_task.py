@@ -15,7 +15,6 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand,
-                                      ArmCommand,
                                       NopCommand,
                                       GroundInteractionCommand,
                                       ConfigurePassthroughMode,
@@ -24,9 +23,8 @@ from iarc_tasks.task_commands import (VelocityCommand,
 class HeightRecoveryTaskState:
     init = 0
     recover = 1
-    recover_angle = 2
-    done = 3
-    failed = 4
+    done = 2
+    failed = 3
 
 class HeightRecoveryTask(AbstractTask):
 
@@ -39,9 +37,7 @@ class HeightRecoveryTask(AbstractTask):
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             MIN_MAN_HEIGHT = rospy.get_param('~min_maneuver_height')
             HEIGHT_OFFSET = rospy.get_param('~recover_height_offset')
-            self._ANGLE_MODE_HEIGHT = rospy.get_param('~takeoff_angle_mode_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
-
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for HeightRecoveryTask')
@@ -59,8 +55,7 @@ class HeightRecoveryTask(AbstractTask):
             self._state = HeightRecoveryTaskState.recover
             return (TaskRunning(),)
 
-        elif (self._state == HeightRecoveryTaskState.recover or 
-            self._state == HeightRecoveryTaskState.recover_angle):
+        elif (self._state == HeightRecoveryTaskState.recover):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
@@ -79,11 +74,6 @@ class HeightRecoveryTask(AbstractTask):
             if (transStamped.transform.translation.z > self._RECOVERY_HEIGHT):
                 self._state = HeightRecoveryTaskState.done
                 return (TaskDone(), NopCommand())
-
-            elif (self._state == HeightRecoveryTaskState.recover and 
-                transStamped.transform.translation.z > self._ANGLE_MODE_HEIGHT):
-                self._state = HeightRecoveryTaskState.recover_angle
-                return (TaskRunning(), ArmCommand(True, True, True, lambda _ : None))
 
             else:
                 velocity = TwistStamped()

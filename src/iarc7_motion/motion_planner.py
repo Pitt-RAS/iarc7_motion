@@ -14,7 +14,6 @@ from std_srvs.srv import SetBool
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
-from iarc7_msgs.srv import Arm
 from iarc7_safety.SafetyClient import SafetyClient
 
 from iarc_task_action_server import IarcTaskActionServer
@@ -37,7 +36,6 @@ class MotionPlanner:
                                                 OrientationThrottleStamped,
                                                 queue_size=10)
 
-        self._arm_service = rospy.ServiceProxy('uav_arm', Arm)
         self._safety_client = SafetyClient('motion_planner')
         self._safety_land_complete = False
         self._safety_land_requested = False
@@ -56,7 +54,6 @@ class MotionPlanner:
 
         self._command_implementations = {
             task_commands.VelocityCommand: self._handle_velocity_command,
-            task_commands.ArmCommand: self._handle_arm_command,
             task_commands.NopCommand: self._handle_nop_command,
             task_commands.GroundInteractionCommand: self._handle_ground_interaction_command,
             task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
@@ -81,7 +78,6 @@ class MotionPlanner:
             return
         rospy.logwarn('done forming bond')
 
-        rospy.wait_for_service('uav_arm')
         self._action_client.wait_for_server()
         self._ground_interaction_client.wait_for_server()
 
@@ -148,29 +144,6 @@ class MotionPlanner:
 
     def _handle_velocity_command(self, velocity_command):
         self._publish_twist(velocity_command.target_twist)
-
-    def _handle_arm_command(self, arm_command):
-        arm_result = self._use_arm_service(arm_command.arm_state, arm_command.set_mode, arm_command.angle)
-        self._call_tasks_arm_service_callback(arm_command.completion_callback, arm_result)
-
-    def _call_tasks_arm_service_callback(self, callback, arm_result):
-        try:
-            callback(arm_result)
-        except Exception as e:
-            rospy.logerr('Exception setting result using an arm callback')
-            rospy.logerr(str(e))
-            rospy.logerr(traceback.format_exc())
-            rospy.logwarn('Motion planner aborted task')
-            self._action_server.set_aborted()
-            self._task = None
-
-    def _use_arm_service(self, arm, set_mode, angle):
-        try:
-            armed = self._arm_service(arm, set_mode, angle)
-        except rospy.ServiceException as exc:
-            rospy.logerr("Could not arm: " + str(exc))
-            armed = False
-        return armed
 
     def _handle_passthrough_mode_command(self, passthrough_mode_command):
         if passthrough_mode_command.enable:
