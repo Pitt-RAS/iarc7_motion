@@ -25,7 +25,6 @@ namespace Iarc7Motion
 enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
                        DESCEND,
                        BRACE_FOR_IMPACT,
-                       DISARM,
                        DONE };
 
 class LandPlanner

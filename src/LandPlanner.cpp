@@ -119,25 +119,22 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
             return false;
         }
         else if(anyPressed(landing_gear_message_)) {
-            state_ = LandState::DISARM;
-        }
-    }
-    else if (state_ == LandState::DISARM) {
-        // Sending disarm request to fc_comms
-        iarc7_msgs::Arm srv;
-        srv.request.data = false;
-        // Check if request was succesful
-        if(uav_arm_client_.call(srv)) {
-            if(srv.response.success == false) {
-                ROS_ERROR("Service could not disarm the controller");
+            // Sending disarm request to fc_comms
+            iarc7_msgs::Arm srv;
+            srv.request.data = false;
+            // Check if request was succesful
+            if(uav_arm_client_.call(srv)) {
+                if(srv.response.success == false) {
+                    ROS_ERROR("Service could not disarm the controller");
+                    return false;
+                }
+            }
+            else {
+                ROS_ERROR("disarming service failed");
                 return false;
             }
+            state_ = LandState::DONE;
         }
-        else {
-            ROS_ERROR("disarming service failed");
-            return false;
-        }
-        state_ = LandState::DONE;
     }
     else if(state_ == LandState::DONE)
     {
