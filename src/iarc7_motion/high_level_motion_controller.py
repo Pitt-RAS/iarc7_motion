@@ -210,14 +210,26 @@ class HighLevelMotionController:
             state = IntermediaryState() 
             state.drone_odometry = self._drone_odometry
             state.roombas = self._roombas
-            state.last_task_ending_state = self._task_command_handler.get_state()
             state.timeout_sent = self._timeout_vel_sent
+            state.last_task_ending_state = self._task_command_handler.get_state()
+            state.arm_status = self._arm_status
+            state.last_twist = self._last_twist
+            return state
 
+    # shuts down the timer so the callback is not called when a task is running
     def _shutdown_timer(self):
         with self._lock:
             self._timer.shutdown()
             self._timer = None
 
+    """
+    Callbacks for publishers
+    
+    Types: 
+        drone odometry: odometry (position, velocity, etc.) of drone
+        roomba status: odometry (position, velocity, etc.) of
+            all roombas in sight of drone
+    """
     def _recieve_drone_odometry(self, data):
         with self._lock:
             self._drone_odometry = data
@@ -230,6 +242,7 @@ class HighLevelMotionController:
         with self._lock:
             self._arm_status = data
 
+    # callback for safety task completition
     def _safety_task_complete_callback(self, status, response):
         with self._lock: 
             if response.success:
