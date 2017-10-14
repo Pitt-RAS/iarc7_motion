@@ -23,6 +23,7 @@ class TaskCommandHandler:
         self._in_passthrough = False
         self._task_state = None
         self._transition = None
+        self._task_canceled = False
 
         # used to send velocity commands to LLM
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
@@ -48,6 +49,7 @@ class TaskCommandHandler:
     def new_task(self, task, transition):
         self._task = task
         self._transition = transition
+        self._task_canceled = False
         # self._task.send_transition(self._transition)
 
     # cancels task
@@ -56,6 +58,7 @@ class TaskCommandHandler:
             rospy.logerr('No task running to cancel.')
         try:
             self._task.cancel()
+            self._task_canceled = True
             self._task = None
         except Exception as e:
             rospy.logerr('Exception canceling task')
@@ -63,11 +66,16 @@ class TaskCommandHandler:
             rospy.logerr(traceback.format_exc())
             rospy.logerr('Task Command Handler aborted task')
             self._task_state = task_states.TaskAborted()
+            self._task = None
 
     # returns last command (ground interaction, velocity, etc.)
     # that task returned
     def get_last_command(self):
         return self._last_task_commands
+
+    # returns last twist sent to LLM
+    def get_last_twist(self):
+        return self._last_twist
     
     # public method wrapper for getting task state
     def get_state(self):
@@ -109,7 +117,9 @@ class TaskCommandHandler:
             else: 
                 self._task = None
                 return task_commands.NopCommand()
-
+        elif self._task_canceled:
+            self._task_state = task_states.TaskCanceled
+        
         else: 
             self._task_state = task_states.TaskAborted
             rospy.logerr('TaskCommandHandler ran with no task running. Setting task state to aborted.')
