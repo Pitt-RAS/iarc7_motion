@@ -2,24 +2,26 @@
 
 class IntermediaryState(object):
 
-    def __init__(self, drone_odometry = None, roomba_odometry = None, 
-            last_command = None, last_task_ending_state = None, arm_status = None):
+    def __init__(self, drone_odometry = None, roombas = None, 
+            timeout_sent = None, last_task_ending_state = None, arm_status = None, last_twist = None):
         """
         Intermediary State
 
         Args:
             drone_odometry: odometry (position, velocity, etc.) of drone
-            roomba_odometry: odometry (position, velocity, etc.) of
+            roombas: odometry (position, velocity, etc.) of
                 all roombas in sight of drone
-            last_command: last task command 
+            timeout_sent: whether or not timeout was sent
             last_task_ending_state: last task ending state
             arm_status: current arm status of drone
+            last_twist: last twist (velocity request) sent to LLM
         """
         self.drone_odometry = drone_odometry
-        self.roomba_odometry = roomba_odometry
-        self.last_command = last_command
+        self.roombas = roombas
+        self.timeout_sent = timeout_sent
         self.last_task_ending_state = last_task_ending_state
         self.arm_status = arm_status
+        self.last_twist = last_twist
 
     @property
     def drone_odometry(self):
@@ -30,20 +32,20 @@ class IntermediaryState(object):
         self._drone_odometry = drone_odometry
 
     @property
-    def roomba_odometry(self):
-        return self._roomba_odometry
+    def roombas(self):
+        return self._roombas
 
-    @roomba_odometry.setter
-    def roomba_odometry(self, roomba_odometry):
-        self._roomba_odometry = roomba_odometry
+    @roombas.setter
+    def roombas(self, roombas):
+        self._roombas = roombas
 
     @property
-    def last_command(self):
-        return self._last_command
+    def timeout_sent(self):
+        return self._timeout_sent
 
-    @last_command.setter
-    def last_command(self, last_command):
-        self._last_command = last_command
+    @timeout_sent.setter
+    def timeout_sent(self, timeout_sent):
+        self._timeout_sent = timeout_sent
 
     @property
     def last_task_ending_state(self):
@@ -60,3 +62,11 @@ class IntermediaryState(object):
     @arm_status.setter
     def arm_status(self, arm_status):
         self._arm_status = arm_status
+
+    @property
+    def last_twist(self):
+        return self._last_twist
+
+    @last_twist.setter
+    def last_twist(self, twist):
+        self._last_twist = twist
