@@ -45,7 +45,7 @@ class HighLevelMotionController:
         self._task_command_handler = TaskCommandHandler()
 
         # safety 
-        self._safety_client = SafetyClient('motion_planner')
+        self._safety_client = SafetyClient('high_level_motion')
         self._safety_land_complete = False
         self._safety_land_requested = False
 
@@ -127,15 +127,9 @@ class HighLevelMotionController:
                     else: 
                         rospy.logwarn('AI provided illegal task transition. Aborting requested task.')
                         self._action_server.set_aborted()
-                        self._task = None
             else: 
                 if self._action_server.is_canceled():
-                    try: 
-                        self._task_command_handler.cancel_task()
-                    except Exception as e:
-                        rospy.logerr('Error canceling task')
-                        rospy.logerr(str(e))
-                        rospy.logerr(traceback.format_exc())
+                    self._task_command_handler.cancel_task()
 
                 self._task_command_handler.run()
                 task_state = self._task_command_handler.get_state()
@@ -159,11 +153,13 @@ class HighLevelMotionController:
                 else:
                     assert isinstance(task_state, task_states.TaskRunning)
 
+                self._last_twist = self._task_command_handler.get_last_twist()
+
+                # as soon as we set a task to None, start timeout timer
                 if self._task is None:
                     self._timer = rospy.Timer(self._task_timeout, self._recieve_task_timeout)
 
             rate.sleep()
-
 
     def _recieve_task_timeout(self, event):
         """
@@ -195,15 +191,27 @@ class HighLevelMotionController:
                     self._task_command_handler.send_timeout(commands)
 
                     self._timeout_vel_sent = True
+                    self._last_twist = future_twist
                 rospy.logwarn('Task running timeout. Setting zero velocity')
             else: 
                 rospy.logerr('Timeout timer in HLM fired with task running')
 
+    # checks task transitions before executing it
     def _check_transition(self):
         return True
 
+    # fills out the Intermediary State for the task
     def _get_transition(self):
-        return IntermediaryState()
+        while ((self._drone_odometry is None or self._roombas is None 
+                or self._arm_status) and not rospy.is_shutdown()):
+            pass
+
+        with self._lock:
+            state = IntermediaryState() 
+            state.drone_odometry = self._drone_odometry
+            state.roombas = self._roombas
+            state.last_task_ending_state = self._task_command_handler.get_state()
+            state.timeout_sent = self._timeout_vel_sent
 
     def _shutdown_timer(self):
         with self._lock:
