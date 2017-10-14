@@ -6,17 +6,17 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Twist
-
-from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
-from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
-
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
 
 from task_command_handler import TaskCommandHandler
 from intermediary_state import IntermediaryState
+
+from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import Twist
+
+from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
+from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped, FlightControllerStatus
 
 class HighLevelMotionController:
 
@@ -27,6 +27,7 @@ class HighLevelMotionController:
         # state data
         self._roombas = None
         self._drone_odometry = None
+        self._arm_status = None
         
         # current state of HLM
         self._task = None
@@ -53,7 +54,7 @@ class HighLevelMotionController:
                                         "motion_planner_server",
                                         QuadMoveAction)
         
-        # needed to do sanity checking and state monitoring
+        # info needed to do sanity checking and state monitoring
         self._roomba_status_sub = rospy.Subscriber(
             'roombas', OdometryArray, 
             self._receive_roomba_status)
@@ -62,12 +63,17 @@ class HighLevelMotionController:
             '/odometry/filtered', Odometry,
             self._recieve_drone_odometry)
 
+        self._drone_arm_status = rospy.Subscriber(
+            '/fc_status', FlightControllerStatus, 
+            self._receive_arm_status)
+
         try:
             # update rate for HLM
             self._update_rate = rospy.get_param('~update_rate')
             # task timeout values
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
-            self._task_timeout_deceleration_time = rospy.Duration(rospy.get_param('~task_timeout_deceleration_time'))
+            self._task_timeout_deceleration_time = rospy.Duration(
+                rospy.get_param('~task_timeout_deceleration_time'))
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for High Level Motion Controller')
@@ -123,8 +129,18 @@ class HighLevelMotionController:
                         self._action_server.set_aborted()
                         self._task = None
             else: 
+                if self._action_server.is_canceled():
+                    try: 
+                        self._task_command_handler.cancel_task()
+                    except Exception as e:
+                        rospy.logerr('Error canceling task')
+                        rospy.logerr(str(e))
+                        rospy.logerr(traceback.format_exc())
+
+                self._task_command_handler.run()
                 task_state = self._task_command_handler.get_state()
 
+                # handles state of task and HLM controller
                 if isinstance(task_state, task_states.TaskCanceled):
                     self._action_server.set_canceled()
                     rospy.logwarn('Task was canceled')
@@ -176,7 +192,7 @@ class HighLevelMotionController:
                     commands.twists = [self._last_twist, future_twist]
 
                     # if timed-out, send twists to LLM
-                    self._task_command_handler._publish_twist(commands)
+                    self._task_command_handler.send_timeout(commands)
 
                     self._timeout_vel_sent = True
                 rospy.logwarn('Task running timeout. Setting zero velocity')
@@ -201,6 +217,10 @@ class HighLevelMotionController:
     def _receive_roomba_status(self, data):
         with self._lock:
             self._roombas = data
+
+    def _receive_arm_status(self, data):
+        with self._lock:
+            self._arm_status = data
 
     def _safety_task_complete_callback(self, status, response):
         with self._lock: 

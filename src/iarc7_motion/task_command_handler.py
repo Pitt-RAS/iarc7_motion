@@ -5,53 +5,36 @@ import traceback
 import actionlib
 import rospy
 
-from actionlib_msgs.msg import GoalStatus
-from geometry_msgs.msg import TwistStamped
-
-from geometry_msgs.msg import Twist
-from std_srvs.srv import SetBool
-
-from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
-from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
-from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
-from iarc7_safety.SafetyClient import SafetyClient
-
-from iarc_task_action_server import IarcTaskActionServer
-
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
 
-class MotionPlanner:
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TwistStamped
 
-    def __init__(self, _action_server, update_rate):
-        self._action_server = _action_server
-        self._update_rate = update_rate
+from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
+from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
+
+class TaskCommandHandler:
+
+    def __init__(self):
+        # class state
         self._task = None
+        self._last_task_commands = None
+        self._in_passthrough = False
+        self._task_state = None
+        self._transition = None
+
+        # used to send velocity commands to LLM
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
                                              TwistStampedArray,
                                              queue_size=0)
 
-        self._in_passthrough = False
+        # used to send passthrough commands to LLM
         self._passthrough_pub = rospy.Publisher('passthrough_command',
                                                 OrientationThrottleStamped,
                                                 queue_size=10)
 
-        self._safety_client = SafetyClient('motion_planner')
-        self._safety_land_complete = False
-        self._safety_land_requested = False
-        self._timeout_vel_sent = False
-        # Create action client to request a landing
-        self._action_client = actionlib.SimpleActionClient(
-                                        "motion_planner_server",
-                                        QuadMoveAction)
-
-        # Creates the SimpleActionClient for requesting ground interaction
-        self._ground_interaction_client = actionlib.SimpleActionClient(
-                                          'ground_interaction_action',
-                                          GroundInteractionAction)
-
-        self._ground_interaction_task_callback = None
-
+        # task commands that are implemented and available to tasks
         self._command_implementations = {
             task_commands.VelocityCommand: self._handle_velocity_command,
             task_commands.NopCommand: self._handle_nop_command,
@@ -60,85 +43,88 @@ class MotionPlanner:
             task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
 
-        self._time_of_last_task = None
-        self._last_twist = None
+    # takes in new task from HLM Controller
+    # transition is of type IntermediaryState 
+    def new_task(self, task, transition):
+        self._task = task
+        self._transition = transition
+        # self._task.send_transition(self._transition)
+
+    # cancels task
+    def cancel_task(self):
+        if self._task is None:
+            rospy.logerr('No task running to cancel.')
         try:
-            self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
-            self._task_timeout_deceleration_time = rospy.Duration(rospy.get_param('~task_timeout_deceleration_time'))
-        except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for motion_planner')
-            raise
+            self._task.cancel()
+            self._task = None
+        except Exception as e:
+            rospy.logerr('Exception canceling task')
+            rospy.logerr(str(e))
+            rospy.logerr(traceback.format_exc())
+            rospy.logerr('Task Command Handler aborted task')
+            self._task_state = task_states.TaskAborted()
 
+    # returns last command (ground interaction, velocity, etc.)
+    # that task returned
+    def get_last_command(self):
+        return self._last_task_commands
+    
+    # public method wrapper for getting task state
+    def get_state(self):
+        return self._task_state
+
+    # main function
     def run(self):
-        rate = rospy.Rate(self._update_rate)
-
-        rospy.logwarn('trying to form bond')
-        if not self._safety_client.form_bond():
-            rospy.logerr('Motion planner could not form bond with safety client')
-            return
-        rospy.logwarn('done forming bond')
-
-        self._action_client.wait_for_server()
-        self._ground_interaction_client.wait_for_server()
-
-        while not rospy.is_shutdown():
-
-            # Exit immediately if fatal
-            if self._safety_client.is_fatal_active() or self._safety_land_complete:
-                return
-
-            # Land if put into safety mode
-            if self._safety_client.is_safety_active() and not self._safety_land_requested:
-                # Request landing
-                goal = QuadMoveGoal(movement_type="land", preempt=True)
-                self._action_client.send_goal(goal,
-                        done_cb=self._safety_task_complete_callback)
-                rospy.logwarn(
-                        'motion planner attempting to execute safety land')
-                self._safety_land_requested = True
-
-            task_commands = self._get_task_command()
-            for task_command in task_commands:
-                try:
-                    self._command_implementations[type(task_command)](task_command)
-                except (KeyError, TypeError) as e:
-                    rospy.logerr("Task requested unimplemented command, noping: %s", type(task_command))
-                    self._handle_nop_command(None)
-
-            rate.sleep()
-
-    def handle_ground_interaction_done(self, status, result):
-        if self._ground_interaction_task_callback is not None:
+        task_commands = self._get_task_command()
+        for task_command in task_commands:
             try:
-                self._ground_interaction_task_callback(status, result)
+                self._command_implementations[type(task_command)](task_command)
+            except (KeyError, TypeError) as e:
+                rospy.logerr("Task requested unimplemented command, noping: %s", type(task_command))
+                self._handle_nop_command(None)
+
+        self._last_task_commands = task_commands
+
+    # gets desired command from running task
+    def _get_task_command(self):
+        if self._task is not None:
+            try:
+                task_request = self._task.get_desired_command()
             except Exception as e:
-                rospy.logerr('Exception sending result using ground interaction done cb')
+                rospy.logerr('Exception getting tasks preferred velocity')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
-                rospy.logwarn('Motion planner aborted task')
-                self._action_server.set_aborted()
+                rospy.logerr('Task Command Handler aborted task')
                 self._task = None
-            self._ground_interaction_task_callback = None
-        else:
-            rospy.logerr('Ground interaction done callback received with no task callback available')
+                self._task_state = task_states.TaskAborted
+                return (task_commands.NopCommand(),)
 
-    def _handle_ground_interaction_command(self, ground_interaction_command):
-        if self._ground_interaction_task_callback is not None:
-            rospy.logerr('Task requested another ground interaction action before the last completed')
-            rospy.logwarn('Motion planner aborted task')
-            self._action_server.set_aborted()
-            self._task = None
-            self._ground_interaction_task_callback = None
-            self._ground_interaction_client.cancel_goal()
-            self._ground_interaction_client.stop_tracking_goal()
-            return
+            task_state = task_request[0]
 
-        self._ground_interaction_task_callback = ground_interaction_command.completion_callback
-        # Request ground interaction of llm
-        goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)
-        # Sends the goal to the action server.
-        self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
+            if isinstance(task_state, task_states.TaskDone):
+                self._task = None
+                return task_request[1:]
+            elif isinstance(task_state, task_states.TaskRunning):
+                return task_request[1:]
+            else: 
+                self._task = None
+                return task_commands.NopCommand()
 
+        else: 
+            self._task_state = task_states.TaskAborted
+            rospy.logerr('TaskCommandHandler ran with no task running. Setting task state to aborted.')
+            return (task_commands.NopCommand(),)
+
+    """
+    Command Handlers
+
+    Types: 
+        ground interaction: these include takeoff
+        nop command: do nothing
+        velocity command: requests a velocity (x, y, z, and angular)
+        passthrough command: passthrough to throttle, pitch, and roll commands
+
+    """
     def _handle_nop_command(self, nop_command):
         pass
 
@@ -149,9 +135,9 @@ class MotionPlanner:
         if passthrough_mode_command.enable:
             if self._ground_interaction_task_callback is not None:
                 rospy.logerr('Task requested a passthrough action before the last was completed')
-                rospy.logwarn('Motion planner aborted task')
-                self._action_server.set_aborted()
+                rospy.logerr('Task Command Handler aborted task')
                 self._task = None
+                self._task_state = task_states.TaskAborted()
                 self._ground_interaction_task_callback = None
                 self._ground_interaction_client.cancel_goal()
                 self._ground_interaction_client.stop_tracking_goal()
@@ -177,8 +163,46 @@ class MotionPlanner:
         else:
             rospy.logerr('Task requested a passthrough command when not in passthrough mode')
 
-    def _publish_twist(self, twist):
+    def _handle_ground_interaction_command(self, ground_interaction_command):
+        if self._ground_interaction_task_callback is not None:
+            rospy.logerr('Task requested another ground interaction action before the last completed')
+            rospy.logerr('Task Command Handler aborted task')
+            self._task = None
+            self._task_state = task_states.TaskAborted()
+            self._ground_interaction_task_callback = None
+            self._ground_interaction_client.cancel_goal()
+            self._ground_interaction_client.stop_tracking_goal()
+            return
 
+        self._ground_interaction_task_callback = ground_interaction_command.completion_callback
+        # Request ground interaction of llm
+        goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)
+        # Sends the goal to the action server.
+        self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
+    
+    # callback for status on ground interaction commands
+    def handle_ground_interaction_done(self, status, result):
+        if self._ground_interaction_task_callback is not None:
+            try:
+                self._ground_interaction_task_callback(status, result)
+            except Exception as e:
+                rospy.logerr('Exception sending result using ground interaction done cb')
+                rospy.logerr('Task Command Handler aborted task')
+                rospy.logerr(str(e))
+                rospy.logerr(traceback.format_exc())
+                self._task = None
+                self._task_state = task_states.TaskAborted()
+            self._ground_interaction_task_callback = None
+        else:
+            rospy.logerr('Ground interaction done callback received with no task callback available')
+
+    """
+    Sends twist (x, y, z, and angular velocities) to LLM
+
+    Args:
+        twist: TwistStampedArray (array of twists) or just a single twist stamped.
+    """
+    def _publish_twist(self, twist):
         if type(twist) is TwistStampedArray:
             self._last_twist = twist.twists[-1]
             self._velocity_pub.publish(twist)
@@ -188,89 +212,8 @@ class MotionPlanner:
             velocity_msg.twists = [twist]
             self._velocity_pub.publish(velocity_msg)
         else:
-            raise TypeError('Illegal type provided in Motion Planner')
+            raise TypeError('Illegal type provided in Task Command Handler')
 
-    def _safety_task_complete_callback(self, status, response):
-        if response.success:
-            rospy.logwarn('Motion planner supposedly safely landed the aircraft')
-        else:
-            rospy.logerr('Motion planner did not safely land aircraft')
-        self._safety_land_complete = True
-
-    def _get_task_command(self):
-        if (self._task is None) and self._action_server.has_new_task():
-            self._task = self._action_server.get_new_task()
-
-        if self._task:
-            self._time_of_last_task = rospy.Time.now()
-            self._timeout_vel_sent = False
-            if self._action_server.is_canceled():
-                try:
-                    self._task.cancel()
-                except Exception as e:
-                    rospy.logerr('Exception canceling task')
-                    rospy.logerr(str(e))
-                    rospy.logerr(traceback.format_exc())
-                    rospy.logwarn('Motion planner aborted task')
-                    self._action_server.set_aborted()
-                    self._task = None
-                    return (task_commands.NopCommand(),)
-
-            try:
-                task_request = self._task.get_desired_command()
-            except Exception as e:
-                rospy.logerr('Exception getting tasks preferred velocity')
-                rospy.logerr(str(e))
-                rospy.logerr(traceback.format_exc())
-                rospy.logwarn('Motion planner aborted task')
-                self._action_server.set_aborted()
-                self._task = None
-                return (task_commands.NopCommand(),)
-
-            task_state = task_request[0]
-            if isinstance(task_state, task_states.TaskCanceled):
-                self._action_server.set_canceled()
-                self._task = None
-            elif isinstance(task_state, task_states.TaskAborted):
-                rospy.logwarn('Task aborted with: %s', task_state.msg)
-                self._action_server.set_aborted()
-                self._task = None
-            elif isinstance(task_state, task_states.TaskFailed):
-                rospy.logwarn('Task failed with: %s', task_state.msg)
-                self._action_server.set_succeeded(False)
-                self._task = None
-            elif isinstance(task_state, task_states.TaskDone):
-                self._action_server.set_succeeded(True)
-                self._task = None
-                return task_request[1:]
-            else:
-                assert isinstance(task_state, task_states.TaskRunning)
-                return task_request[1:]
-        else:
-            # There is no current task running
-            if self._time_of_last_task is None:
-                self._time_of_last_task = rospy.Time.now()
-
-            if ((rospy.Time.now() - self._time_of_last_task) > self._task_timeout):
-                if not self._timeout_vel_sent:
-                    commands = TwistStampedArray()
-
-                    if self._last_twist is None:
-                        self._last_twist = TwistStamped()
-                    self._last_twist.header.stamp = rospy.Time.now()
-
-                    future_twist = TwistStamped()
-                    future_twist.header.stamp = rospy.Time.now() + self._task_timeout_deceleration_time
-
-                    commands.twists = [self._last_twist, future_twist]
-
-                    # If past the timeout send a zero velocity command
-                    self._publish_twist(commands)
-
-                    self._timeout_vel_sent = True
-                    rospy.logwarn('Task running timeout. Setting zero velocity')
-            else:
-                self._timeout_vel_sent = False
-
-        # No action to take return a nop
-        return (task_commands.NopCommand(),)
+    # public wrapper for HLM Controller to send timeouts
+    def send_timeout(self, twist):
+        self._publish_twist(twist)
