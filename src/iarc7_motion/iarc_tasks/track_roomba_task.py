@@ -70,7 +70,7 @@ class TrackRoombaTask(object, AbstractTask):
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
-            self._MAX_START_TASK_DIST = rospy.get_param('~roomba_max_start_task_dist')
+            self._MAX_TASK_DIST = rospy.get_param('~roomba_max_task_dist')
             self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
@@ -83,6 +83,10 @@ class TrackRoombaTask(object, AbstractTask):
         self._z_holder = HeightHolder(TRACK_HEIGHT)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
+
+        if _MAX_TASK_DIST < math.sqrt(self._x_overshoot**2
+                            + self._y_overshoot**2):
+            raise ValueError('The overshoot is outside the max distance')
 
         self._state = TrackObjectTaskState.init
 
@@ -224,7 +228,7 @@ class TrackRoombaTask(object, AbstractTask):
     def _check_max_roomba_range(self):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
-        return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
+        return (_distance_to_roomba <= self._MAX_TASK_DIST)
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
