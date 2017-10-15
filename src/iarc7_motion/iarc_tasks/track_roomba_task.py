@@ -71,8 +71,6 @@ class TrackRoombaTask(object, AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_START_TASK_DIST = rospy.get_param('~roomba_max_start_task_dist')
-            if not self._check_max_roomba_range():
-                raise ValueError('The provided roomba is not close enough')
             self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
@@ -133,7 +131,6 @@ class TrackRoombaTask(object, AbstractTask):
                     return (TaskAborted(msg='Z error is too high'),)
                 elif not self._check_roomba_in_sight():
                     return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
-
                 try:
                     roomba_transform = self._tf_buffer.lookup_transform(
                                         'level_quad',
@@ -166,10 +163,10 @@ class TrackRoombaTask(object, AbstractTask):
 
                 # The overshoot is taking in the x velocity normalizing it and applying overshoot
                 overshoot = math.sqrt(self._x_overshoot**2 + self._y_roomba**2)
-                x_overshoot = overshoot * math.cos(math.atan(roomba_y_velocity / roomba_x_velocity)
-                                                        + math.atan(self._y_overshoot / self._x_overshoot))
-                y_overshoot = overshoot * math.sin(math.atan(roomba_y_velocity / roomba_x_overshoot )
-                                                        + math.atan(self._y_overshoot / self._x_overshoot))
+                x_overshoot = overshoot * math.cos(math.atan2(roomba_y_velocity, roomba_x_velocity)
+                                                        + math.atan2(self._y_overshoot, self._x_overshoot))
+                y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_overshoot )
+                                                        + math.atan2(self._y_overshoot, self._x_overshoot))
 
                 # p-controller
                 x_vel_target = ((self._roomba_point.point.x + x_overshoot)
@@ -214,7 +211,7 @@ class TrackRoombaTask(object, AbstractTask):
             
             return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
-    ## checks to see if passed in roomba id is in sight of quad
+    # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):
         for odometry in self._roomba_array.data:
             if odometry.child_frame_id == self._roomba_id:
@@ -225,12 +222,9 @@ class TrackRoombaTask(object, AbstractTask):
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
     def _check_max_roomba_range(self):
-
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
-        
         return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
-
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
