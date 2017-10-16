@@ -84,7 +84,7 @@ QuadVelocityController::QuadVelocityController(
                             },
                             100),
       odom_interpolator_(nh,
-                         "double_filtered_vel",
+                         "odometry/filtered",
                          update_timeout_,
                          ros::Duration(0),
                          [](const nav_msgs::Odometry& msg) {
