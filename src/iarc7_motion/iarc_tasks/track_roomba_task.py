@@ -84,7 +84,7 @@ class TrackRoombaTask(object, AbstractTask):
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
 
-        if _MAX_TASK_DIST < math.sqrt(self._x_overshoot**2
+        if self._MAX_TASK_DIST < math.sqrt(self._x_overshoot**2
                             + self._y_overshoot**2):
             raise ValueError('The overshoot is outside the max distance')
 
@@ -166,10 +166,10 @@ class TrackRoombaTask(object, AbstractTask):
                 roomba_velocity = math.sqrt(roomba_x_velocity**2 + roomba_y_velocity**2)
 
                 # The overshoot is taking in the x velocity normalizing it and applying overshoot
-                overshoot = math.sqrt(self._x_overshoot**2 + self._y_roomba**2)
+                overshoot = math.sqrt(self._x_overshoot**2 + self._y_overshoot**2)
                 x_overshoot = overshoot * math.cos(math.atan2(roomba_y_velocity, roomba_x_velocity)
                                                         + math.atan2(self._y_overshoot, self._x_overshoot))
-                y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_overshoot )
+                y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_velocity )
                                                         + math.atan2(self._y_overshoot, self._x_overshoot))
 
                 # p-controller
