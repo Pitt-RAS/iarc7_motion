@@ -56,7 +56,7 @@ k_position_z: .90
 # maximum radial distance from target point at which hold position task is allowed to run
 max_holding_range: 1.0
 # maximum radial distance from roomba at which hit_roomba task is allowed to run
-hit_roomba_max_start_dist: .5
+hit_roomba_max_start_dist: 2.0
 # descent velocity when hitting a roomba 
 hit_descent_velocity: -0.2
 # roomba diameter in meters
