@@ -1,22 +1,31 @@
 #!/usr/bin/env python
-
-import math
+import actionlib
 import rospy
-import tf2_ros
-import tf2_geometry_msgs
+import sys
 import threading
+import traceback
 
-import iarc_tasks.task_states as task_states
-import iarc_tasks.task_commands as task_commands
-
-from task_command_handler import TaskCommandHandler
-from intermediary_state import IntermediaryState
+from actionlib_msgs.msg import GoalStatus
+from std_srvs.srv import SetBool
 
 from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+
+from iarc7_msgs.msg import TwistStampedArray, OdometryArray
+from iarc7_msgs.msg import OrientationThrottleStamped, FlightControllerStatus
+
+from iarc7_safety.SafetyClient import SafetyClient
 
 from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
-from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped, FlightControllerStatus
+from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
+
+from task_command_handler import TaskCommandHandler
+from intermediary_state import IntermediaryState
+from iarc_task_action_server import IarcTaskActionServer
+
+import iarc_tasks.task_states as task_states
+import iarc_tasks.task_commands as task_commands
 
 class HighLevelMotionController:
 
@@ -105,8 +114,7 @@ class HighLevelMotionController:
                 goal = QuadMoveGoal(movement_type="land", preempt=True)
                 self._action_client.send_goal(goal,
                         done_cb=self._safety_task_complete_callback)
-                rospy.logwarn(
-                        'motion planner attempting to execute safety land')
+                rospy.logwarn('motion planner attempting to execute safety land')
                 self._safety_land_requested = True
 
             # if we have not seen a task yet
@@ -197,13 +205,13 @@ class HighLevelMotionController:
                 rospy.logerr('Timeout timer in HLM fired with task running')
 
     # checks task transitions before executing it
-    def _check_transition(self):
+    def _check_transition(self, task):
         return True
 
     # fills out the Intermediary State for the task
     def _get_transition(self):
         while ((self._drone_odometry is None or self._roombas is None 
-                or self._arm_status) and not rospy.is_shutdown()):
+                or self._arm_status is None) and not rospy.is_shutdown()):
             pass
 
         with self._lock:
@@ -252,7 +260,7 @@ class HighLevelMotionController:
             self._safety_land_complete = True
 
 if __name__ == '__main__':
-    rospy.init_node('high_level_motion_controller')
+    rospy.init_node('high_level_motion')
 
     # action server for getting requests from AI
     action_server = IarcTaskActionServer()
@@ -261,7 +269,6 @@ if __name__ == '__main__':
     try:
         high_level_motion_controller.run()
     except Exception, e:
-        import traceback
         rospy.logfatal("Error in High Level Motion while running.")
         rospy.logfatal(str(e))
         rospy.logfatal(traceback.format_exc())

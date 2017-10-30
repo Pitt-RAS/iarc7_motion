@@ -9,6 +9,6 @@
         <remap from="odometry/filtered" to="/double_filtered_vel" />
     </node>
 
-    <param name="$(arg bond_id_namespace)/high_level_motion\/form_bond"
+    <param name="$(arg bond_id_namespace)/high_level_motion/form_bond"
         value="true" />
 </launch>

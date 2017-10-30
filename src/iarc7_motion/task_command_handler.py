@@ -25,6 +25,13 @@ class TaskCommandHandler:
         self._transition = None
         self._task_canceled = False
 
+        self._ground_interaction_task_callback = None
+
+        # Creates the SimpleActionClient for requesting ground interaction
+        self._ground_interaction_client = actionlib.SimpleActionClient(
+                                          'ground_interaction_action',
+                                          GroundInteractionAction)
+
         # used to send velocity commands to LLM
         self._velocity_pub = rospy.Publisher('movement_velocity_targets',
                                              TwistStampedArray,
