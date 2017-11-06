@@ -124,7 +124,7 @@ class HighLevelMotionController:
                 self._timer = rospy.Timer(self._task_timeout, self._recieve_task_timeout)
                 self._initialized = True
 
-            if (self._task is None):
+            if self._task is None:
                 if self._action_server.has_new_task():
                     new_task = self._action_server.get_new_task()
 

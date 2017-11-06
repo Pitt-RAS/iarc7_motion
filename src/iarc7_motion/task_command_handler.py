@@ -57,6 +57,7 @@ class TaskCommandHandler:
         self._task = task
         self._transition = transition
         self._task_canceled = False
+        self._task_state = task_states.TaskRunning()
         # self._task.send_transition(self._transition)
 
     # cancels task
@@ -114,23 +115,23 @@ class TaskCommandHandler:
                 self._task_state = task_states.TaskAborted
                 return (task_commands.NopCommand(),)
 
-            task_state = task_request[0]
+            self._task_state = task_request[0]
 
-            if isinstance(task_state, task_states.TaskDone):
+            if isinstance(self._task_state, task_states.TaskDone):
                 self._task = None
                 return task_request[1:]
-            elif isinstance(task_state, task_states.TaskRunning):
+            elif isinstance(self._task_state, task_states.TaskRunning):
                 return task_request[1:]
             else: 
                 self._task = None
-                return task_commands.NopCommand()
         elif self._task_canceled:
-            self._task_state = task_states.TaskCanceled
-        
+            self._task_state = task_states.TaskCanceled()
         else: 
-            self._task_state = task_states.TaskAborted
+            self._task_state = task_states.TaskAborted()
             rospy.logerr('TaskCommandHandler ran with no task running. Setting task state to aborted.')
-            return (task_commands.NopCommand(),)
+
+        # no action to take, return a Nop
+        return (task_commands.NopCommand(),)
 
     """
     Command Handlers
