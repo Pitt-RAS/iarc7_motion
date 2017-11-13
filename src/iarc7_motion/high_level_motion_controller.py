@@ -24,8 +24,20 @@ from task_command_handler import TaskCommandHandler
 from intermediary_state import IntermediaryState
 from iarc_task_action_server import IarcTaskActionServer
 
+from iarc_tasks.takeoff_task import TakeoffTask
+from iarc_tasks.land_task import LandTask
+from iarc_tasks.test_task import TestTask
+from iarc_tasks.xyztranslation_task import XYZTranslationTask
+from iarc_tasks.track_roomba_task import TrackRoombaTask
+from iarc_tasks.hit_roomba_task import HitRoombaTask
+from iarc_tasks.block_roomba_task import BlockRoombaTask
+from iarc_tasks.hold_position_task import HoldPositionTask
+from iarc_tasks.height_recovery_task import HeightRecoveryTask
+from iarc_tasks.velocity_task import VelocityTask
+
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
+
 
 class HighLevelMotionController:
 
@@ -41,6 +53,8 @@ class HighLevelMotionController:
         # current state of HLM
         self._task = None
         self._initialized = False
+        self._waiting_on_takeoff = True
+        self._waiting_on_recovery = False
 
         # used for timeouts & extrapolating 
         self._timer = None
@@ -83,6 +97,7 @@ class HighLevelMotionController:
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
             self._task_timeout_deceleration_time = rospy.Duration(
                 rospy.get_param('~task_timeout_deceleration_time'))
+            self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for High Level Motion Controller')
@@ -166,6 +181,7 @@ class HighLevelMotionController:
                 # as soon as we set a task to None, start timeout timer
                 if self._task is None:
                     self._timer = rospy.Timer(self._task_timeout, self._recieve_task_timeout)
+                    self._timeout_vel_sent = False
 
             rate.sleep()
 
@@ -197,7 +213,6 @@ class HighLevelMotionController:
 
                     # if timed-out, send twists to LLM
                     self._task_command_handler.send_timeout(commands)
-
                     self._timeout_vel_sent = True
                     self._last_twist = future_twist
                 rospy.logwarn('Task running timeout. Setting zero velocity')
@@ -206,7 +221,37 @@ class HighLevelMotionController:
 
     # checks task transitions before executing it
     def _check_transition(self, task):
-        return True
+        passed = False
+
+        if self._waiting_on_takeoff: 
+            passed = isinstance(task, TakeoffTask)
+        elif isinstance(task, LandTask):
+            self._waiting_on_takeoff = True
+            passed = True
+        elif self._waiting_on_recovery:
+            passed = isinstance(task, HeightRecoveryTask)
+        elif self._below_min_manuever_height():
+            passed = isinstance(task, TakeoffTask) or isinstance(task, HeightRecoveryTask)
+        else: 
+            passed = True
+
+        if isinstance(task, TakeoffTask):
+            self._waiting_on_takeoff = False
+        elif isinstance(task, BlockRoombaTask) or isinstance(task, HitRoombaTask):
+            self._waiting_on_recovery = True
+        elif isinstance(task, HeightRecoveryTask):
+            self._waiting_on_recovery = False
+
+        return passed
+
+    # checks to see if drone above min manuever height
+    def _below_min_manuever_height(self):
+        with self._lock:
+            if self._drone_odometry is None:
+                return True
+            else:
+                return (self._drone_odometry.pose.pose.position.z 
+                            < self._MIN_MANEUVER_HEIGHT)
 
     # fills out the Intermediary State for the task
     def _get_transition(self):
