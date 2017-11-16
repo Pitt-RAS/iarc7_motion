@@ -70,3 +70,4 @@ class IntermediaryState(object):
     @last_twist.setter
     def last_twist(self, twist):
         self._last_twist = twist
+        

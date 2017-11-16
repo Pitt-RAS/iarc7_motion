@@ -148,3 +148,4 @@ class StateMonitor:
     def _receive_arm_status(self, data):
         with self._lock:
             self._arm_status = data
+            

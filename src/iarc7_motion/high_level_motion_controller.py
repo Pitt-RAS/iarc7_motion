@@ -182,7 +182,7 @@ class HighLevelMotionController:
 
                     self._task_command_handler.send_timeout(
                         self._state_monitor.get_timeout(last_twist))
-                    
+
                     self._timeout_vel_sent = True
 
                 rospy.logwarn('Task running timeout. Setting zero velocity')
@@ -211,3 +211,4 @@ if __name__ == '__main__':
         raise
     finally:
         rospy.signal_shutdown("High Level Motion shutdown")
+        
