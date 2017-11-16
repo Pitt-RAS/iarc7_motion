@@ -211,4 +211,3 @@ if __name__ == '__main__':
         raise
     finally:
         rospy.signal_shutdown("High Level Motion shutdown")
-        
