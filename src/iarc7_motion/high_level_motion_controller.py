@@ -21,19 +21,9 @@ from iarc7_motion.msg import QuadMoveGoal, QuadMoveAction
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
 from task_command_handler import TaskCommandHandler
+from state_monitor import StateMonitor
 from intermediary_state import IntermediaryState
 from iarc_task_action_server import IarcTaskActionServer
-
-from iarc_tasks.takeoff_task import TakeoffTask
-from iarc_tasks.land_task import LandTask
-from iarc_tasks.test_task import TestTask
-from iarc_tasks.xyztranslation_task import XYZTranslationTask
-from iarc_tasks.track_roomba_task import TrackRoombaTask
-from iarc_tasks.hit_roomba_task import HitRoombaTask
-from iarc_tasks.block_roomba_task import BlockRoombaTask
-from iarc_tasks.hold_position_task import HoldPositionTask
-from iarc_tasks.height_recovery_task import HeightRecoveryTask
-from iarc_tasks.velocity_task import VelocityTask
 
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
@@ -44,25 +34,20 @@ class HighLevelMotionController:
     def __init__(self, action_server):
         # action server for getting requests from AI
         self._action_server = action_server
-
-        # state data
-        self._roombas = None
-        self._drone_odometry = None
-        self._arm_status = None
         
         # current state of HLM
         self._task = None
         self._initialized = False
-        self._waiting_on_takeoff = True
-        self._waiting_on_recovery = False
 
         # used for timeouts & extrapolating 
         self._timer = None
-        self._last_twist = None
         self._timeout_vel_sent = False 
 
         # to keep things thread safe
         self._lock = threading.RLock()
+
+        # handles monitoring of state of drone
+        self._state_monitor = StateMonitor()
 
         # handles communicating between tasks and LLM
         self._task_command_handler = TaskCommandHandler()
@@ -76,28 +61,11 @@ class HighLevelMotionController:
         self._action_client = actionlib.SimpleActionClient(
                                         "motion_planner_server",
                                         QuadMoveAction)
-        
-        # info needed to do sanity checking and state monitoring
-        self._roomba_status_sub = rospy.Subscriber(
-            'roombas', OdometryArray, 
-            self._receive_roomba_status)
-
-        self._current_velocity_sub = rospy.Subscriber(
-            '/odometry/filtered', Odometry,
-            self._recieve_drone_odometry)
-
-        self._drone_arm_status = rospy.Subscriber(
-            '/fc_status', FlightControllerStatus, 
-            self._receive_arm_status)
-
         try:
             # update rate for HLM
             self._update_rate = rospy.get_param('~update_rate')
             # task timeout values
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
-            self._task_timeout_deceleration_time = rospy.Duration(
-                rospy.get_param('~task_timeout_deceleration_time'))
-            self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for High Level Motion Controller')
@@ -143,7 +111,7 @@ class HighLevelMotionController:
                 if self._action_server.has_new_task():
                     new_task = self._action_server.get_new_task()
 
-                    if self._check_transition(new_task):
+                    if self._state_monitor.check_transition(new_task):
                         self._task = new_task
                         self._shutdown_timer()
                         self._task_command_handler.new_task(new_task, self._get_transition())
@@ -176,8 +144,6 @@ class HighLevelMotionController:
                 else:
                     assert isinstance(task_state, task_states.TaskRunning)
 
-                self._last_twist = self._task_command_handler.get_last_twist()
-
                 # as soon as we set a task to None, start timeout timer
                 if self._task is None:
                     self._timer = rospy.Timer(self._task_timeout, self._recieve_task_timeout)
@@ -185,115 +151,13 @@ class HighLevelMotionController:
 
             rate.sleep()
 
-    def _recieve_task_timeout(self, event):
-        """
-        Handles no task running timeouts
-
-        Args: 
-            event: rospy.TimerEvent 
-                (see http://wiki.ros.org/rospy/Overview/Time)
-        """
-        with self._lock:
-            if self._task is None: 
-                if not self._timeout_vel_sent:
-                    commands = TwistStampedArray()
-
-                    if self._last_twist is None:
-                        self._last_twist = TwistStamped()
-                    self._last_twist.header.stamp = rospy.Time.now()
-
-                    # send future twist with zero velocity
-                    # so that LLM will interpolate between the 
-                    # current velocity and 0m/s to avoid impulse in velocity
-                    future_twist = TwistStamped()
-                    future_twist.header.stamp = (rospy.Time.now() + 
-                        self._task_timeout_deceleration_time)
-
-                    commands.twists = [self._last_twist, future_twist]
-
-                    # if timed-out, send twists to LLM
-                    self._task_command_handler.send_timeout(commands)
-                    self._timeout_vel_sent = True
-                    self._last_twist = future_twist
-                rospy.logwarn('Task running timeout. Setting zero velocity')
-            else: 
-                rospy.logerr('Timeout timer in HLM fired with task running')
-
-    # checks task transitions before executing it
-    def _check_transition(self, task):
-        passed = False
-
-        if self._waiting_on_takeoff: 
-            passed = isinstance(task, TakeoffTask)
-        elif isinstance(task, LandTask):
-            self._waiting_on_takeoff = True
-            passed = True
-        elif self._waiting_on_recovery:
-            passed = isinstance(task, HeightRecoveryTask)
-        elif self._below_min_manuever_height():
-            passed = isinstance(task, TakeoffTask) or isinstance(task, HeightRecoveryTask)
-        else: 
-            passed = True
-
-        if isinstance(task, TakeoffTask):
-            self._waiting_on_takeoff = False
-        elif isinstance(task, BlockRoombaTask) or isinstance(task, HitRoombaTask):
-            self._waiting_on_recovery = True
-        elif isinstance(task, HeightRecoveryTask):
-            self._waiting_on_recovery = False
-
-        return passed
-
-    # checks to see if drone above min manuever height
-    def _below_min_manuever_height(self):
-        with self._lock:
-            if self._drone_odometry is None:
-                return True
-            else:
-                return (self._drone_odometry.pose.pose.position.z 
-                            < self._MIN_MANEUVER_HEIGHT)
-
     # fills out the Intermediary State for the task
     def _get_transition(self):
-        while ((self._drone_odometry is None or self._roombas is None 
-                or self._arm_status is None) and not rospy.is_shutdown()):
-            pass
-
-        with self._lock:
-            state = IntermediaryState() 
-            state.drone_odometry = self._drone_odometry
-            state.roombas = self._roombas
-            state.timeout_sent = self._timeout_vel_sent
-            state.last_task_ending_state = self._task_command_handler.get_state()
-            state.arm_status = self._arm_status
-            state.last_twist = self._last_twist
-            return state
-
-    # shuts down the timer so the callback is not called when a task is running
-    def _shutdown_timer(self):
-        with self._lock:
-            self._timer.shutdown()
-            self._timer = None
-
-    """
-    Callbacks for publishers
-    
-    Types: 
-        drone odometry: odometry (position, velocity, etc.) of drone
-        roomba status: odometry (position, velocity, etc.) of
-            all roombas in sight of drone
-    """
-    def _recieve_drone_odometry(self, data):
-        with self._lock:
-            self._drone_odometry = data
-
-    def _receive_roomba_status(self, data):
-        with self._lock:
-            self._roombas = data
-
-    def _receive_arm_status(self, data):
-        with self._lock:
-            self._arm_status = data
+        state = IntermediaryState() 
+        state.last_twist = self._task_command_handler.get_last_twist()
+        state.last_task_ending_state = self._task_command_handler.get_state()
+        state.timeout_sent = self._timeout_vel_sent
+        return self._state_monitor.fill_out_transition(state)
 
     # callback for safety task completition
     def _safety_task_complete_callback(self, status, response):
@@ -303,6 +167,33 @@ class HighLevelMotionController:
             else:
                 rospy.logerr('High Level Motion did not safely land aircraft')
             self._safety_land_complete = True
+
+    def _recieve_task_timeout(self, event):
+        """
+        Handles no task running timeouts
+        Args: 
+            event: rospy.TimerEvent 
+                (see http://wiki.ros.org/rospy/Overview/Time)
+        """
+        with self._lock:
+            if self._task is None: 
+                if not self._timeout_vel_sent:
+                    last_twist = self._task_command_handler.get_last_twist()
+
+                    self._task_command_handler.send_timeout(
+                        self._state_monitor.get_timeout(last_twist))
+                    
+                    self._timeout_vel_sent = True
+
+                rospy.logwarn('Task running timeout. Setting zero velocity')
+            else: 
+                rospy.logerr('Timeout timer in HLM fired with task running')
+
+    # shuts down the timer so the callback is not called when a task is running
+    def _shutdown_timer(self):
+        with self._lock:
+            self._timer.shutdown()
+            self._timer = None
 
 if __name__ == '__main__':
     rospy.init_node('high_level_motion')
