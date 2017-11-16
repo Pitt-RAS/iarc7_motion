@@ -14,7 +14,7 @@ from geometry_msgs.msg import Vector3Stamped
 from geometry_msgs.msg import Vector3
 from nav_msgs.msg import Odometry
 
-from acceleration_limiter import AccelerationLimiter 
+from task_utilities import AccelerationLimiter
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped
@@ -54,6 +54,7 @@ class BlockRoombaTask(AbstractTask):
         self._switch_message = None
         self._last_update_time = None
         self._current_velocity = None
+        self._transition = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -231,3 +232,6 @@ class BlockRoombaTask(AbstractTask):
         else: 
             data = self._switch_message
             return (data.front or data.back or data.left or data.right)
+
+    def send_transition(self, transition):
+        self._transition = transition

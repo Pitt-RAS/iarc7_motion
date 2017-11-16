@@ -25,6 +25,8 @@ class XYZTranslationTask(AbstractTask):
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False;
 
+        self._transition = None
+
         self._x_position = task_request.x_position
         self._y_position = task_request.y_position
         self._z_position = task_request.z_position
@@ -78,3 +80,6 @@ class XYZTranslationTask(AbstractTask):
     def cancel(self):
         rospy.loginfo('XYZTranslationTask canceled')
         self._canceled = True
+    
+    def send_transition(self, transition):
+        self._transition = transition

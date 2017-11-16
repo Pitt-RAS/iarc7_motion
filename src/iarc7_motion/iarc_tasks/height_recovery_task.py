@@ -31,7 +31,9 @@ class HeightRecoveryTask(AbstractTask):
     def __init__(self, task_request):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
-        self._canceled = False;
+        self._canceled = False
+
+        self._transition = None
 
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
@@ -94,3 +96,6 @@ class HeightRecoveryTask(AbstractTask):
     def cancel(self):
         rospy.loginfo('HeightRecoveryTask canceled')
         self._canceled = True
+    
+    def send_transition(self, transition):
+        self._transition = transition

@@ -20,9 +20,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from height_holder import HeightHolder
-from height_settings_checker import HeightSettingsChecker
-from acceleration_limiter import AccelerationLimiter
+from task_utilities import HeightHolder, HeightSettingsChecker, AccelerationLimiter
 
 class VelocityTaskState(object):
     init = 0
@@ -37,6 +35,7 @@ class VelocityTask(object, AbstractTask):
         self._canceled = False
         self._current_velocity = None
         self._current_height_set = False
+        self._transition = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -149,3 +148,6 @@ class VelocityTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('VelocityTestTask Task canceled')
         self._canceled = True
+
+    def send_transition(self, transition):
+        self._transition = transition

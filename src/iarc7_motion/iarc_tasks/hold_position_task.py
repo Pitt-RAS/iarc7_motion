@@ -22,7 +22,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from height_settings_checker import HeightSettingsChecker
+from task_utilities import HeightSettingsChecker
 
 class HoldPositionTaskStates:
     init = 0
@@ -36,6 +36,7 @@ class HoldPositionTask(AbstractTask):
 
         self._drone_odometry = None
         self._canceled = False
+        self._transition = None
 
         self._lock = threading.RLock()
         self._height_checker = HeightSettingsChecker()
@@ -149,3 +150,6 @@ class HoldPositionTask(AbstractTask):
             self._x_position = self._drone_odometry.pose.pose.position.x
             self._y_position = self._drone_odometry.pose.pose.position.y
             self._z_position = self._drone_odometry.pose.pose.position.z
+    
+    def send_transition(self, transition):
+        self._transition = transition

@@ -14,6 +14,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
 class TestTask(AbstractTask):
 
     def __init__(self, actionvalues_dict):
+        self._transition = None
         self.target = None
         self.abort_time = None
         self.abort = actionvalues_dict['takeoff_height']
@@ -47,3 +48,6 @@ class TestTask(AbstractTask):
     def cancel(self):
         rospy.loginfo("TestTask canceling")
         self.canceled = True
+    
+    def send_transition(self, transition):
+        self._transition = transition
