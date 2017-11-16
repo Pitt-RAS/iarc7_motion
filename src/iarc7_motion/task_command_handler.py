@@ -59,7 +59,7 @@ class TaskCommandHandler:
         self._transition = transition
         self._task_canceled = False
         self._task_state = task_states.TaskRunning()
-        # self._task.send_transition(self._transition)
+        self._task.send_transition(self._transition)
 
     # cancels task
     def cancel_task(self):

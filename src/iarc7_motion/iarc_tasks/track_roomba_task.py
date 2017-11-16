@@ -23,9 +23,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from height_holder import HeightHolder
-from height_settings_checker import HeightSettingsChecker
-from acceleration_limiter import AccelerationLimiter
+from task_utilities import HeightHolder, HeightSettingsChecker, AccelerationLimiter
 
 class TrackObjectTaskState(object):
     init = 0
@@ -50,6 +48,7 @@ class TrackRoombaTask(object, AbstractTask):
         self._roomba_found = False
         self._current_velocity = None
         self._start_time = None
+        self._transition = None
 
         self._drone_odometry = None
         self._canceled = False
@@ -233,3 +232,6 @@ class TrackRoombaTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
         self._canceled = True
+    
+    def send_transition(self, transition):
+        self._transition = transition

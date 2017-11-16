@@ -10,3 +10,7 @@ class AbstractTask:
     # Abstract method
     def cancel(self):
         raise NotImplementedError("Subclass must implement abstract method")
+
+    # Abstract method
+    def send_transition(self):
+    	raise NotImplementedError("Subclass must implement abstract method")

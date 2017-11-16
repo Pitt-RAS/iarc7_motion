@@ -24,7 +24,8 @@ class LandTaskState:
 class LandTask(AbstractTask):
     
     def __init__(self, task_request):
-        self._canceled = False;
+        self._transition = None
+        self._canceled = False
 
         self._fc_status = None
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
@@ -68,6 +69,9 @@ class LandTask(AbstractTask):
         # Impossible state reached
         else:
             return (TaskAborted(msg='Impossible state in takeoff task reached'))
+
+    def send_transition(self, transition):
+        self._transition = transition
 
     def cancel(self):
         rospy.loginfo('TakeoffTask canceled')

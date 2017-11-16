@@ -30,6 +30,7 @@ class TakeoffTaskState:
 class TakeoffTask(AbstractTask):
 
     def __init__(self, task_request):
+        self._transition = None
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False;
@@ -116,7 +117,9 @@ class TakeoffTask(AbstractTask):
         else:
             return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
-
     def cancel(self):
         rospy.loginfo('TakeoffTask canceled')
         self._canceled = True
+
+    def send_transition(self, transition):
+        self._transition = transition
