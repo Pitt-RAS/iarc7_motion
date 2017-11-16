@@ -24,6 +24,7 @@ class TaskCommandHandler:
         self._task_state = None
         self._transition = None
         self._task_canceled = False
+        self._last_twist = None
 
         self._ground_interaction_task_callback = None
 
