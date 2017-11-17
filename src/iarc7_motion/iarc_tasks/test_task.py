@@ -11,6 +11,8 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
+from intermediary_state import IntermediaryState
+
 class TestTask(AbstractTask):
 
     def __init__(self, actionvalues_dict):

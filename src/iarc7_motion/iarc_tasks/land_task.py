@@ -15,6 +15,8 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (NopCommand,
                                       GroundInteractionCommand)
 
+from intermediary_state import IntermediaryState
+
 class LandTaskState:
     init = 0
     land = 1

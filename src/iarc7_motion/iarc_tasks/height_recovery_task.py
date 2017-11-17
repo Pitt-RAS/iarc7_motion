@@ -20,6 +20,8 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
 
+from intermediary_state import IntermediaryState
+
 class HeightRecoveryTaskState:
     init = 0
     recover = 1
