@@ -81,12 +81,16 @@ class StateMonitor:
             else: 
                 passed = True
 
-            if isinstance(task, TakeoffTask):
-                self._waiting_on_takeoff = False
-            elif isinstance(task, BlockRoombaTask) or isinstance(task, HitRoombaTask):
-                self._waiting_on_recovery = True
-            elif isinstance(task, HeightRecoveryTask):
-                self._waiting_on_recovery = False
+            if passed:
+                if isinstance(task, TakeoffTask):
+                    self._waiting_on_takeoff = False
+                elif isinstance(task, BlockRoombaTask) or isinstance(task, HitRoombaTask):
+                    self._waiting_on_recovery = True
+                elif isinstance(task, HeightRecoveryTask):
+                    self._waiting_on_recovery = False
+
+            rospy.loginfo("Waiting on Takeoff: " + str(self._waiting_on_takeoff))
+            rospy.loginfo("Waiting on Recovery: " + str(self._waiting_on_recovery))
 
             return passed
 
