@@ -113,7 +113,7 @@ class TaskCommandHandler:
                 rospy.logerr(traceback.format_exc())
                 rospy.logerr('Task Command Handler aborted task')
                 self._task = None
-                self._task_state = task_states.TaskAborted
+                self._task_state = task_states.TaskAborted()
                 return (task_commands.NopCommand(),)
 
             self._task_state = task_request[0]

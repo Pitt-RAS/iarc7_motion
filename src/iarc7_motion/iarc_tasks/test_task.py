@@ -15,11 +15,11 @@ from intermediary_state import IntermediaryState
 
 class TestTask(AbstractTask):
 
-    def __init__(self, actionvalues_dict):
+    def __init__(self, task_request):
         self._transition = None
         self.target = None
         self.abort_time = None
-        self.abort = actionvalues_dict['takeoff_height']
+        self.abort = task_request.takeoff_height
         self.aborted = False
         self.canceled = False
 
