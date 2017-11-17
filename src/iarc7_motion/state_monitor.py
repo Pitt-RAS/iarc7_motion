@@ -29,6 +29,7 @@ class StateMonitor:
     def __init__(self):
         # state data
         self._roombas = None
+        self._obstacles = None
         self._drone_odometry = None
         self._arm_status = None
         
@@ -44,6 +45,10 @@ class StateMonitor:
         self._roomba_status_sub = rospy.Subscriber(
             'roombas', OdometryArray, 
             self._receive_roomba_status)
+
+        self._obstacle_sub = rospy.Subscriber(
+            '/obstacles', OdometryArray, 
+            self._receive_obstacle_status)
 
         self._current_velocity_sub = rospy.Subscriber(
             '/odometry/filtered', Odometry,
@@ -111,6 +116,7 @@ class StateMonitor:
         with self._lock:
             state.drone_odometry = self._drone_odometry
             state.roombas = self._roombas
+            state.obstacles = self._obstacles
             state.arm_status = self._arm_status
             return state
     
@@ -148,6 +154,10 @@ class StateMonitor:
     def _receive_roomba_status(self, data):
         with self._lock:
             self._roombas = data
+
+    def _receive_obstacle_status(self, data):
+        with self._lock:
+            self._obstacles = data
 
     def _receive_arm_status(self, data):
         with self._lock:

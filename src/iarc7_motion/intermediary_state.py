@@ -2,8 +2,9 @@
 
 class IntermediaryState(object):
 
-    def __init__(self, drone_odometry = None, roombas = None, 
-            timeout_sent = None, last_task_ending_state = None, arm_status = None, last_twist = None):
+    def __init__(self, drone_odometry = None, roombas = None, obstacles = None,
+        timeout_sent = None, last_task_ending_state = None,
+        arm_status = None, last_twist = None):
         """
         Intermediary State
 
@@ -18,6 +19,7 @@ class IntermediaryState(object):
         """
         self.drone_odometry = drone_odometry
         self.roombas = roombas
+        self.obstacles = obstacles
         self.timeout_sent = timeout_sent
         self.last_task_ending_state = last_task_ending_state
         self.arm_status = arm_status
@@ -38,6 +40,14 @@ class IntermediaryState(object):
     @roombas.setter
     def roombas(self, roombas):
         self._roombas = roombas
+
+    @property
+    def obstacles(self):
+        return self._obstacles
+
+    @obstacles.setter
+    def obstacles(self, obstacles):
+        self._obstacles = obstacles
 
     @property
     def timeout_sent(self):
