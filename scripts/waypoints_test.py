@@ -34,7 +34,7 @@ if __name__ == '__main__':
     armed = False
     while not rospy.is_shutdown() and not armed:
         try:
-            armed = arm_service(True, True, True)
+            armed = arm_service(True)
         except rospy.ServiceException as exc:
             print("Could not arm: " + str(exc))
 
@@ -50,7 +50,8 @@ if __name__ == '__main__':
     waypoints_iter = iter(waypoints)
     target = next(waypoints_iter)
 
-    kP = 0.5
+    kP = 0.8
+    gamma = 0.8
     kP_yaw = 0.5
     max_vel = 1
     max_yaw_vel = 2.0 * math.pi / 3 # Max requested yaw is one rev per 3 seconds
@@ -73,7 +74,9 @@ if __name__ == '__main__':
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
         try:
-            (trans, rot) = tf_listener.lookupTransform('/map', '/quad', rospy.Time(0))
+            (trans, rot) = tf_listener.lookupTransform('/map',
+                                                       '/quad',
+                                                       rospy.Time(0))
         except tf.Exception as ex:
             rospy.logerr(ex.message)
             rate.sleep()
@@ -91,16 +94,23 @@ if __name__ == '__main__':
         velocity.header.frame_id = 'level_quad'
         velocity.header.stamp = rospy.Time.now()
         if abs(target[0] - trans[0]) >= 0.02:
-            velocity.twist.linear.x = constrain((target[0] - trans[0]) * kP, -max_vel, max_vel)
+            error = target[0] - trans[0]
+            target_v = math.copysign(kP * abs(error)**gamma, error)
+            velocity.twist.linear.x = constrain(target_v, -max_vel, max_vel)
         if abs(target[1] - trans[1]) >= 0.02:
-            velocity.twist.linear.y = constrain((target[1] - trans[1]) * kP, -max_vel, max_vel)
+            error = target[1] - trans[1]
+            target_v = math.copysign(kP * abs(error)**gamma, error)
+            velocity.twist.linear.y = constrain(target_v, -max_vel, max_vel)
         if abs(target[2] - trans[2]) >= 0.02:
-            velocity.twist.linear.z = target[2] - trans[2]
+            error = target[2] - trans[2]
+            target_v = math.copysign(kP * abs(error)**gamma, error)
+            velocity.twist.linear.z = constrain(target_v, -max_vel, max_vel)
         
         # Get the yaw (z axis) rotation from the quanternion
         current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
         
-        # Transform current yaw to be between 0 and 2pi because the points are encoded from 0 to 2pi
+        # Transform current yaw to be between 0 and 2pi because the points
+        # are encoded from 0 to 2pi
         if current_yaw < 0:
             current_yaw = (2.0 * math.pi) + current_yaw
 
@@ -117,7 +127,9 @@ if __name__ == '__main__':
 
         # Finally set the desired twist velocity
         if abs(yaw_difference) >= 0.02:
-            velocity.twist.angular.z = constrain(yaw_difference * kP_yaw, -max_yaw_vel, max_yaw_vel)
+            velocity.twist.angular.z = constrain(yaw_difference * kP_yaw,
+                                                 -max_yaw_vel,
+                                                 max_yaw_vel)
 
         velocity_msg = TwistStampedArray()
         velocity_msg.twists = [velocity]
