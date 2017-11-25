@@ -13,7 +13,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand, NopCommand)
 
 from translate_stop_planner import TranslateStopPlanner
-from intermediary_state import IntermediaryState
+from transition_data import TransitionData
 
 class XYZTranslationTaskState:
     init = 0

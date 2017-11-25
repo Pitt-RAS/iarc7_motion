@@ -9,7 +9,7 @@ from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
-from iarc7_msgs.msg import TwistStampedArray, OdometryArray
+from iarc7_msgs.msg import TwistStampedArray, OdometryArray, ObstacleArray
 from iarc7_msgs.msg import FlightControllerStatus
 
 from iarc_tasks.takeoff_task import TakeoffTask
@@ -47,7 +47,7 @@ class StateMonitor:
             self._receive_roomba_status)
 
         self._obstacle_sub = rospy.Subscriber(
-            '/obstacles', OdometryArray, 
+            '/obstacles', ObstacleArray, 
             self._receive_obstacle_status)
 
         self._current_velocity_sub = rospy.Subscriber(
@@ -103,6 +103,7 @@ class StateMonitor:
     def _below_min_manuever_height(self):
         with self._lock:
             if self._drone_odometry is None:
+                rospy.logerr('State Monitor does not know current drone odometry when checking for Min-Manuever Height')
                 return True
             else:
                 return (self._drone_odometry.pose.pose.position.z 
@@ -112,6 +113,7 @@ class StateMonitor:
     def fill_out_transition(self, state):
         while ((self._drone_odometry is None or self._roombas is None 
                 or self._arm_status is None) and not rospy.is_shutdown()):
+            rospy.loginfo('StateMonitor waiting on topics to be published')
             pass
         with self._lock:
             state.drone_odometry = self._drone_odometry

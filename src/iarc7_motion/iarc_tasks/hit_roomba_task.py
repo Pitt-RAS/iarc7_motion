@@ -12,7 +12,7 @@ from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Odometry
 
 from task_utilities import AccelerationLimiter
-from intermediary_state import IntermediaryState
+from transition_data import TransitionData
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped

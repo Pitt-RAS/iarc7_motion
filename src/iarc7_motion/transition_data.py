@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
-class IntermediaryState(object):
+class TransitionData(object):
 
     def __init__(self, drone_odometry = None, roombas = None, obstacles = None,
         timeout_sent = None, last_task_ending_state = None,
         arm_status = None, last_twist = None):
         """
-        Intermediary State
+        Transition Data
 
         Args:
             drone_odometry: odometry (position, velocity, etc.) of drone
             roombas: odometry (position, velocity, etc.) of
                 all roombas in sight of drone
+            obstacles: odometry (position, velocity, etc.) of
+                all obstacles in sight of drone
             timeout_sent: whether or not timeout was sent
             last_task_ending_state: last task ending state
             arm_status: current arm status of drone

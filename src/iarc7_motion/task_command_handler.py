@@ -53,7 +53,7 @@ class TaskCommandHandler:
             }
 
     # takes in new task from HLM Controller
-    # transition is of type IntermediaryState 
+    # transition is of type TransitionData 
     def new_task(self, task, transition):
         self._task = task
         self._transition = transition

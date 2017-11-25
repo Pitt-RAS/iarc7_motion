@@ -22,7 +22,7 @@ from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
 from task_command_handler import TaskCommandHandler
 from state_monitor import StateMonitor
-from intermediary_state import IntermediaryState
+from transition_data import TransitionData
 from iarc_task_action_server import IarcTaskActionServer
 
 import iarc_tasks.task_states as task_states
@@ -114,9 +114,9 @@ class HighLevelMotionController:
                     if self._state_monitor.check_transition(new_task):
                         self._task = new_task
                         self._shutdown_timer()
-                        self._task_command_handler.new_task(new_task, self._get_transition())
+                        self._task_command_handler.new_task(new_task, self._get_current_transition())
                     else: 
-                        rospy.logwarn('AI provided illegal task transition. Aborting requested task.')
+                        rospy.logwarn('Illegal task transition request requested in HLM. Aborting requested task.')
                         self._action_server.set_aborted()
             else: 
                 if self._action_server.is_canceled():
@@ -152,8 +152,8 @@ class HighLevelMotionController:
             rate.sleep()
 
     # fills out the Intermediary State for the task
-    def _get_transition(self):
-        state = IntermediaryState() 
+    def _get_current_transition(self):
+        state = TransitionData() 
         state.last_twist = self._task_command_handler.get_last_twist()
         state.last_task_ending_state = self._task_command_handler.get_state()
         state.timeout_sent = self._timeout_vel_sent
@@ -176,10 +176,16 @@ class HighLevelMotionController:
                 (see http://wiki.ros.org/rospy/Overview/Time)
         """
         with self._lock:
+            # task should be None when this callback is called
             if self._task is None: 
+                # if we have not sent a timeout velocity yet
                 if not self._timeout_vel_sent:
+                    # last twist sent by last task
                     last_twist = self._task_command_handler.get_last_twist()
 
+                    # calls public method in Task Command Handler to 
+                    # publish twist stamped array, which came from 
+                    # the State Monitor
                     self._task_command_handler.send_timeout(
                         self._state_monitor.get_timeout(last_twist))
 

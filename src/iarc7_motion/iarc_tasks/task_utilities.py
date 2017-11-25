@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 
-# A helper class for a task that will limit acceleration vectors
+"""
+Task Utilities- series of task helpers and utilities
+
+Types: 
+    AccelerationLimiter: provides a utility to limit acceleration vectors
+    HeightHolder: provides a simple means for a task to get a z-velocity 
+        response that maintains a certain height above the ground
+    HeightSettingsChecker: checks that passed in settings are
+        above minimum manuever height. 
+
+"""
 
 import math
 import rospy
@@ -9,6 +19,7 @@ import threading
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
+# A helper class for a task that will limit acceleration vectors
 class AccelerationLimiter(object):
     def __init__(self):
         try:
