@@ -52,7 +52,7 @@ class StateMonitor:
 
         self._current_velocity_sub = rospy.Subscriber(
             '/odometry/filtered', Odometry,
-            self._recieve_drone_odometry)
+            self._receive_drone_odometry)
 
         self._drone_arm_status = rospy.Subscriber(
             '/fc_status', FlightControllerStatus, 
@@ -114,6 +114,7 @@ class StateMonitor:
         while ((self._drone_odometry is None or self._roombas is None 
                 or self._arm_status is None) and not rospy.is_shutdown()):
             rospy.loginfo('StateMonitor waiting on topics to be published')
+            rospy.sleep(0.005)
             pass
         with self._lock:
             state.drone_odometry = self._drone_odometry
@@ -123,7 +124,7 @@ class StateMonitor:
             return state
     
     # Handles no task running timeouts
-    def get_timeout(self, last_twist):
+    def get_timeout_twist(self, last_twist):
         with self._lock:
             commands = TwistStampedArray()
 
@@ -149,7 +150,7 @@ class StateMonitor:
         roomba status: odometry (position, velocity, etc.) of
             all roombas in sight of drone
     """
-    def _recieve_drone_odometry(self, data):
+    def _receive_drone_odometry(self, data):
         with self._lock:
             self._drone_odometry = data
 

@@ -22,7 +22,7 @@ class HeightHolder(object):
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
 
-        if self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT and self._DESIRED_HEIGHT is not None:
+        if self._DESIRED_HEIGHT is not None and self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT:
             raise ValueError('Desired height was below the minimum maneuver height')
 
     # uses a p-controller to return a velocity to maintain a height

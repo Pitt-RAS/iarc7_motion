@@ -2,9 +2,9 @@
 
 class TransitionData(object):
 
-    def __init__(self, drone_odometry = None, roombas = None, obstacles = None,
-        timeout_sent = None, last_task_ending_state = None,
-        arm_status = None, last_twist = None):
+    def __init__(self, drone_odometry=None, roombas=None, obstacles=None,
+        timeout_sent=None, last_task_ending_state=None,
+        arm_status=None, last_twist=None):
         """
         Transition Data
 
