@@ -29,13 +29,13 @@ import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
 
 
-class HighLevelMotionController:
+class MotionCommandCoordinator:
 
     def __init__(self, action_server):
         # action server for getting requests from AI
         self._action_server = action_server
         
-        # current state of HLM
+        # current state of motion coordinator
         self._task = None
         self._initialized = False
 
@@ -53,7 +53,7 @@ class HighLevelMotionController:
         self._task_command_handler = TaskCommandHandler()
 
         # safety 
-        self._safety_client = SafetyClient('high_level_motion')
+        self._safety_client = SafetyClient('motion_command_coordinator')
         self._safety_land_complete = False
         self._safety_land_requested = False
 
@@ -62,24 +62,24 @@ class HighLevelMotionController:
                                         "motion_planner_server",
                                         QuadMoveAction)
         try:
-            # update rate for HLM
+            # update rate for motion coordinator
             self._update_rate = rospy.get_param('~update_rate')
             # task timeout values
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
 
         except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for High Level Motion Controller')
+            rospy.logerr('Could not lookup a parameter for motion coordinator')
             raise
 
     def run(self):
-        # rate limiting of updates of HLM
+        # rate limiting of updates of motion coordinator
         rate = rospy.Rate(self._update_rate)
 
         rospy.logwarn('trying to form bond')
 
         # forming bond with safety client
         if not self._safety_client.form_bond():
-            rospy.logerr('High Level Motion could not form bond with safety client')
+            rospy.logerr('Motion Coordinator could not form bond with safety client')
             return
 
         rospy.logwarn('done forming bond')
@@ -116,7 +116,7 @@ class HighLevelMotionController:
                         self._shutdown_timer()
                         self._task_command_handler.new_task(new_task, self._get_current_transition())
                     else: 
-                        rospy.logwarn('Illegal task transition request requested in HLM. Aborting requested task.')
+                        rospy.logwarn('Illegal task transition request requested in motion coordinator. Aborting requested task.')
                         self._action_server.set_aborted()
             else: 
                 if self._action_server.is_canceled():
@@ -125,7 +125,7 @@ class HighLevelMotionController:
                 self._task_command_handler.run()
                 task_state = self._task_command_handler.get_state()
 
-                # handles state of task and HLM controller
+                # handles state of task and motion coordinator
                 if isinstance(task_state, task_states.TaskCanceled):
                     self._action_server.set_canceled()
                     rospy.logwarn('Task was canceled')
@@ -163,9 +163,9 @@ class HighLevelMotionController:
     def _safety_task_complete_callback(self, status, response):
         with self._lock: 
             if response.success:
-                rospy.logwarn('High Level Motion supposedly safely landed the aircraft')
+                rospy.logwarn('Motion Coordinator supposedly safely landed the aircraft')
             else:
-                rospy.logerr('High Level Motion did not safely land aircraft')
+                rospy.logerr('Motion Coordinator did not safely land aircraft')
             self._safety_land_complete = True
 
     def _recieve_task_timeout(self, event):
@@ -193,7 +193,7 @@ class HighLevelMotionController:
 
                 rospy.logwarn('Task running timeout. Setting zero velocity')
             else: 
-                rospy.logerr('Timeout timer in HLM fired with task running')
+                rospy.logerr('Timeout timer in motion coordinator fired with task running')
 
     # shuts down the timer so the callback is not called when a task is running
     def _shutdown_timer(self):
@@ -202,18 +202,18 @@ class HighLevelMotionController:
             self._timer = None
 
 if __name__ == '__main__':
-    rospy.init_node('high_level_motion')
+    rospy.init_node('motion_command_coordinator')
 
     # action server for getting requests from AI
     action_server = IarcTaskActionServer()
-    high_level_motion_controller = HighLevelMotionController(action_server)
+    motion_command_coordinator = MotionCommandCoordinator(action_server)
     
     try:
-        high_level_motion_controller.run()
+        motion_command_coordinator.run()
     except Exception, e:
-        rospy.logfatal("Error in High Level Motion while running.")
+        rospy.logfatal("Error in Motion Command Coordinator while running.")
         rospy.logfatal(str(e))
         rospy.logfatal(traceback.format_exc())
         raise
     finally:
-        rospy.signal_shutdown("High Level Motion shutdown")
+        rospy.signal_shutdown("Motion Coordinator shutdown")

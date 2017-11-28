@@ -23,7 +23,6 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from transition_data import TransitionData
 from task_utilities import HeightHolder, HeightSettingsChecker, AccelerationLimiter
 
 class TrackObjectTaskState(object):

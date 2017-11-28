@@ -20,8 +20,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
 
-from transition_data import TransitionData
-
 class TakeoffTaskState:
     init = 0
     takeoff = 1

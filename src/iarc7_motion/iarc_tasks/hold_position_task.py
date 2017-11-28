@@ -23,7 +23,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
 from task_utilities import HeightSettingsChecker
-from transition_data import TransitionData
 
 class HoldPositionTaskStates:
     init = 0

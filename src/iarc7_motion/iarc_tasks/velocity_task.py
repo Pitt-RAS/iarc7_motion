@@ -21,7 +21,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
 from task_utilities import HeightHolder, HeightSettingsChecker, AccelerationLimiter
-from transition_data import TransitionData
 
 class VelocityTaskState(object):
     init = 0

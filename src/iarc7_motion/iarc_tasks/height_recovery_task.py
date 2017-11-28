@@ -6,8 +6,6 @@ from geometry_msgs.msg import TwistStamped
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
 
-from iarc7_msgs.msg import FlightControllerStatus
-
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
                                     TaskDone,
@@ -19,8 +17,6 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       GroundInteractionCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
-
-from transition_data import TransitionData
 
 class HeightRecoveryTaskState:
     init = 0
