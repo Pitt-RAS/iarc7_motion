@@ -6,12 +6,11 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import TwistStamped, PointStamped, Point
 from nav_msgs.msg import Odometry
 
 from .abstract_task import AbstractTask
+
 from iarc_tasks.task_states import (TaskRunning,
                                     TaskDone,
                                     TaskCanceled,
@@ -20,7 +19,9 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from task_utilities import HeightHolder, HeightSettingsChecker, AccelerationLimiter
+from task_utilities.height_holder import HeightHolder
+from task_utilities.height_settings_checker import HeightSettingsChecker
+from task_utilities.acceleration_limiter import AccelerationLimiter
 
 class VelocityTaskState(object):
     init = 0

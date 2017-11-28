@@ -14,7 +14,7 @@ from geometry_msgs.msg import Vector3Stamped
 from geometry_msgs.msg import Vector3
 from nav_msgs.msg import Odometry
 
-from task_utilities import AccelerationLimiter
+from task_utilities.acceleration_limiter import AccelerationLimiter
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped

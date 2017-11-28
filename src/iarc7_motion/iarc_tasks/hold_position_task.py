@@ -22,7 +22,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from task_utilities import HeightSettingsChecker
+from task_utilities.height_settings_checker import HeightSettingsChecker
 
 class HoldPositionTaskStates:
     init = 0

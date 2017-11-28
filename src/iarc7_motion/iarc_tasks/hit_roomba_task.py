@@ -11,7 +11,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Odometry
 
-from task_utilities import AccelerationLimiter
+from task_utilities.acceleration_limiter import AccelerationLimiter
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped
