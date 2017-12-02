@@ -122,7 +122,7 @@ class TaskCommandHandler:
             try: 
                 _task_state = task_request[0]
 
-                if issubclass(_task_state, task_states.TaskState):
+                if issubclass(type(_task_state), task_states.TaskState):
                     self._task_state = _task_state
                 else: 
                     rospy.logerr('Task provided unknown state')
