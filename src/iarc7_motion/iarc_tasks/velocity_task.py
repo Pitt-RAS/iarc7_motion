@@ -150,5 +150,5 @@ class VelocityTask(object, AbstractTask):
         rospy.loginfo('VelocityTestTask Task canceled')
         self._canceled = True
 
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition

@@ -121,5 +121,5 @@ class TakeoffTask(AbstractTask):
         rospy.loginfo('TakeoffTask canceled')
         self._canceled = True
 
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition

@@ -11,6 +11,9 @@ import iarc_tasks.task_commands as task_commands
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 
+from iarc7_safety.iarc_safety_exception import (IARCSafetyException,
+                                                IARCFatalSafetyException)
+
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
@@ -59,7 +62,7 @@ class TaskCommandHandler:
         self._transition = transition
         self._task_canceled = False
         self._task_state = task_states.TaskRunning()
-        self._task.send_transition(self._transition)
+        self._task.set_incoming_transition(self._transition)
 
     # cancels task
     def cancel_task(self):
@@ -108,7 +111,7 @@ class TaskCommandHandler:
             try:
                 task_request = self._task.get_desired_command()
             except Exception as e:
-                rospy.logerr('Exception getting tasks preferred velocity')
+                rospy.logerr('Exception getting task command')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
                 rospy.logerr('Task Command Handler aborted task')
@@ -116,20 +119,49 @@ class TaskCommandHandler:
                 self._task_state = task_states.TaskAborted()
                 return (task_commands.NopCommand(),)
 
-            self._task_state = task_request[0]
+            try: 
+                _task_state = task_request[0]
 
-            if isinstance(self._task_state, task_states.TaskDone):
+                if issubclass(_task_state, task_states.TaskState):
+                    self._task_state = _task_state
+                else: 
+                    rospy.logerr('Task provided unknown state')
+                    rospy.logerr('Task Command Handler aborted task')
+                    self._task = None
+                    self._task_state = task_states.TaskAborted(msg='Error getting task state')
+                    return (task_commands.NopCommand(),)
+
+            except (TypeError, IndexError) as e: 
+                rospy.logerr('Exception getting task state')
+                rospy.logerr(str(e))
+                rospy.logerr(traceback.format_exc())
+                rospy.logerr('Task Command Handler aborted task')
                 self._task = None
-                return task_request[1:]
-            elif isinstance(self._task_state, task_states.TaskRunning):
-                return task_request[1:]
-            else: 
+                self._task_state = task_states.TaskAborted(msg='Exception getting task state')
+                return (task_commands.NopCommand(),)
+            
+            try: 
+                if isinstance(self._task_state, task_states.TaskDone):
+                    self._task = None
+                    return task_request[1:]
+                elif isinstance(self._task_state, task_states.TaskRunning):
+                    return task_request[1:]
+                else: 
+                    self._task = None
+            except (TypeError, IndexError) as e: 
+                rospy.logerr('Exception getting task request')
+                rospy.logerr(str(e))
+                rospy.logerr(traceback.format_exc())
+                rospy.logerr('Task Command Handler aborted task')
                 self._task = None
+                self._task_state = task_states.TaskAborted(msg='Exception getting task request')
+                return (task_commands.NopCommand(),)
+
         elif self._task_canceled:
             self._task_state = task_states.TaskCanceled()
+
         else: 
-            self._task_state = task_states.TaskAborted()
-            rospy.logerr('TaskCommandHandler ran with no task running. Setting task state to aborted.')
+            raise IARCFatalSafetyException('TaskCommandHandler ran with no task running.')
 
         # no action to take, return a Nop
         return (task_commands.NopCommand(),)

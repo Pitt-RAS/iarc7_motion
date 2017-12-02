@@ -151,5 +151,5 @@ class HoldPositionTask(AbstractTask):
             self._y_position = self._drone_odometry.pose.pose.position.y
             self._z_position = self._drone_odometry.pose.pose.position.z
     
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition

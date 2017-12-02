@@ -19,7 +19,7 @@ def constrain(x, l, h):
 if __name__ == '__main__':
     rospy.init_node('waypoints_test')
 
-    safety_client = SafetyClient('high_level_motion')
+    safety_client = SafetyClient('motion_command_coordinator')
     assert safety_client.form_bond()
 
     velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArray, queue_size=0)

@@ -49,5 +49,5 @@ class TestTask(AbstractTask):
         rospy.loginfo("TestTask canceling")
         self.canceled = True
     
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition

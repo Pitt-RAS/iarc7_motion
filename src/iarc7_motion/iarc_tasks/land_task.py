@@ -70,7 +70,7 @@ class LandTask(AbstractTask):
         else:
             return (TaskAborted(msg='Impossible state in takeoff task reached'))
 
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition
 
     def cancel(self):

@@ -130,7 +130,7 @@ class MotionCommandCoordinator:
                     self._task_command_handler.run()
                     task_state = self._task_command_handler.get_state()
 
-                    # handles state of task and motion coordinator
+                    # handles state of task, motion coordinator, and action server
                     if isinstance(task_state, task_states.TaskCanceled):
                         self._action_server.set_canceled()
                         rospy.logwarn('Task was canceled')
@@ -147,7 +147,9 @@ class MotionCommandCoordinator:
                         self._action_server.set_succeeded(True)
                         self._task = None
                     elif not isinstance(task_state, task_states.TaskRunning):
-                        raise TypeError("Invalid task state returned ")
+                        rospy.logerr("Invalid task state returned, aborting task")
+                        self._action_server.set_aborted()
+                        self._task = None
 
                     # as soon as we set a task to None, start timeout timer
                     if self._task is None:

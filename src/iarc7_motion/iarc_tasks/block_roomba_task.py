@@ -233,5 +233,5 @@ class BlockRoombaTask(AbstractTask):
             data = self._switch_message
             return (data.front or data.back or data.left or data.right)
 
-    def send_transition(self, transition):
+    def set_incoming_transition(self, transition):
         self._transition = transition
