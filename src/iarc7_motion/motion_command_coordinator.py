@@ -39,10 +39,10 @@ class MotionCommandCoordinator:
         
         # current state of motion coordinator
         self._task = None
-        self._initialized = False
+        self._first_task_seen = False
 
         # used for timeouts & extrapolating 
-        self._timer = None
+        self._time_of_last_task = None
         self._timeout_vel_sent = False 
 
         # to keep things thread safe
@@ -106,25 +106,23 @@ class MotionCommandCoordinator:
                     self._safety_land_requested = True
                     self._state_monitor.signal_safety_active()
 
-                # if we have not seen a task yet
-                # we wait until now to start the task timeout timer versus 
-                # on construction because the action clients were not started
-                if not self._initialized:
-                    self._timer = rospy.Timer(self._task_timeout, self._receive_task_timeout)
-                    self._initialized = True
+                # set the time of last task to now if we have not seen a task yet
+                if not self._first_task_seen:
+                    self._time_of_last_task = rospy.Time.now()
+                    self._first_task_seen = True
 
-                if self._task is None:
-                    if self._action_server.has_new_task():
-                        new_task = self._action_server.get_new_task()
+                if self._task is None and self._action_server.has_new_task():
+                    new_task = self._action_server.get_new_task()
 
-                        if self._state_monitor.check_transition(new_task):
-                            self._shutdown_timer()
-                            self._task = new_task
-                            self._task_command_handler.new_task(new_task, self._get_current_transition())
-                        else: 
-                            rospy.logwarn('Illegal task transition request requested in motion coordinator. Aborting requested task.')
-                            self._action_server.set_aborted()
-                else: 
+                    if self._state_monitor.check_transition(new_task):
+                        self._time_of_last_task = None
+                        self._task = new_task
+                        self._task_command_handler.new_task(new_task, self._get_current_transition())
+                    else: 
+                        rospy.logwarn('Illegal task transition request requested in motion coordinator. Aborting requested task.')
+                        self._action_server.set_aborted()
+                
+                if self._task is not None: 
                     run = True
                     if self._action_server.is_canceled():
                         run = self._task_command_handler.cancel_task()
@@ -154,14 +152,17 @@ class MotionCommandCoordinator:
                         rospy.logerr("Invalid task state returned, aborting task")
                         self._action_server.set_aborted()
                         self._task = None
-                        task_state = task_states.TaskAborted
+                        task_state = task_states.TaskAborted(msg='Invalid task state returned')
 
                     # as soon as we set a task to None, start timeout timer
                     # and send ending state to State Monitor
                     if self._task is None:
-                        self._timer = rospy.Timer(self._task_timeout, self._receive_task_timeout)
+                        self._time_of_last_task = rospy.Time.now()
                         self._timeout_vel_sent = False
                         self._state_monitor.set_last_task_end_state(task_state)
+                else: 
+                    if (rospy.Time.now() - self._time_of_last_task) > self._task_timeout:
+                        self._receive_task_timeout()
 
                 rate.sleep()
 
@@ -182,12 +183,9 @@ class MotionCommandCoordinator:
                 rospy.logerr('Motion Coordinator did not safely land aircraft')
             self._safety_land_complete = True
 
-    def _receive_task_timeout(self, event):
+    def _receive_task_timeout(self):
         """
         Handles no task running timeouts
-        Args: 
-            event: rospy.TimerEvent 
-                (see http://wiki.ros.org/rospy/Overview/Time)
         """
         with self._lock:
             # task should be None when this callback is called
@@ -207,15 +205,7 @@ class MotionCommandCoordinator:
 
                 rospy.logwarn('Task running timeout. Setting zero velocity')
             else: 
-                raise IARCFatalSafetyException('Timeout timer in motion coordinator fired with task running')
-
-    # shuts down the timer so the callback is not called when a task is running
-    def _shutdown_timer(self):
-        if self._timer is not None:
-            self._timer.shutdown()
-            self._timer = None
-        else: 
-            raise ValueError('shutdown_timer called in motion coordinator with timer set to None')
+                raise IARCFatalSafetyException('Timeout called in motion coordinator with task running')
 
 if __name__ == '__main__':
     rospy.init_node('motion_command_coordinator')
