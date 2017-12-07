@@ -168,7 +168,7 @@ class StateMonitor:
                 rospy.logerr('Invalid ending task state provided in StateMonitor')
                 self._state = RobotStates.FATAL
 
-            rospy.logerr('RobotState: ' + str(self._state))
+            rospy.loginfo('RobotState: ' + str(self._state))
 
             if self._state == RobotStates.FATAL: 
                 raise IARCFatalSafetyException('StateMonitor determined robot is in a fatal state')
