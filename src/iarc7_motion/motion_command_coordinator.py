@@ -123,11 +123,12 @@ class MotionCommandCoordinator:
                         self._action_server.set_aborted()
                 
                 if self._task is not None: 
-                    run = True
+                    no_error_canceling = True
                     if self._action_server.is_canceled():
-                        run = self._task_command_handler.cancel_task()
+                        no_error_canceling = self._task_command_handler.cancel_task()
 
-                    if run:
+                    # if canceling task did not result in an error
+                    if no_error_canceling:
                         self._task_command_handler.run()
 
                     task_state = self._task_command_handler.get_state()
@@ -154,7 +155,7 @@ class MotionCommandCoordinator:
                         self._task = None
                         task_state = task_states.TaskAborted(msg='Invalid task state returned')
 
-                    # as soon as we set a task to None, start timeout timer
+                    # as soon as we set a task to None, start time
                     # and send ending state to State Monitor
                     if self._task is None:
                         self._time_of_last_task = rospy.Time.now()
@@ -210,7 +211,7 @@ class MotionCommandCoordinator:
 if __name__ == '__main__':
     rospy.init_node('motion_command_coordinator')
 
-    # action server for getting requests from AI
+    # action server for getting action/motion requests
     action_server = IarcTaskActionServer()
     motion_command_coordinator = MotionCommandCoordinator(action_server)
     
