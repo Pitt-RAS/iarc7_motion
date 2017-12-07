@@ -20,26 +20,28 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
 
-class TakeoffTaskState:
+class TakeoffTaskState(object):
     init = 0
     takeoff = 1
     ascend = 2
     done = 3
     failed = 4
 
-class TakeoffTask(AbstractTask):
+class TakeoffTask(object, AbstractTask):
 
     def __init__(self, task_request):
         self._transition = None
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
-        self._canceled = False;
+        self._canceled = False
+        self._above_min_man_height = False
 
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             self._TAKEOFF_COMPLETE_HEIGHT = rospy.get_param('~takeoff_complete_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
+            self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
@@ -95,6 +97,10 @@ class TakeoffTask(AbstractTask):
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg=msg),)
 
+            # Check if we are above minimum maneuver height
+            self._above_min_man_height = (transStamped.transform.translation.z >
+                                                self._MIN_MANEUVER_HEIGHT)
+
             # Check if we reached the target height
             if(transStamped.transform.translation.z > self._TAKEOFF_COMPLETE_HEIGHT):
                 self._state = TakeoffTaskState.done
@@ -118,8 +124,14 @@ class TakeoffTask(AbstractTask):
             return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
     def cancel(self):
-        rospy.loginfo('TakeoffTask canceled')
-        self._canceled = True
+        rospy.loginfo('TakeoffTask cancellation attempted')
+        if self._above_min_man_height:
+            rospy.loginfo('TakeoffTask cancellation accepted')
+            self._canceled = True
+            return True
+        else: 
+            rospy.loginfo('TakeoffTask cancellation rejected')
+            return False
 
     def set_incoming_transition(self, transition):
         self._transition = transition

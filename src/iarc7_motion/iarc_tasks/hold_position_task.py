@@ -24,12 +24,12 @@ from iarc_tasks.task_commands import (VelocityCommand,
 
 from task_utilities.height_settings_checker import HeightSettingsChecker
 
-class HoldPositionTaskStates:
+class HoldPositionTaskStates(object):
     init = 0
     waiting = 1
     holding = 2
 
-class HoldPositionTask(AbstractTask):
+class HoldPositionTask(object, AbstractTask):
 
     def __init__(self, task_request):
         self._hold_current_position = task_request.hold_current_position
@@ -134,6 +134,7 @@ class HoldPositionTask(AbstractTask):
     def cancel(self):
         rospy.loginfo('HoldPosition Task canceled')
         self._canceled = True
+        return True
 
     def _check_max_error(self):
         x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)

@@ -11,7 +11,7 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-class TestTask(AbstractTask):
+class TestTask(object, AbstractTask):
 
     def __init__(self, task_request):
         self._transition = None
@@ -48,6 +48,7 @@ class TestTask(AbstractTask):
     def cancel(self):
         rospy.loginfo("TestTask canceling")
         self.canceled = True
+        return True
     
     def set_incoming_transition(self, transition):
         self._transition = transition

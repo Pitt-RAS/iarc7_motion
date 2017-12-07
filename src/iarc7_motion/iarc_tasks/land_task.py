@@ -15,13 +15,13 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (NopCommand,
                                       GroundInteractionCommand)
 
-class LandTaskState:
+class LandTaskState(object):
     init = 0
     land = 1
     done = 2
     failed = 3
 
-class LandTask(AbstractTask):
+class LandTask(object, AbstractTask):
     
     def __init__(self, task_request):
         self._transition = None
@@ -64,7 +64,7 @@ class LandTask(AbstractTask):
         # Change state to failed
         elif self._state == LandTaskState.failed:
             rospy.logerr('Low level motion failed landing sequence')
-            return (TaskFailed(), NopCommand())
+            return (TaskFailed(msg='Low level motion failed landing sequence'), NopCommand())
 
         # Impossible state reached
         else:
@@ -74,5 +74,12 @@ class LandTask(AbstractTask):
         self._transition = transition
 
     def cancel(self):
-        rospy.loginfo('TakeoffTask canceled')
-        self._canceled = True
+        rospy.loginfo('LandTask cancellation requested')
+
+        if self._state == LandTaskState.done: 
+            rospy.loginfo('LandTask cancellation accepted')
+            self._canceled = True
+            return True
+        else: 
+            rospy.loginfo('LandTask cancellation rejected')
+            return False

@@ -28,12 +28,12 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-class BlockRoombaTaskState:
+class BlockRoombaTaskState(object):
     init = 0
     waiting = 1
     descent = 2
 
-class BlockRoombaTask(AbstractTask):
+class BlockRoombaTask(object, AbstractTask):
 
     def __init__(self, task_request):
 
@@ -225,6 +225,7 @@ class BlockRoombaTask(AbstractTask):
     def cancel(self):
         rospy.loginfo('HitRoomba Task canceled')
         self._canceled = True
+        return True
 
     def _on_ground(self):
         if self._switch_message is None:

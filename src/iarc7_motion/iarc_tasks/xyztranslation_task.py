@@ -14,11 +14,11 @@ from iarc_tasks.task_commands import (VelocityCommand, NopCommand)
 
 from translate_stop_planner import TranslateStopPlanner
 
-class XYZTranslationTaskState:
+class XYZTranslationTaskState(object):
     init = 0
     translate = 1
 
-class XYZTranslationTask(AbstractTask):
+class XYZTranslationTask(object, AbstractTask):
 
     def __init__(self, task_request):
         self._tf_buffer = tf2_ros.Buffer()
@@ -80,6 +80,7 @@ class XYZTranslationTask(AbstractTask):
     def cancel(self):
         rospy.loginfo('XYZTranslationTask canceled')
         self._canceled = True
+        return True
     
     def set_incoming_transition(self, transition):
         self._transition = transition

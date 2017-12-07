@@ -26,7 +26,6 @@ class TaskCommandHandler:
         self._in_passthrough = False
         self._task_state = None
         self._transition = None
-        self._task_canceled = False
         self._last_twist = None
 
         self._ground_interaction_task_callback = None
@@ -60,25 +59,29 @@ class TaskCommandHandler:
     def new_task(self, task, transition):
         self._task = task
         self._transition = transition
-        self._task_canceled = False
         self._task_state = task_states.TaskRunning()
         self._task.set_incoming_transition(self._transition)
 
     # cancels task
     def cancel_task(self):
         if self._task is None:
-            rospy.logerr('No task running to cancel.')
+            raise IARCFatalSafetyException('No task running to cancel')
         try:
-            self._task.cancel()
-            self._task_canceled = True
-            self._task = None
+            ready = self._task.cancel()
+            if ready: 
+                self._task = None
+                self._task_state = task_states.TaskCanceled()
+            else: 
+                rospy.logwarn('Task has not completed')
+            return True
         except Exception as e:
             rospy.logerr('Exception canceling task')
             rospy.logerr(str(e))
             rospy.logerr(traceback.format_exc())
             rospy.logerr('Task Command Handler aborted task')
-            self._task_state = task_states.TaskAborted()
+            self._task_state = task_states.TaskAborted(msg='Error canceling task')
             self._task = None
+            return False
 
     # returns last command (ground interaction, velocity, etc.)
     # that task returned
@@ -116,7 +119,7 @@ class TaskCommandHandler:
                 rospy.logerr(traceback.format_exc())
                 rospy.logerr('Task Command Handler aborted task')
                 self._task = None
-                self._task_state = task_states.TaskAborted()
+                self._task_state = task_states.TaskAborted(msg='Exception getting task command')
                 return (task_commands.NopCommand(),)
 
             try: 
@@ -156,10 +159,8 @@ class TaskCommandHandler:
                 self._task = None
                 self._task_state = task_states.TaskAborted(msg='Exception getting task request')
                 return (task_commands.NopCommand(),)
-
-        elif self._task_canceled:
-            self._task_state = task_states.TaskCanceled()
-
+        elif isinstance(self._task_state, task_states.TaskCanceled):
+            pass
         else: 
             raise IARCFatalSafetyException('TaskCommandHandler ran with no task running.')
 
@@ -188,7 +189,8 @@ class TaskCommandHandler:
                 rospy.logerr('Task requested a passthrough action before the last was completed')
                 rospy.logerr('Task Command Handler aborted task')
                 self._task = None
-                self._task_state = task_states.TaskAborted()
+                self._task_state = task_states.TaskAborted(
+                        msg='Task requested a passthrough action before the last was completed')
                 self._ground_interaction_task_callback = None
                 self._ground_interaction_client.cancel_goal()
                 self._ground_interaction_client.stop_tracking_goal()
@@ -219,7 +221,8 @@ class TaskCommandHandler:
             rospy.logerr('Task requested another ground interaction action before the last completed')
             rospy.logerr('Task Command Handler aborted task')
             self._task = None
-            self._task_state = task_states.TaskAborted()
+            self._task_state = task_states.TaskAborted(
+                        msg='Task requested another ground interaction action before the last completed')
             self._ground_interaction_task_callback = None
             self._ground_interaction_client.cancel_goal()
             self._ground_interaction_client.stop_tracking_goal()
@@ -242,7 +245,8 @@ class TaskCommandHandler:
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
                 self._task = None
-                self._task_state = task_states.TaskAborted()
+                self._task_state = task_states.TaskAborted(
+                        msg='Exception sending result using ground interaction done cb')
             self._ground_interaction_task_callback = None
         else:
             rospy.logerr('Ground interaction done callback received with no task callback available')

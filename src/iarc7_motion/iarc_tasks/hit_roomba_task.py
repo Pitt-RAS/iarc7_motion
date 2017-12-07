@@ -210,6 +210,7 @@ class HitRoombaTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('HitRoomba Task canceled')
         self._canceled = True
+        return True
 
     def _on_ground(self):
         if self._switch_message is None:

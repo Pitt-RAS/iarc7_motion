@@ -231,6 +231,7 @@ class TrackRoombaTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
         self._canceled = True
+        return True
     
     def set_incoming_transition(self, transition):
         self._transition = transition
