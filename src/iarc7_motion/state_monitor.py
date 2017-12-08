@@ -160,10 +160,7 @@ class StateMonitor:
                     self._state = RobotStates.RECOVERY_FAILED
                 elif (isinstance(self._last_task, BlockRoombaTask)
                     or isinstance(self._last_task, HitRoombaTask)):
-                    if self._BELOW_MIN_MAN_HEIGHT:
-                        self._state = RobotStates.WAITING_ON_RECOVERY
-                    else: 
-                        self._state = RobotStates.NORMAL
+                    self._state = RobotStates.WAITING_ON_RECOVERY
             else: 
                 rospy.logerr('Invalid ending task state provided in StateMonitor')
                 self._state = RobotStates.FATAL
