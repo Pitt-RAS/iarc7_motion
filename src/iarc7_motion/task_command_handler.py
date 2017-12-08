@@ -11,8 +11,7 @@ import iarc_tasks.task_commands as task_commands
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 
-from iarc7_safety.iarc_safety_exception import (IARCSafetyException,
-                                                IARCFatalSafetyException)
+from iarc7_safety.iarc_safety_exception import IARCFatalSafetyException
 
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
@@ -124,16 +123,6 @@ class TaskCommandHandler:
 
             try: 
                 _task_state = task_request[0]
-
-                if issubclass(type(_task_state), task_states.TaskState):
-                    self._task_state = _task_state
-                else: 
-                    rospy.logerr('Task provided unknown state')
-                    rospy.logerr('Task Command Handler aborted task')
-                    self._task = None
-                    self._task_state = task_states.TaskAborted(msg='Error getting task state')
-                    return (task_commands.NopCommand(),)
-
             except (TypeError, IndexError) as e: 
                 rospy.logerr('Exception getting task state')
                 rospy.logerr(str(e))
@@ -141,6 +130,15 @@ class TaskCommandHandler:
                 rospy.logerr('Task Command Handler aborted task')
                 self._task = None
                 self._task_state = task_states.TaskAborted(msg='Exception getting task state')
+                return (task_commands.NopCommand(),)
+            
+            if issubclass(type(_task_state), task_states.TaskState):
+                self._task_state = _task_state
+            else: 
+                rospy.logerr('Task provided unknown state')
+                rospy.logerr('Task Command Handler aborted task')
+                self._task = None
+                self._task_state = task_states.TaskAborted(msg='Error getting task state')
                 return (task_commands.NopCommand(),)
             
             try: 
