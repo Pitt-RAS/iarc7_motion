@@ -68,8 +68,7 @@ class TrackRoombaTask(object, AbstractTask):
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
-            self._MAX_TASK_DIST = rospy.get_param('~roomba_max_task_dist')
-            self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
+            self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
