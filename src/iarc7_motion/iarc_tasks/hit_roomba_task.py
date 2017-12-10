@@ -11,8 +11,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from nav_msgs.msg import Odometry
 
-from acceleration_limiter import AccelerationLimiter 
-
+from task_utilities.acceleration_limiter import AccelerationLimiter
 
 from iarc7_msgs.msg import OdometryArray
 from iarc7_msgs.msg import LandingGearContactsStamped
@@ -50,6 +49,7 @@ class HitRoombaTask(object, AbstractTask):
         self._switch_message = None
         self._last_update_time = None
         self._current_velocity = None
+        self._transition = None
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
@@ -210,6 +210,7 @@ class HitRoombaTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('HitRoomba Task canceled')
         self._canceled = True
+        return True
 
     def _on_ground(self):
         if self._switch_message is None:
@@ -217,4 +218,6 @@ class HitRoombaTask(object, AbstractTask):
         else: 
             data = self._switch_message
             return (data.front or data.back or data.left or data.right)
-   
+    
+    def set_incoming_transition(self, transition):
+        self._transition = transition

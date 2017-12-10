@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-# A helper class for a task that will limit acceleration vectors
+"""
+AccelerationLimiter: helper utility to limit acceleration vectors
 
+"""
 import math
 import rospy
 

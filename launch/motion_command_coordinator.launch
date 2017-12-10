@@ -1,0 +1,14 @@
+<launch>
+    <arg name="bond_id_namespace" default="safety_bonds" />
+    <node name="motion_command_coordinator" pkg="iarc7_motion"
+        type="motion_command_coordinator.py">
+        <rosparam command="load"
+            file="$(find iarc7_motion)/param/motion_command_coordinator.yaml" />
+        <rosparam command="load"
+            file="$(find iarc7_motion)/param/tasks.yaml" />
+        <remap from="/odometry/filtered" to="/double_filtered_vel" />
+        <remap from="odometry/filtered" to="/double_filtered_vel" />
+    </node>
+    <param name="$(arg bond_id_namespace)/motion_command_coordinator/form_bond"
+        value="true" />
+</launch>

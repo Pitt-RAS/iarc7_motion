@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-# A helper class for a task that will spit out a velocity that's appropriate
-# to reach and hold a desired position in the z dimension
-# Uses a simple p-controller
+"""
+HeightHolder: provides a simple means for a task to get a z-velocity
+response that maintains a certain height above the ground
 
-import math
+"""
+
 import rospy
 import threading
-
-from geometry_msgs.msg import TwistStamped
-from nav_msgs.msg import Odometry
 
 class HeightHolder(object):
     def __init__(self, desired_height = None):
@@ -24,7 +22,7 @@ class HeightHolder(object):
             rospy.logerr('Could not lookup a parameter for track roomba task')
             raise
 
-        if self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT and self._DESIRED_HEIGHT is not None:
+        if self._DESIRED_HEIGHT is not None and self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT:
             raise ValueError('Desired height was below the minimum maneuver height')
 
     # uses a p-controller to return a velocity to maintain a height

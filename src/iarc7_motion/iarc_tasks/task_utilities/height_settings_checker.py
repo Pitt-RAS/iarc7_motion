@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
-# A helper class for a task that will determine if 
-# the drone is above min maneuver height 
-# and if the z error is too high 
+"""
+HeightSettingsChecker: checks that passed in settings are 
+    above minimum manuever height.
 
-import math
+"""
+
 import rospy
 
-class HeightSettingsChecker():
+class HeightSettingsChecker(object):
     def __init__(self):
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')

@@ -6,13 +6,10 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import PointStamped
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import TwistStamped, PointStamped, Point
 from iarc7_msgs.msg import OdometryArray
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Vector3Stamped
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3Stamped, Vector3
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -23,9 +20,9 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-from height_holder import HeightHolder
-from height_settings_checker import HeightSettingsChecker
-from acceleration_limiter import AccelerationLimiter
+from task_utilities.height_holder import HeightHolder
+from task_utilities.height_settings_checker import HeightSettingsChecker
+from task_utilities.acceleration_limiter import AccelerationLimiter
 
 class TrackObjectTaskState(object):
     init = 0
@@ -50,6 +47,7 @@ class TrackRoombaTask(object, AbstractTask):
         self._roomba_found = False
         self._current_velocity = None
         self._start_time = None
+        self._transition = None
 
         self._drone_odometry = None
         self._canceled = False
@@ -70,8 +68,7 @@ class TrackRoombaTask(object, AbstractTask):
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
-            self._MAX_TASK_DIST = rospy.get_param('~roomba_max_task_dist')
-            self._MAX_END_TASK_DIST = rospy.get_param('~roomba_max_end_task_dist')
+            self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
@@ -233,3 +230,7 @@ class TrackRoombaTask(object, AbstractTask):
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
         self._canceled = True
+        return True
+    
+    def set_incoming_transition(self, transition):
+        self._transition = transition

@@ -1,0 +1,14 @@
+# PARAMS FOR MOTION COMMAND COORDINATOR AND ALL TASKS
+
+# Timeout for transforms
+transform_timeout       : 0.2
+# Minimum height for any XY translationanl maneuvers
+min_maneuver_height     : 0.5
+# Update rate in hz
+update_rate             : 10
+# Anticipated control lag in seconds
+control_lag             : 0.3
+# If there is no task for this many seconds a zero velocity command will be sent
+task_timeout: 1.0
+# time until set 0 velocity, in seconds
+task_timeout_deceleration_time: 1.0

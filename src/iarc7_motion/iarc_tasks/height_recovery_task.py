@@ -6,8 +6,6 @@ from geometry_msgs.msg import TwistStamped
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import TwistStamped
 
-from iarc7_msgs.msg import FlightControllerStatus
-
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
                                     TaskDone,
@@ -20,22 +18,25 @@ from iarc_tasks.task_commands import (VelocityCommand,
                                       ConfigurePassthroughMode,
                                       AngleThrottleCommand)
 
-class HeightRecoveryTaskState:
+class HeightRecoveryTaskState(object):
     init = 0
     recover = 1
     done = 2
     failed = 3
 
-class HeightRecoveryTask(AbstractTask):
+class HeightRecoveryTask(object, AbstractTask):
 
     def __init__(self, task_request):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
-        self._canceled = False;
+        self._canceled = False
+        self._above_min_man_height = False
+
+        self._transition = None
 
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
-            MIN_MAN_HEIGHT = rospy.get_param('~min_maneuver_height')
+            self._MIN_MAN_HEIGHT = rospy.get_param('~min_maneuver_height')
             HEIGHT_OFFSET = rospy.get_param('~recover_height_offset')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -43,7 +44,7 @@ class HeightRecoveryTask(AbstractTask):
             rospy.logerr('Could not lookup a parameter for HeightRecoveryTask')
             raise
 
-        self._RECOVERY_HEIGHT = MIN_MAN_HEIGHT + HEIGHT_OFFSET
+        self._RECOVERY_HEIGHT = self._MIN_MAN_HEIGHT + HEIGHT_OFFSET
 
         self._state = HeightRecoveryTaskState.init
 
@@ -70,6 +71,10 @@ class HeightRecoveryTask(AbstractTask):
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg=msg),)
 
+             # Check if we are above minimum maneuver height
+            self._above_min_man_height = (transStamped.transform.translation.z
+                                            > self._MIN_MAN_HEIGHT)
+
             # Check if we reached the target height
             if (transStamped.transform.translation.z > self._RECOVERY_HEIGHT):
                 self._state = HeightRecoveryTaskState.done
@@ -92,5 +97,14 @@ class HeightRecoveryTask(AbstractTask):
             return (TaskAborted(msg='Impossible state in HeightRecoveryTask reached'),)
 
     def cancel(self):
-        rospy.loginfo('HeightRecoveryTask canceled')
-        self._canceled = True
+        rospy.loginfo('HeightRecoveryTask cancellation attempted')
+        if self._above_min_man_height:
+            rospy.loginfo('HeightRecoveryTask cancellation accepted')
+            self._canceled = True
+            return True
+        else: 
+            rospy.loginfo('HeightRecoveryTask cancellation rejected')
+            return False
+
+    def set_incoming_transition(self, transition):
+        self._transition = transition

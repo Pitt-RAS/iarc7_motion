@@ -1,22 +1,26 @@
 #!/usr/bin/env python
 
-class TaskRunning(object):
+class TaskState(object):
     def __init__(self):
         pass
 
-class TaskDone(object):
+class TaskRunning(TaskState):
     def __init__(self):
         pass
 
-class TaskCanceled(object):
+class TaskDone(TaskState):
     def __init__(self):
         pass
 
-class TaskAborted(object):
+class TaskCanceled(TaskState):
+    def __init__(self):
+        pass
+
+class TaskAborted(TaskState):
     def __init__(self, msg=None):
         self.msg = msg
 
-class TaskFailed(object):
+class TaskFailed(TaskState):
     def __init__(self, msg=None):
         self.msg = msg
 
