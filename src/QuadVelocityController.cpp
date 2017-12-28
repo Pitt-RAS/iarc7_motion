@@ -315,7 +315,7 @@ bool QuadVelocityController::waitUntilReady()
                                                     startup_timeout_);
     if (!success)
     {
-        ROS_ERROR("Failed to fetch initial transform");
+        ROS_ERROR("Failed to fetch initial transform level_quad to quad");
         return false;
     }
 
@@ -326,7 +326,7 @@ bool QuadVelocityController::waitUntilReady()
                                                     startup_timeout_);
     if (!success)
     {
-        ROS_ERROR("Failed to fetch initial transform");
+        ROS_ERROR("Failed to fetch initial transform map to center_of_lift");
         return false;
     }
 
