@@ -7,10 +7,20 @@ namespace Iarc7Motion {
 
 struct ThrustModel
 {
+    // Overall scale factor in weight of drone (kg) / gravity / # motors
     double thrust_scale_factor;
+    // A multiplier on the exponential used to determine ground effect
     double A_ge;
+    // The divider of the height on the exponential used for ground effect
     double d0;
+
+    // A polynomial representing the thrust mutliplier fit to voltage
     std::vector<double> voltage_polynomial;
+
+    // Constants for the quadratic equation used to model thrust percentage
+    // to thrust in relative drone units
+    // We don't need an 'a' constant because otherwise thrust scale factor
+    // would be a redundant parameter
     double throttle_b;
     double throttle_c;
 
@@ -34,8 +44,14 @@ struct ThrustModel
     double throttleFromAccel(double accel,
                              double voltage,
                              double height) {
+        // Find the thrust relative to the drone's mass
         double thrust = accel * thrust_scale_factor;
+
+        // Apply voltage and ground effect compensation
         double C0 = thrust / vPoly(voltage) / groundEffect(height);
+
+        // Solve the polynomial fit to thrust in percentage to thrust
+        // in relative drone units
         double discriminant = std::pow(throttle_b, 2) - 4*(throttle_c-C0);
         return 0.5 * (-throttle_b + std::sqrt(discriminant));
     }
