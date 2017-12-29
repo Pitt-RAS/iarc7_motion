@@ -38,6 +38,7 @@ class TakeoffTask(object, AbstractTask):
 
         try:
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
+            self._TAKEOFF_ACCELERATION = rospy.get_param('~takeoff_acceleration')
             self._TAKEOFF_COMPLETE_HEIGHT = rospy.get_param('~takeoff_complete_height')
             self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -50,6 +51,7 @@ class TakeoffTask(object, AbstractTask):
         self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = TakeoffTaskState.init
         self._arm_request_success = False
+        self._time_of_ascension = None
 
     def _receive_fc_status(self, data):
         self._fc_status = data
@@ -61,6 +63,7 @@ class TakeoffTask(object, AbstractTask):
         if status == GoalStatus.SUCCEEDED:
             # Takeoff request succeeded, transition state
             self._state = TakeoffTaskState.ascend
+            self._time_of_ascension = rospy.Time.now()
         else:
             # Takeoff request failed
             rospy.logerr('Takeoff task failed during call to low level motion')
@@ -110,7 +113,11 @@ class TakeoffTask(object, AbstractTask):
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
                 velocity.header.stamp = rospy.Time.now()
-                velocity.twist.linear.z = self._TAKEOFF_VELOCITY
+
+                velocity.twist.linear.z = min(self._TAKEOFF_VELOCITY,
+                    (rospy.Time.now() - self._time_of_ascension).to_sec()
+                    * self._TAKEOFF_ACCELERATION)
+
                 return (TaskRunning(), VelocityCommand(velocity))
 
         elif self._state == TakeoffTaskState.done:

@@ -1,5 +1,5 @@
 <launch>
-    <arg name="platform" default="0.05" />
+    <arg name="platform" default="sim" />
     <arg name="bond_id_namespace" default="safety_bonds" />
 
     <node name="low_level_motion_controller" pkg="iarc7_motion"

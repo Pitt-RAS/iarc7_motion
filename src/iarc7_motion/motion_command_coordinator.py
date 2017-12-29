@@ -204,7 +204,7 @@ class MotionCommandCoordinator:
 
                     self._timeout_vel_sent = True
 
-                rospy.logwarn('Task running timeout. Setting zero velocity')
+                rospy.logwarn_throttle(1.0, 'Task running timeout. Setting zero velocity')
             else: 
                 raise IARCFatalSafetyException('Timeout called in motion coordinator with task running')
 
