@@ -357,12 +357,14 @@ int main(int argc, char **argv)
             iarc7_msgs::OrientationThrottleStamped uav_command;
 
             // Check for a safety state in which case we should execute our safety response
-            if(safety_client.isSafetyActive())
+            if(safety_client.isSafetyActive() 
+               && !safety_client.isSafetyResponseActive())
             {
                 // This is the safety response
                 bool success = landPlanner.prepareForTakeover(current_time);
                 ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner prepareForTakeover failed");
                 ROS_WARN("Transitioning to state LAND for safety response");
+                safety_client.setSafetyResponseActive();
                 motion_state = MotionState::LAND;
             }
             else if(motion_state == MotionState::VELOCITY_CONTROL)
@@ -409,7 +411,11 @@ int main(int argc, char **argv)
                 if(landPlanner.isDone())
                 {
                     ROS_INFO("Land completed");
-                    server.setSucceeded();
+
+                    if(!safety_client.isSafetyResponseActive())
+                    {
+                        server.setSucceeded();
+                    }
 
                     success = quadController.prepareForTakeover();
                     ROS_ASSERT_MSG(success, "LowLevelMotion switching to velocity control failed");
