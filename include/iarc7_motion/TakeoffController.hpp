@@ -17,8 +17,8 @@
 #include "iarc7_motion/ThrustModel.hpp"
 
 // ROS message headers
+#include "iarc7_msgs/BoolStamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
-#include "iarc7_msgs/LandingGearContactsStamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
 #include "iarc7_msgs/Arm.h"
 
@@ -65,17 +65,15 @@ public:
     const ThrustModel& getThrustModel() const;
 
 private:
-    // Handles incoming landing gear messages
-    void processLandingGearMessage(
-        const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message);
+    // Handles incoming landing detection messages
+    void processLandingDetectedMessage(
+        const iarc7_msgs::BoolStamped::ConstPtr& message);
 
-    static bool allPressed(const iarc7_msgs::LandingGearContactsStamped& msg);
+    iarc7_msgs::BoolStamped landing_detected_message_;
 
-    iarc7_msgs::LandingGearContactsStamped landing_gear_message_;
+    ros::Subscriber landing_detected_subscriber_;
 
-    ros::Subscriber landing_gear_subscriber_;
-
-    bool landing_gear_message_received_;
+    bool landing_detected_message_received_;
 
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
