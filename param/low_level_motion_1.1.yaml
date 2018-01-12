@@ -1,8 +1,8 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 5.5
-throttle_i: 5.0
-throttle_d: 0.5
+throttle_p: 3.5
+throttle_i: 1.5
+throttle_d: 0.25
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
@@ -22,15 +22,15 @@ max_thrust: 100.0
 
 battery_timeout: 0.5
 
-pitch_p: 0.25
-pitch_i: 0.2
+pitch_p: 0.0
+pitch_i: 0.0
 pitch_d: 0.0
 pitch_accumulator_max: 10.0
 pitch_accumulator_min: -10.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 0.25
-roll_i: 0.2
+roll_p: 0.0
+roll_i: 0.0
 roll_d: 0.0
 roll_accumulator_max: 10.0
 roll_accumulator_min: -10.0
