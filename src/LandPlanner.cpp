@@ -66,7 +66,7 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    if(!landing_detected_message_.data) {
+    if(landing_detected_message_.data) {
         ROS_ERROR("Tried to reset the LandPlanner while being on the ground");
         return false;
     }
