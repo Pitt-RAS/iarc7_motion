@@ -22,9 +22,9 @@ TakeoffController::TakeoffController(
         ros::NodeHandle& nh,
         ros::NodeHandle& private_nh,
         const ThrustModel& thrust_model)
-    : landing_gear_message_(),
-      landing_gear_subscriber_(),
-      landing_gear_message_received_(false),
+    : landing_detected_message_(),
+      landing_detected_subscriber_(),
+      landing_detected_message_received_(false),
       transform_wrapper_(),
       state_(TakeoffState::DONE),
       throttle_(),
@@ -55,10 +55,10 @@ TakeoffController::TakeoffController(
                   "takeoff_max_height_switch_pressed")),
       uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
-    landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
-                                   100,
-                                   &TakeoffController::processLandingGearMessage,
-                                   this);
+    landing_detected_subscriber_ = nh.subscribe("landing_detected",
+                                    10,
+                                    &TakeoffController::processLandingDetectedMessage,
+                                    this);
 }
 
 bool TakeoffController::calibrateThrustModel(const ros::Time& time)
@@ -109,7 +109,7 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    if(!allPressed(landing_gear_message_)) {
+    if(!landing_detected_message_.data) {
         ROS_ERROR("Tried to reset the takeoff controller without being on the ground");
         return false;
     } else if (state_ != TakeoffState::DONE) {
@@ -163,7 +163,7 @@ bool TakeoffController::update(const ros::Time& time,
         state_ = TakeoffState::RAMP;
     }
     else if(state_ == TakeoffState::RAMP) {
-        if(!allPressed(landing_gear_message_)) {
+        if(!landing_detected_message_.data) {
             if (!calibrateThrustModel(time)) {
                 ROS_ERROR("Failed to calibrate thrust model");
                 return false;
@@ -239,19 +239,19 @@ bool TakeoffController::waitUntilReady()
 
     const ros::Time start_time = ros::Time::now();
     while (ros::ok()
-           && !landing_gear_message_received_
+           && !landing_detected_message_received_
            && ros::Time::now() < start_time + startup_timeout_) {
         ros::spinOnce();
         ros::Duration(0.005).sleep();
     }
 
-    if (!landing_gear_message_received_) {
+    if (!landing_detected_message_received_) {
         ROS_ERROR_STREAM("TakeoffController failed to fetch initial switch message");
         return false;
     }
 
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = std::max(landing_gear_message_.header.stamp,
+    last_update_time_ = std::max(landing_detected_message_.header.stamp,
                                  battery_interpolator_.getLastUpdateTime());
     return true;
 }
@@ -266,14 +266,9 @@ const ThrustModel& TakeoffController::getThrustModel() const
   return thrust_model_;
 }
 
-void TakeoffController::processLandingGearMessage(
-    const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message)
+void TakeoffController::processLandingDetectedMessage(
+    const iarc7_msgs::BoolStamped::ConstPtr& message)
 {
-    landing_gear_message_received_ = true;
-    landing_gear_message_ = *message;
-}
-
-bool TakeoffController::allPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
-{
-    return msg.front && msg.back && msg.left && msg.right;
+    landing_detected_message_received_ = true;
+    landing_detected_message_ = *message;
 }

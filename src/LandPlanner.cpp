@@ -18,7 +18,10 @@ using namespace Iarc7Motion;
 LandPlanner::LandPlanner(
         ros::NodeHandle& nh,
         ros::NodeHandle& private_nh)
-    : transform_wrapper_(),
+    : landing_detected_message_(),
+      landing_detected_subscriber_(),
+      landing_detected_message_received_(false),
+      transform_wrapper_(),
       state_(LandState::DONE),
       requested_z_vel_(0.0),
       descend_acceleration_(ros_utils::ParamUtils::getParam<double>(
@@ -48,9 +51,9 @@ LandPlanner::LandPlanner(
               "update_timeout")),
       uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
-    landing_gear_subscriber_ = nh.subscribe("landing_gear_contact_switches",
+    landing_detected_subscriber_ = nh.subscribe("landing_detected",
                                  100,
-                                 &LandPlanner::processLandingGearMessage,
+                                 &LandPlanner::processLandingDetectedMessage,
                                  this);
 }
 
@@ -63,7 +66,7 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    if(allPressed(landing_gear_message_)) {
+    if(landing_detected_message_.data) {
         ROS_ERROR("Tried to reset the LandPlanner while being on the ground");
         return false;
     }
@@ -118,7 +121,7 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
             ROS_ERROR("Land sequence failed, quad started going up again");
             return false;
         }
-        else if(anyPressed(landing_gear_message_)) {
+        else if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms
             iarc7_msgs::Arm srv;
             srv.request.data = false;
@@ -171,19 +174,19 @@ bool LandPlanner::waitUntilReady()
 
     const ros::Time start_time = ros::Time::now();
     while (ros::ok()
-           && !landing_gear_message_received_
+           && !landing_detected_message_received_
            && ros::Time::now() < start_time + startup_timeout_) {
         ros::spinOnce();
         ros::Duration(0.005).sleep();
     }
 
-    if (!landing_gear_message_received_) {
+    if (!landing_detected_message_received_) {
         ROS_ERROR_STREAM("LandPlanner failed to fetch initial switch message");
         return false;
     }
 
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = landing_gear_message_.header.stamp;
+    last_update_time_ = landing_detected_message_.header.stamp;
     return true;
 }
 
@@ -192,19 +195,9 @@ bool LandPlanner::isDone()
   return (state_ == LandState::DONE);
 }
 
-void LandPlanner::processLandingGearMessage(
-    const iarc7_msgs::LandingGearContactsStamped::ConstPtr& message)
+void LandPlanner::processLandingDetectedMessage(
+    const iarc7_msgs::BoolStamped::ConstPtr& message)
 {
-    landing_gear_message_received_ = true;
-    landing_gear_message_ = *message;
-}
-
-bool LandPlanner::allPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
-{
-    return msg.front && msg.back && msg.left && msg.right;
-}
-
-bool LandPlanner::anyPressed(const iarc7_msgs::LandingGearContactsStamped& msg)
-{
-    return msg.front || msg.back || msg.left || msg.right;
+    landing_detected_message_received_ = true;
+    landing_detected_message_ = *message;
 }

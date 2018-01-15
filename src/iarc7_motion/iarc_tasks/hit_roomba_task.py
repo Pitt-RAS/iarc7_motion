@@ -14,7 +14,7 @@ from nav_msgs.msg import Odometry
 from task_utilities.acceleration_limiter import AccelerationLimiter
 
 from iarc7_msgs.msg import OdometryArray
-from iarc7_msgs.msg import LandingGearContactsStamped
+from iarc7_msgs.msg import BoolStamped
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -46,7 +46,7 @@ class HitRoombaTask(object, AbstractTask):
 
         self._drone_odometry = None
         self._canceled = False
-        self._switch_message = None
+        self._landed_message = None
         self._last_update_time = None
         self._current_velocity = None
         self._transition = None
@@ -56,9 +56,9 @@ class HitRoombaTask(object, AbstractTask):
 
         self._lock = threading.RLock()
 
-        self._contact_switches_sub = rospy.Subscriber(
-            'landing_gear_contact_switches', LandingGearContactsStamped, 
-            self._receive_switch_status)
+        self._landing_message_sub = rospy.Subscriber(
+            'landing_detected', BoolStamped, 
+            self._receive_landing_status)
 
         self._roomba_status_sub = rospy.Subscriber(
             'roombas', OdometryArray, 
@@ -86,9 +86,9 @@ class HitRoombaTask(object, AbstractTask):
         with self._lock:
             self._roomba_array = data
 
-    def _receive_switch_status(self, data):
+    def _receive_landing_status(self, data):
         with self._lock:
-            self._switch_message = data
+            self._landed_message = data
 
     def _current_velocity_callback(self, data):
         with self._lock:
@@ -213,11 +213,10 @@ class HitRoombaTask(object, AbstractTask):
         return True
 
     def _on_ground(self):
-        if self._switch_message is None:
+        if self._landed_message is None:
             return False
         else: 
-            data = self._switch_message
-            return (data.front or data.back or data.left or data.right)
+            return self._landed_message.data
     
     def set_incoming_transition(self, transition):
         self._transition = transition
