@@ -74,23 +74,22 @@ class TakeoffTask(object, AbstractTask):
             return (TaskCanceled(),)
 
         # Transition from init to takeoff phase
-        elif self._state == TakeoffTaskState.init:
-            self._state=TakeoffTaskState.takeoff
+        if self._state == TakeoffTaskState.init:
+            self._state = TakeoffTaskState.takeoff
             return (TaskRunning(), GroundInteractionCommand(
                                        'takeoff',
                                        self.takeoff_callback))
 
         # Enter the takeoff phase
-        elif self._state == TakeoffTaskState.takeoff:
+        if self._state == TakeoffTaskState.takeoff:
             return (TaskRunning(),)
 
-        elif (self._state == TakeoffTaskState.ascend):
-            
+        if (self._state == TakeoffTaskState.ascend):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
                                     'base_footprint',
-                                    rospy.Time.now(),
+                                    rospy.Time(0),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
             except (tf2_ros.LookupException,
                     tf2_ros.ConnectivityException,
@@ -120,15 +119,14 @@ class TakeoffTask(object, AbstractTask):
 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-        elif self._state == TakeoffTaskState.done:
+        if self._state == TakeoffTaskState.done:
             return (TaskDone(), NopCommand())
 
-        elif self._state == TakeoffTaskState.failed:
+        if self._state == TakeoffTaskState.failed:
             return (TaskFailed(msg='Take off task experienced failure'),)
 
         # Impossible state reached
-        else:
-            return (TaskAborted(msg='Impossible state in takeoff task reached'),)
+        return (TaskAborted(msg='Impossible state in takeoff task reached'),)
 
     def cancel(self):
         rospy.loginfo('TakeoffTask cancellation attempted')

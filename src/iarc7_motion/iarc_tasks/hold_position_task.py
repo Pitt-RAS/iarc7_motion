@@ -77,20 +77,18 @@ class HoldPositionTask(object, AbstractTask):
     def get_desired_command(self):
         with self._lock:
             if (self._state == HoldPositionTaskStates.init
-                    or self._state == HoldPositionTaskStates.waiting):
+             or self._state == HoldPositionTaskStates.waiting):
                 if self._drone_odometry is None:
                     self._state = HoldPositionTaskStates.waiting
                     return (TaskRunning(), NopCommand())
-                
-                self._set_targets()
-                self._state = HoldPositionTaskStates.holding
-                
-                if not self._check_max_error():
-                    return (TaskAborted(msg='Desired position is too far away, task not for translation.'),)
+                else:
+                    self._set_targets()
+                    self._state = HoldPositionTaskStates.holding
 
-                return (TaskRunning(), NopCommand())
+                    if not self._check_max_error():
+                        return (TaskAborted(msg='Desired position is too far away, task not for translation.'),)
 
-            elif (self._state == HoldPositionTaskStates.holding):
+            if (self._state == HoldPositionTaskStates.holding):
                 if not (self._height_checker.above_min_maneuver_height(
                             self._drone_odometry.pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
@@ -128,9 +126,8 @@ class HoldPositionTask(object, AbstractTask):
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            else:
-                return (TaskAborted(msg='Illegal State Reached'),)
-            
+            return (TaskAborted(msg='Illegal State Reached'),)
+
     def cancel(self):
         rospy.loginfo('HoldPosition Task canceled')
         self._canceled = True

@@ -52,16 +52,15 @@ class HeightRecoveryTask(object, AbstractTask):
         if self._canceled:
             return (TaskCanceled(),)
 
-        elif self._state == HeightRecoveryTaskState.init:
+        if self._state == HeightRecoveryTaskState.init:
             self._state = HeightRecoveryTaskState.recover
-            return (TaskRunning(),)
 
-        elif (self._state == HeightRecoveryTaskState.recover):
+        if (self._state == HeightRecoveryTaskState.recover):
             try:
                 transStamped = self._tf_buffer.lookup_transform(
                                     'map',
                                     'base_footprint',
-                                    rospy.Time.now(),
+                                    rospy.Time(0),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
             except (tf2_ros.LookupException,
                     tf2_ros.ConnectivityException,
@@ -78,8 +77,6 @@ class HeightRecoveryTask(object, AbstractTask):
             # Check if we reached the target height
             if (transStamped.transform.translation.z > self._RECOVERY_HEIGHT):
                 self._state = HeightRecoveryTaskState.done
-                return (TaskDone(), NopCommand())
-
             else:
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
@@ -87,14 +84,13 @@ class HeightRecoveryTask(object, AbstractTask):
                 velocity.twist.linear.z = self._TAKEOFF_VELOCITY
                 return (TaskRunning(), VelocityCommand(velocity))
 
-        elif self._state == HeightRecoveryTaskState.done:
+        if self._state == HeightRecoveryTaskState.done:
             return (TaskDone(), NopCommand())
 
-        elif self._state == HeightRecoveryTaskState.failed:
+        if self._state == HeightRecoveryTaskState.failed:
             return (TaskFailed(msg='HeightRecoveryTask experienced failure'),)
 
-        else:
-            return (TaskAborted(msg='Impossible state in HeightRecoveryTask reached'),)
+        return (TaskAborted(msg='Impossible state in HeightRecoveryTask reached'),)
 
     def cancel(self):
         rospy.loginfo('HeightRecoveryTask cancellation attempted')

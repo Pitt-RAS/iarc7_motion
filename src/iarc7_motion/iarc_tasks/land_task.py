@@ -54,21 +54,20 @@ class LandTask(object, AbstractTask):
                        self.land_callback))
 
         # Enter the landing phase
-        elif self._state == LandTaskState.land:
+        if self._state == LandTaskState.land:
             return (TaskRunning(), NopCommand());
 
         # Change state to done
-        elif self._state == LandTaskState.done:
+        if self._state == LandTaskState.done:
             return (TaskDone(), NopCommand())
 
         # Change state to failed
-        elif self._state == LandTaskState.failed:
+        if self._state == LandTaskState.failed:
             rospy.logerr('Low level motion failed landing sequence')
             return (TaskFailed(msg='Low level motion failed landing sequence'), NopCommand())
 
         # Impossible state reached
-        else:
-            return (TaskAborted(msg='Impossible state in takeoff task reached'))
+        return (TaskAborted(msg='Impossible state in takeoff task reached'))
 
     def set_incoming_transition(self, transition):
         self._transition = transition

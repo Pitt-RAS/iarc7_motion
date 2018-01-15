@@ -80,22 +80,20 @@ class VelocityTask(object, AbstractTask):
                     self._state = VelocityTaskState.waiting
                 else:
                     self._state = VelocityTaskState.moving
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == VelocityTaskState.waiting):
+            if (self._state == VelocityTaskState.waiting):
                 if self._drone_odometry is None:
-                    self._state = VelocityTaskState.waiting
+                    return (TaskRunning(), NopCommand())
                 else:
                     self._state = VelocityTaskState.moving
-                return (TaskRunning(), NopCommand())
 
-            elif self._state == VelocityTaskState.moving:
+            if self._state == VelocityTaskState.moving:
 
                 try:
                     transStamped = self._tf_buffer.lookup_transform(
                                     'map',
                                     'base_footprint',
-                                    rospy.Time.now(),
+                                    rospy.Time(0),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,
@@ -140,11 +138,10 @@ class VelocityTask(object, AbstractTask):
                 velocity.twist.linear.z = desired_vel[2]
 
                 self._current_velocity = desired_vel
-                
+
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            else:
-                return (TaskAborted(msg='Illegal state reached in Velocity test task'),)
+            return (TaskAborted(msg='Illegal state reached in Velocity test task'),)
 
     def cancel(self):
         rospy.loginfo('VelocityTestTask Task canceled')

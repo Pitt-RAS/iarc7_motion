@@ -107,31 +107,29 @@ class BlockRoombaTask(object, AbstractTask):
             if self._canceled:
                 return (TaskCanceled(),)
 
-            elif (self._state == BlockRoombaTaskState.init):
+            if (self._state == BlockRoombaTaskState.init):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = BlockRoombaTaskState.waiting
                 else:
                     self._state = BlockRoombaTaskState.descent
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == BlockRoombaTaskState.waiting):
+            if (self._state == BlockRoombaTaskState.waiting):
                 if self._roomba_array is None or self._drone_odometry is None:
-                    self._state = BlockRoombaTaskState.waiting
+                    return (TaskRunning(), NopCommand())
                 else:
                     self._state = BlockRoombaTaskState.descent
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == BlockRoombaTaskState.descent):
+            if (self._state == BlockRoombaTaskState.descent):
                 try:
                     roomba_transform = self._tf_buffer.lookup_transform(
                                         'level_quad',
                                         self._roomba_id,
-                                        rospy.Time.now(),
+                                        rospy.Time(0),
                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
                     drone_transform = self._tf_buffer.lookup_transform(
                                         'level_quad',
                                         'map',
-                                        rospy.Time.now(),
+                                        rospy.Time(0),
                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,
@@ -206,8 +204,7 @@ class BlockRoombaTask(object, AbstractTask):
                 
                 return (TaskRunning(), VelocityCommand(velocity))
 
-            else:
-                return (TaskAborted(msg='Illegal state reached in Block Roomba Task' ),)
+            return (TaskAborted(msg='Illegal state reached in Block Roomba Task' ),)
 
     # checks to see if passed in roomba id is available and
     # that the drone and roomba are both within a specified distance
