@@ -99,21 +99,19 @@ class HitRoombaTask(object, AbstractTask):
             if self._canceled:
                 return (TaskCanceled(),)
 
-            elif (self._state == HitRoombaTaskState.init):
+            if (self._state == HitRoombaTaskState.init):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = HitRoombaTaskState.waiting
                 else:
                     self._state = HitRoombaTaskState.descent
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == HitRoombaTaskState.waiting):
+            if (self._state == HitRoombaTaskState.waiting):
                 if self._roomba_array is None or self._drone_odometry is None:
-                    self._state = HitRoombaTaskState.waiting
+                    return (TaskRunning(), NopCommand())
                 else:
                     self._state = HitRoombaTaskState.descent
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == HitRoombaTaskState.descent):
+            if (self._state == HitRoombaTaskState.descent):
 
                 if not self._check_roomba_in_sight():
                     return (TaskAborted(msg='The provided roomba is not in sight of quad'),)

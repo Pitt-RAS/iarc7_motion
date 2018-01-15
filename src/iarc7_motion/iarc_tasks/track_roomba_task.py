@@ -108,21 +108,19 @@ class TrackRoombaTask(object, AbstractTask):
             if self._canceled:
                 return (TaskCanceled(),)
 
-            elif (self._state == TrackObjectTaskState.init):
+            if (self._state == TrackObjectTaskState.init):
                 if self._roomba_array is None or self._drone_odometry is None:
                     self._state = TrackObjectTaskState.waiting
                 else:
                     self._state = TrackObjectTaskState.track
-                return (TaskRunning(), NopCommand())
 
-            elif (self._state == TrackObjectTaskState.waiting):
+            if (self._state == TrackObjectTaskState.waiting):
                 if self._roomba_array is None or self._drone_odometry is None:
-                    self._state = TrackObjectTaskState.waiting
+                    return (TaskRunning(), NopCommand())
                 else:
                     self._state = TrackObjectTaskState.track
-                return (TaskRunning(), NopCommand())
 
-            elif self._state == TrackObjectTaskState.track:
+            if self._state == TrackObjectTaskState.track:
 
                 if not (self._height_checker.above_min_maneuver_height(
                             self._drone_odometry.pose.pose.position.z)):
