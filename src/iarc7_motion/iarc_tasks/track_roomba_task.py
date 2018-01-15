@@ -134,7 +134,7 @@ class TrackRoombaTask(object, AbstractTask):
                     roomba_transform = self._tf_buffer.lookup_transform(
                                         'level_quad',
                                         self._roomba_id,
-                                        rospy.Time.now(),
+                                        rospy.Time(0),
                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,

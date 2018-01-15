@@ -93,7 +93,7 @@ class VelocityTask(object, AbstractTask):
                     transStamped = self._tf_buffer.lookup_transform(
                                     'map',
                                     'base_footprint',
-                                    rospy.Time.now(),
+                                    rospy.Time(0),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,

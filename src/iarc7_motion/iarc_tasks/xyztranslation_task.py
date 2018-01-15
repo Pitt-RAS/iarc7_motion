@@ -60,8 +60,14 @@ class XYZTranslationTask(object, AbstractTask):
 
         if self._state == XYZTranslationTaskState.translate:
             try:
-                transStamped = self._tf_buffer.lookup_transform('map', 'quad', rospy.Time.now(), rospy.Duration(self._TRANSFORM_TIMEOUT))
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as ex:
+                transStamped = self._tf_buffer.lookup_transform(
+                        'map',
+                        'quad',
+                        rospy.Time(0),
+                        rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
                 rospy.logerr('XYZTranslation Task: Exception when looking up transform')
                 rospy.logerr(ex.message)
                 return (TaskAborted(msg = 'Exception when looking up transform during xyztranslation'),)
