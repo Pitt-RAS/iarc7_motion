@@ -26,7 +26,7 @@ namespace Iarc7Motion
 {
 
 enum class TakeoffState { ARM,
-                          RAMP,
+                          PAUSE,
                           DONE };
 
 class TakeoffController
@@ -106,6 +106,9 @@ private:
 
     // Establishing service client used for arm request
     ros::ServiceClient uav_arm_client_;
+
+    // Time of arming success
+    ros::Time arm_time_;
 };
 
 } // End namespace Iarc7Motion

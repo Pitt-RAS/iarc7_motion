@@ -53,7 +53,8 @@ TakeoffController::TakeoffController(
       takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
                   private_nh,
                   "takeoff_max_height_switch_pressed")),
-      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
+      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm")),
+      arm_time_()
 {
     landing_detected_subscriber_ = nh.subscribe("landing_detected",
                                     10,
@@ -83,7 +84,7 @@ bool TakeoffController::calibrateThrustModel(const ros::Time& time)
     geometry_msgs::PointStamped col_point;
     tf2::doTransform(col_point, col_point, transform);
 
-    thrust_model_.calibrate(throttle_, voltage, col_point.point.z);
+    thrust_model_.calibrate(0.5, voltage, col_point.point.z);
     return true;
 }
 
@@ -160,25 +161,19 @@ bool TakeoffController::update(const ros::Time& time,
             ROS_ERROR("Arming service failed");
             return false;
         }
-        state_ = TakeoffState::RAMP;
-    }
-    else if(state_ == TakeoffState::RAMP) {
-        if(!landing_detected_message_.data) {
-            if (!calibrateThrustModel(time)) {
-                ROS_ERROR("Failed to calibrate thrust model");
-                return false;
-            }
-          state_ = TakeoffState::DONE;
-        }
-        // Check if UAV is above switch sensing height, if it is go to safety response
-        else if(transform.transform.translation.z > takeoff_max_height_switch_pressed_)
-        {
-            ROS_ERROR("Takeoff handler failed, quad's switches are toggled, but quad is above toggle height");
+        if (!calibrateThrustModel(time)) {
+            ROS_ERROR("Failed to calibrate thrust model");
             return false;
         }
-        else
-        {
-          throttle_ = std::min(throttle_ + ((time - last_update_time_).toSec() * takeoff_throttle_ramp_rate_), 1.0);
+        arm_time_=time;
+        state_ = TakeoffState::PAUSE;
+    }
+    else if (state_ == TakeoffState::PAUSE){
+        if (time > arm_time_ + ros::Duration(4.0)){
+          state_ = TakeoffState::DONE;
+        }
+        else{
+          ROS_ERROR("Pausing...");
         }
     }
     else if(state_ == TakeoffState::DONE)
