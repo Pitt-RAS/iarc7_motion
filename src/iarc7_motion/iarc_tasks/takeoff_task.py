@@ -27,12 +27,12 @@ class TakeoffTaskState(object):
     done = 3
     failed = 4
 
-class TakeoffTask(object, AbstractTask):
+class TakeoffTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(TakeoffTask, self).__init__()
+
         self._transition = None
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._canceled = False
         self._above_min_man_height = False
 
@@ -47,17 +47,8 @@ class TakeoffTask(object, AbstractTask):
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
 
-        self._fc_status = None
-        self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = TakeoffTaskState.init
-        self._arm_request_success = False
         self._time_of_ascension = None
-
-    def _receive_fc_status(self, data):
-        self._fc_status = data
-
-    def arm_callback(self, data):
-        self._arm_request_success = data.success
 
     def takeoff_callback(self, status, result):
         if status == GoalStatus.SUCCEEDED:
@@ -86,7 +77,7 @@ class TakeoffTask(object, AbstractTask):
 
         if (self._state == TakeoffTaskState.ascend):
             try:
-                transStamped = self._tf_buffer.lookup_transform(
+                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
                                     'map',
                                     'base_footprint',
                                     rospy.Time(0),

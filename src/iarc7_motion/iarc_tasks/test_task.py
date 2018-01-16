@@ -11,9 +11,11 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
-class TestTask(object, AbstractTask):
+class TestTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(TestTask, self).__init__()
+
         self._transition = None
         self.target = None
         self.abort_time = None

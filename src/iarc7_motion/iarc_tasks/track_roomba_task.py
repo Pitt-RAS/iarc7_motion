@@ -7,8 +7,6 @@ import tf2_geometry_msgs
 import threading
 
 from geometry_msgs.msg import TwistStamped, PointStamped, Point
-from iarc7_msgs.msg import OdometryArray
-from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3Stamped, Vector3
 
 from .abstract_task import AbstractTask
@@ -29,9 +27,10 @@ class TrackObjectTaskState(object):
     track = 1
     waiting = 2
 
-class TrackRoombaTask(object, AbstractTask):
+class TrackRoombaTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(TrackRoombaTask, self).__init__()
 
         self._roomba_id = task_request.frame_id  + '/base_link'
         self._time_to_track = task_request.time_to_track
@@ -42,28 +41,15 @@ class TrackRoombaTask(object, AbstractTask):
             raise ValueError('A null roomba id was provided')
 
         self._roomba_odometry = None
-        self._roomba_array = None
         self._roomba_point = None
         self._roomba_found = False
         self._current_velocity = None
         self._start_time = None
         self._transition = None
 
-        self._drone_odometry = None
         self._canceled = False
 
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
-
         self._lock = threading.RLock()
-
-        self._roomba_status_sub = rospy.Subscriber(
-            'roombas', OdometryArray, 
-            self._receive_roomba_status)
-
-        self._current_velocity_sub = rospy.Subscriber(
-            '/odometry/filtered', Odometry,
-            self._current_velocity_callback)
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -87,14 +73,6 @@ class TrackRoombaTask(object, AbstractTask):
 
         self._state = TrackObjectTaskState.init
 
-    def _receive_roomba_status(self, data):
-        with self._lock:
-            self._roomba_array = data
-
-    def _current_velocity_callback(self, data):
-        with self._lock:
-            self._drone_odometry = data
-
     def get_desired_command(self):
         with self._lock:
             if self._start_time is None:
@@ -109,13 +87,15 @@ class TrackRoombaTask(object, AbstractTask):
                 return (TaskCanceled(),)
 
             if (self._state == TrackObjectTaskState.init):
-                if self._roomba_array is None or self._drone_odometry is None:
+                if (not self.topic_buffer.has_roomba_message()
+                 or not self.topic_buffer.has_odometry_message()):
                     self._state = TrackObjectTaskState.waiting
                 else:
                     self._state = TrackObjectTaskState.track
 
             if (self._state == TrackObjectTaskState.waiting):
-                if self._roomba_array is None or self._drone_odometry is None:
+                if (not self.topic_buffer.has_roomba_message()
+                 or not self.topic_buffer.has_odometry_message()):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = TrackObjectTaskState.track
@@ -123,15 +103,15 @@ class TrackRoombaTask(object, AbstractTask):
             if self._state == TrackObjectTaskState.track:
 
                 if not (self._height_checker.above_min_maneuver_height(
-                            self._drone_odometry.pose.pose.position.z)):
+                        self.topic_buffer.get_odometry_message().pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
                 elif not (self._z_holder.check_z_error(
-                    self._drone_odometry.pose.pose.position.z)):
+                        self.topic_buffer.get_odometry_message().pose.pose.position.z)):
                     return (TaskAborted(msg='Z error is too high'),)
                 elif not self._check_roomba_in_sight():
                     return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
                 try:
-                    roomba_transform = self._tf_buffer.lookup_transform(
+                    roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
                                         'level_quad',
                                         self._roomba_id,
                                         rospy.Time(0),
@@ -174,7 +154,7 @@ class TrackRoombaTask(object, AbstractTask):
                                     * self._K_Y + roomba_y_velocity)
                 
                 z_vel_target = self._z_holder.get_height_hold_response(
-                    self._drone_odometry.pose.pose.position.z)
+                    self.topic_buffer.get_odometry_message().pose.pose.position.z)
 
                 # caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
@@ -188,9 +168,10 @@ class TrackRoombaTask(object, AbstractTask):
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                drone_vel_x = self._drone_odometry.twist.twist.linear.x
-                drone_vel_y = self._drone_odometry.twist.twist.linear.y
-                drone_vel_z = self._drone_odometry.twist.twist.linear.z
+                odometry = self.topic_buffer.get_odometry_message()
+                drone_vel_x = odometry.twist.twist.linear.x
+                drone_vel_y = odometry.twist.twist.linear.y
+                drone_vel_z = odometry.twist.twist.linear.z
 
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
@@ -212,7 +193,7 @@ class TrackRoombaTask(object, AbstractTask):
 
     # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):
-        for odometry in self._roomba_array.data:
+        for odometry in self.topic_buffer.get_roomba_message().data:
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
                 return True

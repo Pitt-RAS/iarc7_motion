@@ -24,11 +24,11 @@ class HeightRecoveryTaskState(object):
     done = 2
     failed = 3
 
-class HeightRecoveryTask(object, AbstractTask):
+class HeightRecoveryTask(AbstractTask):
 
     def __init__(self, task_request):
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+        super(HeightRecoveryTask, self).__init__()
+
         self._canceled = False
         self._above_min_man_height = False
 
@@ -57,7 +57,7 @@ class HeightRecoveryTask(object, AbstractTask):
 
         if (self._state == HeightRecoveryTaskState.recover):
             try:
-                transStamped = self._tf_buffer.lookup_transform(
+                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
                                     'map',
                                     'base_footprint',
                                     rospy.Time(0),

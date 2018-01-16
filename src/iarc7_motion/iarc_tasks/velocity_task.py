@@ -7,7 +7,6 @@ import tf2_geometry_msgs
 import threading
 
 from geometry_msgs.msg import TwistStamped, PointStamped, Point
-from nav_msgs.msg import Odometry
 
 from .abstract_task import AbstractTask
 
@@ -28,24 +27,17 @@ class VelocityTaskState(object):
     moving = 1
     waiting = 2
 
-class VelocityTask(object, AbstractTask):
+class VelocityTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(VelocityTask, self).__init__()
 
-        self._drone_odometry = None
         self._canceled = False
         self._current_velocity = None
         self._current_height_set = False
         self._transition = None
 
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
-
         self._lock = threading.RLock()
-
-        self._current_velocity_sub = rospy.Subscriber(
-            '/odometry/filtered', Odometry,
-            self._current_velocity_callback)
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -65,10 +57,6 @@ class VelocityTask(object, AbstractTask):
 
         self._state = VelocityTaskState.init
 
-    def _current_velocity_callback(self, data):
-        with self._lock:
-            self._drone_odometry = data
-
     def get_desired_command(self):
         with self._lock:
 
@@ -76,13 +64,13 @@ class VelocityTask(object, AbstractTask):
                 return (TaskCanceled(),)
 
             if (self._state == VelocityTaskState.init):
-                if self._drone_odometry is None:
+                if not self.topic_buffer.has_odometry_message():
                     self._state = VelocityTaskState.waiting
                 else:
                     self._state = VelocityTaskState.moving
 
             if (self._state == VelocityTaskState.waiting):
-                if self._drone_odometry is None:
+                if not self.topic_buffer.has_odometry_message():
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = VelocityTaskState.moving
@@ -90,7 +78,7 @@ class VelocityTask(object, AbstractTask):
             if self._state == VelocityTaskState.moving:
 
                 try:
-                    transStamped = self._tf_buffer.lookup_transform(
+                    transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
                                     'map',
                                     'base_footprint',
                                     rospy.Time(0),
@@ -121,9 +109,10 @@ class VelocityTask(object, AbstractTask):
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                drone_vel_x = self._drone_odometry.twist.twist.linear.x
-                drone_vel_y = self._drone_odometry.twist.twist.linear.y
-                drone_vel_z = self._drone_odometry.twist.twist.linear.z
+                odometry = self.topic_buffer.get_odometry_message()
+                drone_vel_x = odometry.twist.twist.linear.x
+                drone_vel_y = odometry.twist.twist.linear.y
+                drone_vel_z = odometry.twist.twist.linear.z
 
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
