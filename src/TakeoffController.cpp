@@ -85,7 +85,7 @@ bool TakeoffController::calibrateThrustModel(const ros::Time& time)
     geometry_msgs::PointStamped col_point;
     tf2::doTransform(col_point, col_point, transform);
 
-    thrust_model_.calibrate(0.57, voltage, col_point.point.z);
+    thrust_model_.calibrate(thrust_model_.expected_hover_throttle, voltage, col_point.point.z);
     return true;
 }
 

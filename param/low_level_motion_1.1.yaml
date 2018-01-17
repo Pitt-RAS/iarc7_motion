@@ -14,6 +14,7 @@ thrust_model:
     voltage_polynomial: [0.14499186, -2.04582824]
     throttle_b: 0.81567238
     throttle_c: -0.03798856
+    expected_hover_throttle: 0.67
 
 # Thrust levels are in m/s^2
 min_thrust: 7.0

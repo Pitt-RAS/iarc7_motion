@@ -24,6 +24,9 @@ struct ThrustModel
     double throttle_b;
     double throttle_c;
 
+    // Expected hover throttle
+    double expected_hover_throttle;
+
     double controlPoly(double throttle) {
         return throttle*throttle + throttle_b*throttle + throttle_c;
     }
