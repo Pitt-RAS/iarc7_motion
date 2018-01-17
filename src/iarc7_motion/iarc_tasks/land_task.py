@@ -21,18 +21,15 @@ class LandTaskState(object):
     done = 2
     failed = 3
 
-class LandTask(object, AbstractTask):
+class LandTask(AbstractTask):
     
     def __init__(self, task_request):
+        super(LandTask, self).__init__()
+
         self._transition = None
         self._canceled = False
 
-        self._fc_status = None
-        self._fc_status_sub = rospy.Subscriber('fc_status', FlightControllerStatus, self._receive_fc_status)
         self._state = LandTaskState.init
-
-    def _receive_fc_status(self, data):
-        self._fc_status = data
 
     def land_callback(self, status, result):
         if status == GoalStatus.SUCCEEDED:

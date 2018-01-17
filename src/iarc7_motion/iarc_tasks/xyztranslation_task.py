@@ -18,11 +18,11 @@ class XYZTranslationTaskState(object):
     init = 0
     translate = 1
 
-class XYZTranslationTask(object, AbstractTask):
+class XYZTranslationTask(AbstractTask):
 
     def __init__(self, task_request):
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+        super(XYZTranslationTask, self).__init__()
+
         self._canceled = False;
 
         self._transition = None
@@ -60,7 +60,7 @@ class XYZTranslationTask(object, AbstractTask):
 
         if self._state == XYZTranslationTaskState.translate:
             try:
-                transStamped = self._tf_buffer.lookup_transform(
+                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
                         'map',
                         'quad',
                         rospy.Time(0),

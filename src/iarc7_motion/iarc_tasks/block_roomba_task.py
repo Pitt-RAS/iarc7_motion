@@ -12,12 +12,8 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Vector3Stamped
 from geometry_msgs.msg import Vector3
-from nav_msgs.msg import Odometry
 
 from task_utilities.acceleration_limiter import AccelerationLimiter
-
-from iarc7_msgs.msg import OdometryArray
-from iarc7_msgs.msg import BoolStamped
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -33,9 +29,10 @@ class BlockRoombaTaskState(object):
     waiting = 1
     descent = 2
 
-class BlockRoombaTask(object, AbstractTask):
+class BlockRoombaTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(BlockRoombaTask, self).__init__()
 
         self._roomba_id = task_request.frame_id
 
@@ -45,33 +42,15 @@ class BlockRoombaTask(object, AbstractTask):
             raise ValueError('A null roomba id was provided')
 
         self._roomba_odometry = None
-        self._roomba_array = None
         self._roomba_point = None
         self._limiter = AccelerationLimiter()
 
-        self._drone_odometry = None
         self._canceled = False
-        self._landed_message = None
         self._last_update_time = None
         self._current_velocity = None
         self._transition = None
 
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)  
-
         self._lock = threading.RLock()
-
-        self._landing_message_sub = rospy.Subscriber(
-            'landing_detected', BoolStamped, 
-            self._receive_landing_status)
-
-        self._roomba_status_sub = rospy.Subscriber(
-            'roombas', OdometryArray, 
-            self._receive_roomba_status)
-
-        self._current_velocity_sub = rospy.Subscriber(
-            '/odometry/filtered', Odometry,
-            self._current_velocity_callback)
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
@@ -90,43 +69,35 @@ class BlockRoombaTask(object, AbstractTask):
         self._overshoot = (_roomba_diameter + _drone_width)/2
         self._state = BlockRoombaTaskState.init
 
-    def _receive_roomba_status(self, data):
-        with self._lock:
-            self._roomba_array = data
-
-    def _receive_landing_status(self, data):
-        with self._lock:
-            self._landed_message = data
-
-    def _current_velocity_callback(self, data):
-        with self._lock:
-            self._drone_odometry = data
-
     def get_desired_command(self):
         with self._lock:
             if self._canceled:
                 return (TaskCanceled(),)
 
             if (self._state == BlockRoombaTaskState.init):
-                if self._roomba_array is None or self._drone_odometry is None:
+                if (not self.topic_buffer.has_roomba_message()
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     self._state = BlockRoombaTaskState.waiting
                 else:
                     self._state = BlockRoombaTaskState.descent
 
             if (self._state == BlockRoombaTaskState.waiting):
-                if self._roomba_array is None or self._drone_odometry is None:
+                if (not self.topic_buffer.has_roomba_message()
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = BlockRoombaTaskState.descent
 
             if (self._state == BlockRoombaTaskState.descent):
                 try:
-                    roomba_transform = self._tf_buffer.lookup_transform(
+                    roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
                                         'level_quad',
                                         self._roomba_id,
                                         rospy.Time(0),
                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
-                    drone_transform = self._tf_buffer.lookup_transform(
+                    drone_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
                                         'level_quad',
                                         'map',
                                         rospy.Time(0),
@@ -184,9 +155,10 @@ class BlockRoombaTask(object, AbstractTask):
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
                
-                drone_vel_x = self._drone_odometry.twist.twist.linear.x
-                drone_vel_y = self._drone_odometry.twist.twist.linear.y
-                drone_vel_z = self._drone_odometry.twist.twist.linear.z
+                odometry = self.topic_buffer.get_odometry_message()
+                drone_vel_x = odometry.twist.twist.linear.x
+                drone_vel_y = odometry.twist.twist.linear.y
+                drone_vel_z = odometry.twist.twist.linear.z
 
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
@@ -210,7 +182,7 @@ class BlockRoombaTask(object, AbstractTask):
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
     def _check_max_roomba_range(self):
-        for odometry in self._roomba_array.data:
+        for odometry in self.topic_buffer.get_roomba_message().data:
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
                 self._roomba_found =  True 
@@ -225,10 +197,7 @@ class BlockRoombaTask(object, AbstractTask):
         return True
 
     def _on_ground(self):
-        if self._landed_message is None:
-            return False
-        else: 
-            return self._landed_message.data
+        return self.topic_buffer.get_landing_message().data
 
     def set_incoming_transition(self, transition):
         self._transition = transition

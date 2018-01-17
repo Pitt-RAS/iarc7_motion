@@ -2,16 +2,12 @@
 
 import math
 import rospy
-import tf2_ros
 import tf2_geometry_msgs
 import threading
 
 from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
-from nav_msgs.msg import Odometry
-
-from iarc7_msgs.msg import OdometryArray
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -29,12 +25,13 @@ class HoldPositionTaskStates(object):
     waiting = 1
     holding = 2
 
-class HoldPositionTask(object, AbstractTask):
+class HoldPositionTask(AbstractTask):
 
     def __init__(self, task_request):
+        super(HoldPositionTask, self).__init__()
+
         self._hold_current_position = task_request.hold_current_position
 
-        self._drone_odometry = None
         self._canceled = False
         self._transition = None
 
@@ -53,10 +50,6 @@ class HoldPositionTask(object, AbstractTask):
             self._y_position = None
             self._z_position = None
 
-        self._current_velocity_sub = rospy.Subscriber(
-            '/odometry/filtered', Odometry,
-            self._current_velocity_callback)
-
         try:
             self._MAX_RANGE = rospy.get_param('~max_holding_range')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
@@ -70,15 +63,11 @@ class HoldPositionTask(object, AbstractTask):
 
         self._state = HoldPositionTaskStates.init
 
-    def _current_velocity_callback(self, data):
-        with self._lock:
-            self._drone_odometry = data
-
     def get_desired_command(self):
         with self._lock:
             if (self._state == HoldPositionTaskStates.init
              or self._state == HoldPositionTaskStates.waiting):
-                if self._drone_odometry is None:
+                if not self.topic_buffer.has_odometry_message():
                     self._state = HoldPositionTaskStates.waiting
                     return (TaskRunning(), NopCommand())
                 else:
@@ -90,7 +79,7 @@ class HoldPositionTask(object, AbstractTask):
 
             if (self._state == HoldPositionTaskStates.holding):
                 if not (self._height_checker.above_min_maneuver_height(
-                            self._drone_odometry.pose.pose.position.z)):
+                        self.topic_buffer.get_odometry_message().pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
 
                 if not (self._check_max_error()):
@@ -100,11 +89,12 @@ class HoldPositionTask(object, AbstractTask):
                     return (TaskCanceled(),)
 
                 # p-controller
-                x_vel_target = ((self._x_position - self._drone_odometry.pose.pose.position.x)
+                odometry = self.topic_buffer.get_odometry_message()
+                x_vel_target = ((self._x_position - odometry.pose.pose.position.x)
                                     * self._K_X)
-                y_vel_target = ((self._y_position - self._drone_odometry.pose.pose.position.y) 
+                y_vel_target = ((self._y_position - odometry.pose.pose.position.y) 
                                     * self._K_Y)
-                z_vel_target = ((self._z_position - self._drone_odometry.pose.pose.position.z) 
+                z_vel_target = ((self._z_position - odometry.pose.pose.position.z) 
                                     * self._K_Z)
 
                 #caps velocity
@@ -134,9 +124,10 @@ class HoldPositionTask(object, AbstractTask):
         return True
 
     def _check_max_error(self):
-        x_vel_target = (self._x_position - self._drone_odometry.pose.pose.position.x)
-        y_vel_target = (self._y_position - self._drone_odometry.pose.pose.position.y)
-        z_vel_target = (self._z_position - self._drone_odometry.pose.pose.position.z)
+        odometry = self.topic_buffer.get_odometry_message()
+        x_vel_target = (self._x_position - odometry.pose.pose.position.x)
+        y_vel_target = (self._y_position - odometry.pose.pose.position.y)
+        z_vel_target = (self._z_position - odometry.pose.pose.position.z)
 
         _distance_to_point = math.sqrt(x_vel_target**2 + y_vel_target**2 + z_vel_target**2)
         
@@ -145,9 +136,10 @@ class HoldPositionTask(object, AbstractTask):
     def _set_targets(self):
         if (self._x_position is None and self._y_position is None
                                      and self._z_position is None):
-            self._x_position = self._drone_odometry.pose.pose.position.x
-            self._y_position = self._drone_odometry.pose.pose.position.y
-            self._z_position = self._drone_odometry.pose.pose.position.z
+            odometry = self.topic_buffer.get_odometry_message()
+            self._x_position = odometry.pose.pose.position.x
+            self._y_position = odometry.pose.pose.position.y
+            self._z_position = odometry.pose.pose.position.z
     
     def set_incoming_transition(self, transition):
         self._transition = transition

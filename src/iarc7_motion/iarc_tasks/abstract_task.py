@@ -8,7 +8,16 @@ are defined motion actions or commands.
 
 import rospy
 
-class AbstractTask:
+from .task_topic_buffer import TaskTopicBuffer
+
+class AbstractTask(object):
+
+    topic_buffer = None
+
+    def __init__(self):
+        if AbstractTask.topic_buffer is None:
+            AbstractTask.topic_buffer = TaskTopicBuffer()
+        self.topic_buffer = AbstractTask.topic_buffer
 
     # Abstract method
     def get_desired_command(self):
