@@ -26,6 +26,7 @@ namespace Iarc7Motion
 {
 
 enum class TakeoffState { ARM,
+                          RAMP,
                           PAUSE,
                           DONE };
 
@@ -109,6 +110,9 @@ private:
 
     // Time of arming success
     ros::Time arm_time_;
+
+    // Time of ramp starting
+    ros::Time ramp_start_time_;
 };
 
 } // End namespace Iarc7Motion
