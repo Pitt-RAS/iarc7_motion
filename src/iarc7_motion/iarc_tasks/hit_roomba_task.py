@@ -68,14 +68,16 @@ class HitRoombaTask(AbstractTask):
 
             if (self._state == HitRoombaTaskState.init):
                 if (not self.topic_buffer.has_roomba_message()
-                 or not self.topic_buffer.has_odometry_message()):
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     self._state = HitRoombaTaskState.waiting
                 else:
                     self._state = HitRoombaTaskState.descent
 
             if (self._state == HitRoombaTaskState.waiting):
                 if (not self.topic_buffer.has_roomba_message()
-                 or not self.topic_buffer.has_odometry_message()):
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = HitRoombaTaskState.descent
@@ -181,10 +183,7 @@ class HitRoombaTask(AbstractTask):
         return True
 
     def _on_ground(self):
-        if not self.topic_buffer.has_landing_message():
-            return False
-        else: 
-            return self.topic_buffer.get_landing_message()
+        return self.topic_buffer.get_landing_message().data
 
     def set_incoming_transition(self, transition):
         self._transition = transition

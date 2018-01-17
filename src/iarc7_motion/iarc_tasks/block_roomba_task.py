@@ -76,14 +76,16 @@ class BlockRoombaTask(AbstractTask):
 
             if (self._state == BlockRoombaTaskState.init):
                 if (not self.topic_buffer.has_roomba_message()
-                 or not self.topic_buffer.has_odometry_message()):
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     self._state = BlockRoombaTaskState.waiting
                 else:
                     self._state = BlockRoombaTaskState.descent
 
             if (self._state == BlockRoombaTaskState.waiting):
                 if (not self.topic_buffer.has_roomba_message()
-                 or not self.topic_buffer.has_odometry_message()):
+                 or not self.topic_buffer.has_odometry_message()
+                 or not self.topic_buffer.has_landing_message()):
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = BlockRoombaTaskState.descent
@@ -195,10 +197,7 @@ class BlockRoombaTask(AbstractTask):
         return True
 
     def _on_ground(self):
-        if not self.topic_buffer.has_landing_message():
-            return False
-        else: 
-            return self.topic_buffer.get_landing_message()
+        return self.topic_buffer.get_landing_message().data
 
     def set_incoming_transition(self, transition):
         self._transition = transition
