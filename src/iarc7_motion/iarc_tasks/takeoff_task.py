@@ -24,8 +24,9 @@ class TakeoffTaskState(object):
     init = 0
     takeoff = 1
     ascend = 2
-    done = 3
-    failed = 4
+    approach = 3
+    done = 4
+    failed = 5
 
 class TakeoffTask(AbstractTask):
 
@@ -49,6 +50,7 @@ class TakeoffTask(AbstractTask):
 
         self._state = TakeoffTaskState.init
         self._time_of_ascension = None
+        self._time_of_phase2_ascension = None
 
     def takeoff_callback(self, status, result):
         if status == GoalStatus.SUCCEEDED:
@@ -94,10 +96,11 @@ class TakeoffTask(AbstractTask):
             self._above_min_man_height = (transStamped.transform.translation.z >
                                                 self._MIN_MANEUVER_HEIGHT)
 
-            # Check if we reached the target height
-            if(transStamped.transform.translation.z > self._TAKEOFF_COMPLETE_HEIGHT):
-                self._state = TakeoffTaskState.done
-                return (TaskDone(), NopCommand())
+            # Check if we reached the target distance from height
+            if((self._TAKEOFF_COMPLETE_HEIGHT - transStamped.transform.translation.z - .05) < ((.5 * self._TAKEOFF_VELOCITY**2) / self._TAKEOFF_ACCELERATION)):
+                self._time_of_phase2_ascension = rospy.Time.now()
+                self._state = TakeoffTaskState.approach
+                return (TaskRunning(), VelocityCommand(velocity))
         
             else:
                 velocity = TwistStamped()
@@ -109,6 +112,24 @@ class TakeoffTask(AbstractTask):
                     * self._TAKEOFF_ACCELERATION)
 
                 return (TaskRunning(), VelocityCommand(velocity))
+        
+        #Enter the approach phase
+        if self._state == TakeoffTaskState.approach:
+            
+            #Check if we have reached target height
+            if (self._TAKEOFF_COMPLETE_HEIGHT <= transStamped.transform.translation.z):
+                self._state = TakeoffTaskState.done
+                return (TaskDone(), NopCommand())
+            
+            else:
+                velocity = TwistStamped()
+                velocity.header.frame_id = 'level_quad'
+                velocity.header.stamp = rospy.Time.now()
+
+                velocity.twist.linear.z = max(.01,
+                    self._TAKEOFF_VELOCITY - ((rospy.Time.now() - self._time_of_phase2_ascension).to_sec()
+                    * self._TAKEOFF_ACCELERATION))
+
 
         if self._state == TakeoffTaskState.done:
             return (TaskDone(), NopCommand())

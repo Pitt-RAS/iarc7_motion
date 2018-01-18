@@ -170,7 +170,7 @@ bool TakeoffController::update(const ros::Time& time,
         state_ = TakeoffState::PAUSE;
     }
     else if (state_ == TakeoffState::PAUSE){
-        if (time > arm_time_ + ros::Duration(2.0)){
+        if (time > arm_time_ + ros::Duration(0.5)){
             state_ = TakeoffState::RAMP;
             if (!calibrateThrustModel(time)) {
                 ROS_ERROR("Failed to calibrate thrust model");
@@ -201,7 +201,7 @@ bool TakeoffController::update(const ros::Time& time,
             geometry_msgs::PointStamped col_point;
             tf2::doTransform(col_point, col_point, transform);
 
-            double hover_throttle = thrust_model_.throttleFromAccel(9.8, voltage, col_point.point.z);
+            double hover_throttle = thrust_model_.throttleFromAccel(10.5, voltage, col_point.point.z);
 
             throttle_ = ((time-ramp_start_time_).toSec()/1.0) * hover_throttle;
             ROS_INFO("TARGET: %f", hover_throttle);
