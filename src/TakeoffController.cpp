@@ -29,9 +29,12 @@ TakeoffController::TakeoffController(
       state_(TakeoffState::DONE),
       throttle_(),
       thrust_model_(thrust_model),
-      takeoff_throttle_ramp_rate_(ros_utils::ParamUtils::getParam<double>(
+      post_arm_delay_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "takeoff_throttle_ramp_rate")),
+              "post_arm_delay")),
+      takeoff_throttle_ramp_duration_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "takeoff_throttle_ramp_duration")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -50,9 +53,6 @@ TakeoffController::TakeoffController(
                                 return msg.data;
                             },
                             100),
-      takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
-                  private_nh,
-                  "takeoff_max_height_switch_pressed")),
       uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm")),
       arm_time_(),
       ramp_start_time_()
@@ -170,7 +170,7 @@ bool TakeoffController::update(const ros::Time& time,
         state_ = TakeoffState::PAUSE;
     }
     else if (state_ == TakeoffState::PAUSE){
-        if (time > arm_time_ + ros::Duration(0.5)){
+        if (time > arm_time_ + post_arm_delay_){
             state_ = TakeoffState::RAMP;
             if (!calibrateThrustModel(time)) {
                 ROS_ERROR("Failed to calibrate thrust model");
@@ -201,10 +201,9 @@ bool TakeoffController::update(const ros::Time& time,
             geometry_msgs::PointStamped col_point;
             tf2::doTransform(col_point, col_point, transform);
 
-            double hover_throttle = thrust_model_.throttleFromAccel(10.5, voltage, col_point.point.z);
+            double hover_throttle = thrust_model_.throttleFromAccel(9.8, voltage, col_point.point.z);
 
             throttle_ = ((time-ramp_start_time_).toSec()/1.0) * hover_throttle;
-            ROS_INFO("TARGET: %f", hover_throttle);
         }
         else{
             state_ = TakeoffState::DONE;
@@ -222,7 +221,6 @@ bool TakeoffController::update(const ros::Time& time,
 
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
-    ROS_INFO("THROTTLE: %f", throttle_);
     uav_command.throttle = throttle_;
 
     // Check that none of the throttle values are infinite before returning

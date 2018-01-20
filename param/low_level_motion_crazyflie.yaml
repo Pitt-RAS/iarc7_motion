@@ -58,8 +58,11 @@ update_frequency: 60.0
 startup_timeout: 10.0
 update_timeout: 0.2
 
-# Rate at which to ramp the throttle during takeoff in percent a second
-takeoff_throttle_ramp_rate: 0.1
+# Time to delay after arming
+post_arm_delay: 0.2
+
+# Time to take to ramp the throttle to hover throttle
+takeoff_throttle_ramp_duration: 1.0
 
 # Rate at which to accelerate from 0 to descent velocity
 # must be positive (m/s^2)
