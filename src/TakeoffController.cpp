@@ -180,7 +180,7 @@ bool TakeoffController::update(const ros::Time& time,
         }
     }
     else if(state_ == TakeoffState::RAMP) {
-        if (time <= ramp_start_time_ + ros::Duration(1.0)){
+        if (time <= ramp_start_time_ + takeoff_throttle_ramp_duration_){
             double voltage;
             if (!battery_interpolator_.getInterpolatedMsgAtTime(voltage, time)) {
                 ROS_ERROR("Failed to get battery voltage to calibrate thrust model");
