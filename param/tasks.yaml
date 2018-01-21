@@ -25,7 +25,7 @@ land_height_tolerance   : 0.15
 
 # TRANSLATE-STOP PLANNER
 # Max acceleration in the xy plane in m/s^2
-max_translation_acceleration: 1.0
+max_translation_acceleration: 3.0
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
@@ -63,9 +63,16 @@ drone_landing_gear_width: .775
 
 # HEIGHT HOLDER
 # p-term for height holder helper for Z height
-p_term_height_hold_z: .90
+p_term_height_hold_z: 2.0
 # maximum z error for heigth holder
 max_z_error: 1.0
+# distance from setpoint that will allow deadzone mode to begin
+deadzone_height_hold_z: 0.05
+# distance from deadzone threshold that will turn off
+# deadzone mode
+deadzone_hysteresis_height_hold_z: 0.05
+# Enable debugging topics for height hold
+debug_height_hold_z: True
 
 # HOLD POSITION TASK
 # p-term for x 

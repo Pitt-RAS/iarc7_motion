@@ -98,7 +98,16 @@ QuadVelocityController::QuadVelocityController(
               "min_thrust")),
       max_thrust_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "max_thrust"))
+              "max_thrust")),
+      level_flight_required_height_(
+          ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "level_flight_required_height")),
+      level_flight_required_hysteresis_(
+          ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "level_flight_required_hysteresis")),
+      level_flight_active_(true)
 {
 }
 
@@ -213,7 +222,24 @@ bool QuadVelocityController::update(const ros::Time& time,
     double local_y_accel = -std::sin(current_yaw) * accel.x()
                          +  std::cos(current_yaw) * accel.y();
 
-    if (!z_only) {
+    if (level_flight_active_ && col_height 
+                                  > level_flight_required_height_
+                                    + level_flight_required_hysteresis_) {
+        level_flight_active_ = false;
+        pitch_pid_.resetAccumulator();
+        roll_pid_.resetAccumulator();
+    }
+
+    if (z_only) {
+        pitch_output = pitch;
+        roll_output = roll;
+    }
+    else if (col_height < level_flight_required_height_ || level_flight_active_) {
+        pitch_output = 0.0f;
+        roll_output = 0.0f;
+        level_flight_active_ = true;
+    }
+    else {
         // Update pitch PID loop
         success = pitch_pid_.update(local_x_velocity,
                                     time,
@@ -233,9 +259,6 @@ bool QuadVelocityController::update(const ros::Time& time,
             ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
             return false;
         }
-    } else {
-        pitch_output = pitch;
-        roll_output = roll;
     }
 
     // Fill in the uav_command's information

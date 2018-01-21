@@ -118,6 +118,10 @@ private:
 
     // Max allowed requested thrust in m/s^2
     double max_thrust_;
+
+    const double level_flight_required_height_;
+    const double level_flight_required_hysteresis_;
+    bool level_flight_active_;
 };
 
 }

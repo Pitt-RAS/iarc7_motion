@@ -24,16 +24,16 @@ max_thrust: 20.0
 
 battery_timeout: 0.5
 
-pitch_p: 0.35
+pitch_p: 0.6
 pitch_i: 0.05
-pitch_d: 0.04
+pitch_d: 0.015
 pitch_accumulator_max: 10.0
 pitch_accumulator_min: -10.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 0.35
+roll_p: 0.6
 roll_i: 0.05
-roll_d: 0.04
+roll_d: 0.015
 roll_accumulator_max: 10.0
 roll_accumulator_min: -10.0
 roll_accumulator_enable_threshold: 10.0
@@ -42,17 +42,23 @@ throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 200.0
 
-pitch_max         : 0.15
-pitch_min         : -0.15
-pitch_max_rate    : 5.0
+pitch_max         : 0.5
+pitch_min         : -0.5
+pitch_max_rate    : 10.0
 
-roll_max          : 0.15
-roll_min          : -0.15
-roll_max_rate     : 5.0
+roll_max          : 0.5
+roll_min          : -0.5
+roll_max_rate     : 10.0
 
 yaw_max           : 0.5
 yaw_min           : -0.5
 yaw_max_rate      : 10.0
+
+# Height below which the drone is required to be level
+level_flight_required_height: 0.15
+# Height above the level flight height at which to allow the drone
+# to begin tilting again
+level_flight_required_hysteresis: 0.10
 
 update_frequency: 60.0
 startup_timeout: 10.0
