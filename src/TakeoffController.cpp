@@ -107,7 +107,7 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
                                                          update_timeout_);
 
     if (!success) {
-        ROS_ERROR("Failed to get current transform in TakeoffController::update");
+        ROS_ERROR("Failed to get current transform in TakeoffController::prepareForTakeover");
         return false;
     }
 
@@ -278,8 +278,9 @@ bool TakeoffController::waitUntilReady()
     }
 
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = std::max(landing_detected_message_.header.stamp,
-                                 battery_interpolator_.getLastUpdateTime());
+    last_update_time_ = std::max({transform.header.stamp,
+                                  landing_detected_message_.header.stamp,
+                                  battery_interpolator_.getLastUpdateTime()});
     return true;
 }
 
