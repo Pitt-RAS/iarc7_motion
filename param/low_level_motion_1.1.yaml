@@ -22,15 +22,15 @@ max_thrust: 100.0
 
 battery_timeout: 0.5
 
-pitch_p: 0.0
-pitch_i: 0.0
+pitch_p: 0.1
+pitch_i: 0.05
 pitch_d: 0.0
 pitch_accumulator_max: 10.0
 pitch_accumulator_min: -10.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 0.0
-roll_i: 0.0
+roll_p: 0.1
+roll_i: 0.05
 roll_d: 0.0
 roll_accumulator_max: 10.0
 roll_accumulator_min: -10.0
