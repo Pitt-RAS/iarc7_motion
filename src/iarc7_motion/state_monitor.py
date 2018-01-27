@@ -27,6 +27,7 @@ from iarc_tasks.block_roomba_task import BlockRoombaTask
 from iarc_tasks.hold_position_task import HoldPositionTask
 from iarc_tasks.height_recovery_task import HeightRecoveryTask
 from iarc_tasks.velocity_task import VelocityTask
+from iarc_tasks.test_planner_task import TestPlannerTask
 
 class RobotStates: 
     WAITING_ON_TAKEOFF = 1

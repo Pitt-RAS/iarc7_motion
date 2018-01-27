@@ -9,6 +9,7 @@ from iarc7_motion.msg import QuadMoveAction, QuadMoveResult
 from iarc_tasks.takeoff_task import TakeoffTask
 from iarc_tasks.land_task import LandTask
 from iarc_tasks.test_task import TestTask
+from iarc_tasks.test_planner_task import TestPlannerTask
 from iarc_tasks.xyztranslation_task import XYZTranslationTask
 from iarc_tasks.track_roomba_task import TrackRoombaTask
 from iarc_tasks.hit_roomba_task import HitRoombaTask
@@ -44,7 +45,8 @@ class IarcTaskActionServer:
                            'hold_position': HoldPositionTask,
                            'height_recovery' : HeightRecoveryTask,
                            'velocity_test': VelocityTask,
-                           'test_task': TestTask}
+                           'test_task': TestTask,
+                           'test_planner': TestPlannerTask}
 
     # Private method
     def _new_goal(self, goal):
