@@ -14,6 +14,7 @@ thrust_model:
     voltage_polynomial: [0, 0, 0, 99.67]
     throttle_b: 0
     throttle_c: 0
+    expected_hover_throttle: 0.60
 
 # Thrust levels are in m/s^2
 min_thrust: 0.1
@@ -51,12 +52,21 @@ yaw_max           : 3.5
 yaw_min           : -3.5
 yaw_max_rate      : 1000.0
 
+# Height below which the drone is required to be level
+level_flight_required_height: 0.35
+# Height above the level flight height at which to allow the drone
+# to begin tilting again
+level_flight_required_hysteresis: 0.10
+
 update_frequency: 60.0
 startup_timeout: 10.0
 update_timeout: 2.0
 
-# Rate at which to ramp the throttle during takeoff in (percent/100) a second
-takeoff_throttle_ramp_rate: 0.5
+# Time to delay after arming
+post_arm_delay: 0.2
+
+# Time to take to ramp the throttle to hover throttle
+takeoff_throttle_ramp_duration: 1.0
 
 # Rate at which to accelerate from 0 to descent velocity
 # must be positive (m/s^2)

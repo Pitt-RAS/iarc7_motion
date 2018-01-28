@@ -27,6 +27,7 @@ namespace Iarc7Motion
 
 enum class TakeoffState { ARM,
                           RAMP,
+                          PAUSE,
                           DONE };
 
 class TakeoffController
@@ -85,7 +86,9 @@ private:
     // Used to hold currently desired thrust model
     ThrustModel thrust_model_;
 
-    const double takeoff_throttle_ramp_rate_;
+    const ros::Duration post_arm_delay_;
+
+    const ros::Duration takeoff_throttle_ramp_duration_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
@@ -102,10 +105,15 @@ private:
     // Interpolator for battery voltage
     ros_utils::LinearMsgInterpolator<iarc7_msgs::Float64Stamped, double>
             battery_interpolator_;
-    const double takeoff_max_height_switch_pressed_;
 
     // Establishing service client used for arm request
     ros::ServiceClient uav_arm_client_;
+
+    // Time of arming success
+    ros::Time arm_time_;
+
+    // Time of ramp starting
+    ros::Time ramp_start_time_;
 };
 
 } // End namespace Iarc7Motion

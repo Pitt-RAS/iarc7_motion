@@ -129,6 +129,8 @@ int main(int argc, char **argv)
                                    thrust_model.throttle_b));
     ROS_ASSERT(private_nh.getParam("thrust_model/throttle_c",
                                    thrust_model.throttle_c));
+    ROS_ASSERT(private_nh.getParam("thrust_model/expected_hover_throttle",
+                                    thrust_model.expected_hover_throttle));
 
     // Battery timeout setting
     ROS_ASSERT(private_nh.getParam("battery_timeout", battery_timeout));

@@ -9,7 +9,11 @@ takeoff_velocity        : 0.3
 takeoff_acceleration    : 0.3
 # Height at which to consider takeoff finished in meters
 # Should be higher than min_maneuver_height
-takeoff_complete_height: 0.5
+takeoff_complete_height: 0.8
+# Deviance from takeoff height from which to enter stabilize mode
+takeoff_complete_height_tolerance: 0.15
+# Length of time to stabilize after takeoff
+takeoff_stabilize_delay: 1.5
 # Altitude when we transition from acro to angle mode
 takeoff_angle_mode_height: 0.2
 
@@ -59,9 +63,16 @@ drone_landing_gear_width: .775
 
 # HEIGHT HOLDER
 # p-term for height holder helper for Z height
-p_term_height_hold_z: .90
+p_term_height_hold_z: 2.0
 # maximum z error for heigth holder
 max_z_error: 1.0
+# distance from setpoint that will allow deadzone mode to begin
+deadzone_height_hold_z: 0.05
+# distance from deadzone threshold that will turn off
+# deadzone mode
+deadzone_hysteresis_height_hold_z: 0.05
+# Enable debugging topics for height hold
+debug_height_hold_z: False
 
 # HOLD POSITION TASK
 # p-term for x 

@@ -29,9 +29,12 @@ TakeoffController::TakeoffController(
       state_(TakeoffState::DONE),
       throttle_(),
       thrust_model_(thrust_model),
-      takeoff_throttle_ramp_rate_(ros_utils::ParamUtils::getParam<double>(
+      post_arm_delay_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "takeoff_throttle_ramp_rate")),
+              "post_arm_delay")),
+      takeoff_throttle_ramp_duration_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "takeoff_throttle_ramp_duration")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -50,10 +53,9 @@ TakeoffController::TakeoffController(
                                 return msg.data;
                             },
                             100),
-      takeoff_max_height_switch_pressed_(ros_utils::ParamUtils::getParam<double>(
-                  private_nh,
-                  "takeoff_max_height_switch_pressed")),
-      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
+      uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm")),
+      arm_time_(),
+      ramp_start_time_()
 {
     landing_detected_subscriber_ = nh.subscribe("landing_detected",
                                     10,
@@ -83,7 +85,7 @@ bool TakeoffController::calibrateThrustModel(const ros::Time& time)
     geometry_msgs::PointStamped col_point;
     tf2::doTransform(col_point, col_point, transform);
 
-    thrust_model_.calibrate(throttle_, voltage, col_point.point.z);
+    thrust_model_.calibrate(thrust_model_.expected_hover_throttle, voltage, col_point.point.z);
     return true;
 }
 
@@ -105,7 +107,7 @@ bool TakeoffController::prepareForTakeover(const ros::Time& time)
                                                          update_timeout_);
 
     if (!success) {
-        ROS_ERROR("Failed to get current transform in TakeoffController::update");
+        ROS_ERROR("Failed to get current transform in TakeoffController::prepareForTakeover");
         return false;
     }
 
@@ -160,25 +162,57 @@ bool TakeoffController::update(const ros::Time& time,
             ROS_ERROR("Arming service failed");
             return false;
         }
-        state_ = TakeoffState::RAMP;
+        if (!calibrateThrustModel(time)) {
+            ROS_ERROR("Failed to calibrate thrust model");
+            return false;
+        }
+        arm_time_=time;
+        state_ = TakeoffState::PAUSE;
     }
-    else if(state_ == TakeoffState::RAMP) {
-        if(!landing_detected_message_.data) {
+    else if (state_ == TakeoffState::PAUSE){
+        if (time > arm_time_ + post_arm_delay_){
+            state_ = TakeoffState::RAMP;
             if (!calibrateThrustModel(time)) {
                 ROS_ERROR("Failed to calibrate thrust model");
                 return false;
             }
-          state_ = TakeoffState::DONE;
+            ramp_start_time_ = time;
         }
-        // Check if UAV is above switch sensing height, if it is go to safety response
-        else if(transform.transform.translation.z > takeoff_max_height_switch_pressed_)
-        {
-            ROS_ERROR("Takeoff handler failed, quad's switches are toggled, but quad is above toggle height");
-            return false;
+    }
+    else if(state_ == TakeoffState::RAMP) {
+        if (time <= ramp_start_time_ + takeoff_throttle_ramp_duration_){
+            double voltage;
+            if (!battery_interpolator_.getInterpolatedMsgAtTime(voltage, time)) {
+                ROS_ERROR("Failed to get battery voltage to calibrate thrust model");
+                return false;
+            }
+
+            geometry_msgs::TransformStamped transform;
+            bool success = transform_wrapper_.getTransformAtTime(transform,
+                                                                 "map",
+                                                                 "center_of_lift",
+                                                                 time,
+                                                                 update_timeout_);
+            if (!success) {
+                ROS_ERROR("Failed to get current transform to calibrate thrust model");
+                return false;
+            }
+
+            geometry_msgs::PointStamped col_point;
+            tf2::doTransform(col_point, col_point, transform);
+
+            double hover_throttle = thrust_model_.throttleFromAccel(
+                                                  9.8,
+                                                  voltage,
+                                                  col_point.point.z);
+
+            // Linearly ramp to hover throttle
+            throttle_ = ((time-ramp_start_time_).toSec()
+                          / takeoff_throttle_ramp_duration_.toSec())
+                            * hover_throttle;
         }
-        else
-        {
-          throttle_ = std::min(throttle_ + ((time - last_update_time_).toSec() * takeoff_throttle_ramp_rate_), 1.0);
+        else{
+            state_ = TakeoffState::DONE;
         }
     }
     else if(state_ == TakeoffState::DONE)
@@ -193,7 +227,6 @@ bool TakeoffController::update(const ros::Time& time,
 
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
-
     uav_command.throttle = throttle_;
 
     // Check that none of the throttle values are infinite before returning
@@ -251,8 +284,9 @@ bool TakeoffController::waitUntilReady()
     }
 
     // This time is just used to calculate any ramping that needs to be done.
-    last_update_time_ = std::max(landing_detected_message_.header.stamp,
-                                 battery_interpolator_.getLastUpdateTime());
+    last_update_time_ = std::max({transform.header.stamp,
+                                  landing_detected_message_.header.stamp,
+                                  battery_interpolator_.getLastUpdateTime()});
     return true;
 }
 

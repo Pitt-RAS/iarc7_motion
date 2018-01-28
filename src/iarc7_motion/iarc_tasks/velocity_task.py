@@ -51,7 +51,12 @@ class VelocityTask(AbstractTask):
         self._HORIZ_X_VEL = task_request.x_velocity
         self._HORIZ_Y_VEL = task_request.y_velocity
 
-        self._z_holder = HeightHolder()
+        if task_request.z_position != 0.0:
+            self._z_holder = HeightHolder(desired_height = task_request.z_position)
+            self._current_height_set = True
+        else:
+            self._z_holder = HeightHolder()
+
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
 
