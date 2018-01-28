@@ -72,7 +72,7 @@ deadzone_height_hold_z: 0.05
 # deadzone mode
 deadzone_hysteresis_height_hold_z: 0.05
 # Enable debugging topics for height hold
-debug_height_hold_z: True
+debug_height_hold_z: False
 
 # HOLD POSITION TASK
 # p-term for x 

@@ -201,9 +201,15 @@ bool TakeoffController::update(const ros::Time& time,
             geometry_msgs::PointStamped col_point;
             tf2::doTransform(col_point, col_point, transform);
 
-            double hover_throttle = thrust_model_.throttleFromAccel(9.8, voltage, col_point.point.z);
+            double hover_throttle = thrust_model_.throttleFromAccel(
+                                                  9.8,
+                                                  voltage,
+                                                  col_point.point.z);
 
-            throttle_ = ((time-ramp_start_time_).toSec()/1.0) * hover_throttle;
+            // Linearly ramp to hover throttle
+            throttle_ = ((time-ramp_start_time_).toSec()
+                          / takeoff_throttle_ramp_duration_.toSec())
+                            * hover_throttle;
         }
         else{
             state_ = TakeoffState::DONE;

@@ -119,8 +119,14 @@ private:
     // Max allowed requested thrust in m/s^2
     double max_thrust_;
 
+    // Height below which the drone is required to remain level
     const double level_flight_required_height_;
+
+    // Distance added to the level flight height to trigger
+    // entering non-level mode after level flight mode was triggered
     const double level_flight_required_hysteresis_;
+
+    // Flag for whether or not level flight is active
     bool level_flight_active_;
 };
 

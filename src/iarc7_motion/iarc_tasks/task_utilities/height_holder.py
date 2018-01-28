@@ -8,7 +8,7 @@ response that maintains a certain height above the ground
 
 import rospy
 import threading
-from geometry_msgs.msg import Vector3Stamped
+from iarc7_msgs.msg import Float64ArrayStamped
 
 class HeightHolder(object):
     def __init__(self, desired_height = None):
@@ -27,7 +27,9 @@ class HeightHolder(object):
             raise
 
         if self._DEBUG:
-            self._debug_pub = rospy.Publisher('~debug_height_hold', Vector3Stamped, queue_size=10)
+            self._debug_pub = rospy.Publisher('~debug_height_hold',
+                                              Float64ArrayStamped,
+                                              queue_size=10)
 
         if self._DESIRED_HEIGHT is not None and self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT:
             raise ValueError('Desired height was below the minimum maneuver height')
@@ -41,13 +43,13 @@ class HeightHolder(object):
             self._delta_z = self._DESIRED_HEIGHT - height
 
             if self._DEBUG:
-                msg = Vector3Stamped()
+                msg = Float64ArrayStamped()
                 msg.header.stamp = rospy.Time.now()
-                msg.vector.x = self._DESIRED_HEIGHT
-                msg.vector.y = height
-                msg.vector.z = self._delta_z
+                msg.data = [self._DESIRED_HEIGHT, height, self._delta_z]
                 self._debug_pub.publish(msg)
 
+            # If the drone is in the deadzone area a velocity of zero is commanded
+            # Essentially this is a tolerance region
             if abs(self._delta_z) < self._DEADZONE:
                 self._deadzone_activated = True
             elif (self._deadzone_activated == True 
