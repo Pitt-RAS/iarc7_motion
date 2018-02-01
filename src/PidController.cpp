@@ -10,14 +10,16 @@
 #include <limits>
 #include <ros/ros.h>
 #include <boost/algorithm/clamp.hpp>
-
+#include "iarc7_msgs/Float64ArrayStamped.h"
 #include "iarc7_motion/PidController.hpp"
 
 using namespace Iarc7Motion;
 
 PidController::PidController(double p_gain, double i_gain, double d_gain,
                              double i_accumulator_max, double i_accumulator_min,
-                             double i_accumulator_enable_threshold)
+                             double i_accumulator_enable_threshold,
+                             std::string debug_pid_name,
+                             ros::NodeHandle& nh)
     : p_gain_(p_gain),
       i_gain_(i_gain),
       d_gain_(d_gain),
@@ -30,7 +32,7 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
       i_accumulator_min_(i_accumulator_min),
       i_accumulator_enable_threshold_(i_accumulator_enable_threshold)
 {
-    // Nothing to do
+    pid_value_publisher = nh.advertise<iarc7_msgs::Float64ArrayStamped>(debug_pid_name, 1000);
 }
 
 bool PidController::update(double current_value,
@@ -74,20 +76,8 @@ bool PidController::update(double current_value,
         if (std::abs(difference) < i_accumulator_enable_threshold_) {
             i_accumulator_ += i_gain_ * difference * time_delta;
 
-            if (log_debug) {
-                ROS_WARN("Set accumulator to %f (i_gain %f) (difference %f) (time_delta %f)", i_accumulator_, i_gain_, difference, time_delta);
-            }
-
             boost::algorithm::clamp(i_accumulator_, i_accumulator_min_, i_accumulator_max_);
-
-            if (log_debug) {
-                ROS_WARN("Accumulator clamped to %f (min %f, max %f)", i_accumulator_, i_accumulator_min_, i_accumulator_max_);
-            }
-        } else {
-            if (log_debug) {
-                ROS_WARN("Ignoring difference %f above threshold %f", difference, i_accumulator_enable_threshold_);
-            }
-        }
+        } 
 
         response += i_accumulator_;
 
@@ -99,8 +89,11 @@ bool PidController::update(double current_value,
         double d_term = d_gain_ * derivative;
         response -= d_term;
 
+        //Publish PID values to topic
         if (log_debug) {
-            ROS_WARN("p %f i %f d %f", p_term, i_accumulator_, d_term);
+            iarc7_msgs::Float64ArrayStamped debug_msg;
+            debug_msg.data = {p_term, i_accumulator_,d_term};
+            pid_value_publisher.publish(debug_msg);
         }
     }
 

@@ -18,7 +18,9 @@ public:
 
     PidController(double p_gain, double i_gain, double d_gain,
                   double i_accumulator_max, double i_accumulator_min,
-                  double i_accumulator_enable_threshold);
+                  double i_accumulator_enable_threshold,
+                  std::string debug_pid_name,
+                  ros::NodeHandle& nh);
 
     PidController() = delete;
     ~PidController() = default;
@@ -35,7 +37,7 @@ public:
             const ros::Time& time,
             double& result,
             double derivative = std::numeric_limits<double>::quiet_NaN(),
-            bool log_debug=false);
+            bool log_debug=true);
 
     void resetAccumulator();
 
@@ -53,6 +55,9 @@ private:
     const double i_accumulator_max_;
     const double i_accumulator_min_;
     const double i_accumulator_enable_threshold_;
+
+    //Establishing the publisher for debuggin PID values
+    ros::Publisher pid_value_publisher;
 };
 
 }
