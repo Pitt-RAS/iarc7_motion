@@ -10,7 +10,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted)
 from iarc_tasks.task_commands import NopCommand
 
-from iarc7_planner.msg import PlanGoal, PlanAction
+from iarc7_msgs.msg import PlanGoal, PlanAction
 
 class TestPlannerTask(AbstractTask):
 
