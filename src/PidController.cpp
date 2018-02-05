@@ -32,7 +32,7 @@ PidController::PidController(double p_gain, double i_gain, double d_gain,
       i_accumulator_min_(i_accumulator_min),
       i_accumulator_enable_threshold_(i_accumulator_enable_threshold)
 {
-    pid_value_publisher = nh.advertise<iarc7_msgs::Float64ArrayStamped>(debug_pid_name, 1000);
+    pid_value_publisher_ = nh.advertise<iarc7_msgs::Float64ArrayStamped>(debug_pid_name, 1000);
 }
 
 bool PidController::update(double current_value,
@@ -92,8 +92,9 @@ bool PidController::update(double current_value,
         //Publish PID values to topic
         if (log_debug) {
             iarc7_msgs::Float64ArrayStamped debug_msg;
+            debug_msg.header.stamp = time;
             debug_msg.data = {p_term, i_accumulator_,d_term};
-            pid_value_publisher.publish(debug_msg);
+            pid_value_publisher_.publish(debug_msg);
         }
     }
 
