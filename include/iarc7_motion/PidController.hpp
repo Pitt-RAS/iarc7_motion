@@ -57,7 +57,7 @@ private:
     const double i_accumulator_enable_threshold_;
 
     //Establishing the publisher for debuggin PID values
-    ros::Publisher pid_value_publisher;
+    ros::Publisher pid_value_publisher_;
 };
 
 }
