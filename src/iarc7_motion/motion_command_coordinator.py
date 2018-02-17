@@ -26,6 +26,7 @@ from task_command_handler import TaskCommandHandler
 from state_monitor import StateMonitor
 from transition_data import TransitionData
 from iarc_task_action_server import IarcTaskActionServer
+from idle_obstacle_avoider import IdleObstacleAvoider
 
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
@@ -53,6 +54,9 @@ class MotionCommandCoordinator:
 
         # handles communicating between tasks and LLM
         self._task_command_handler = TaskCommandHandler()
+
+        self._idle_obstacle_avoider = IdleObstacleAvoider()
+        self._avoid_magnitude = rospy.get_param("~obst_avoid_magnitude") 
 
         # safety 
         self._safety_client = SafetyClient('motion_command_coordinator')
@@ -90,6 +94,8 @@ class MotionCommandCoordinator:
         self._state_monitor.wait_until_ready(self._startup_timeout
                                            - (rospy.Time.now() - start_time))
         self._task_command_handler.wait_until_ready(
+                self._startup_timeout - (rospy.Time.now() - start_time))
+        self._idle_obstacle_avoider.wait_until_ready(
                 self._startup_timeout - (rospy.Time.now() - start_time))
 
         # forming bond with safety client
@@ -169,9 +175,15 @@ class MotionCommandCoordinator:
                         self._time_of_last_task = rospy.Time.now()
                         self._timeout_vel_sent = False
                         self._state_monitor.set_last_task_end_state(task_state)
-                else: 
-                    if (rospy.Time.now() - self._time_of_last_task) > self._task_timeout:
-                        self._receive_task_timeout()
+                # No task is running, run obstacle avoider
+                else:
+                    avoid_vector = self._idle_obstacle_avoider.get_safest(self._avoid_magnitude)
+                    avoid_twist = TwistStamped() 
+                    avoid_twist.header.stamp = rospy.Time.now()
+                    avoid_twist.twist.linear.x = avoid_vector[0]
+                    avoid_twist.twist.linear.y = avoid_vector[1]
+                    self._task_command_handler.send_timeout(avoid_twist)
+                    rospy.logwarn_throttle(1.0, 'Task running timeout. Running obstacle avoider')
 
                 rate.sleep()
 
@@ -191,27 +203,6 @@ class MotionCommandCoordinator:
             else:
                 rospy.logerr('Motion Coordinator did not safely land aircraft')
             self._safety_land_complete = True
-
-    def _receive_task_timeout(self):
-        """
-        Handles no task running timeouts
-        """
-        with self._lock:
-            # task should be None when this callback is called
-            if self._task is None: 
-                # if we have not sent a timeout velocity yet
-                if not self._timeout_vel_sent:
-                    # calls public method in Task Command Handler to 
-                    # publish twist stamped array, which came from 
-                    # the State Monitor
-                    self._task_command_handler.send_timeout(
-                        self._state_monitor.get_timeout_twist())
-
-                    self._timeout_vel_sent = True
-
-                rospy.logwarn_throttle(1.0, 'Task running timeout. Setting zero velocity')
-            else: 
-                raise IARCFatalSafetyException('Timeout called in motion coordinator with task running')
 
 if __name__ == '__main__':
     rospy.init_node('motion_command_coordinator')

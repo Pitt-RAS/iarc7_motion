@@ -4,14 +4,24 @@ from iarc7_msgs.msg import BoolStamped
 from iarc7_msgs.msg import OdometryArray
 from iarc7_motion.linear_motion_profile_generator import LinearMotionProfileGenerator
 
+from iarc_tasks.task_utilities.obstacle_avoid_helper import ObstacleAvoider
+
 import rospy
 import tf2_ros
 
 class TaskTopicBuffer(object):
     def __init__(self):
+        try:
+            # startup timeout
+            self._startup_timeout = rospy.Duration(rospy.get_param('~startup_timeout'))
+        except KeyError as e:
+            rospy.logerr('Could not lookup a parameter for task topic buffer')
+            raise
+        
         self._landed_message = None
         self._roomba_array = None
         self._drone_odometry = None
+        self._obstacle_avoider = None
 
         self._landing_message_sub = rospy.Subscriber(
             'landing_detected', BoolStamped,
@@ -28,6 +38,9 @@ class TaskTopicBuffer(object):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
+        self._obstacle_avoider = ObstacleAvoider(self._tf_buffer)
+        self._obstacle_avoider.wait_until_ready(self._startup_timeout)
+
 
         self._task_message_dictionary = {}
 
@@ -80,3 +93,6 @@ class TaskTopicBuffer(object):
 
     def get_task_message_dictionary(self):
         return self._task_message_dictionary
+
+    def get_obstacle_avoider(self):
+        return self._obstacle_avoider

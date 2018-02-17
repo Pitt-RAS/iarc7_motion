@@ -21,6 +21,7 @@ from iarc_tasks.task_commands import (VelocityCommand,
 from task_utilities.height_holder import HeightHolder
 from task_utilities.height_settings_checker import HeightSettingsChecker
 from task_utilities.acceleration_limiter import AccelerationLimiter
+from task_utilities.obstacle_avoid_helper import ObstacleAvoider
 
 class VelocityTaskState(object):
     init = 0
@@ -116,6 +117,7 @@ class VelocityTask(AbstractTask):
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
+                desired_vel = self.topic_buffer.get_obstacle_avoider().get_safe_vector(desired_vel)
                 desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
