@@ -1,5 +1,5 @@
 // Bring in my package's API, which is what I'm testing
-#include "iarc7_motion/UAVMotionPointInterpolator.hpp"
+#include "iarc7_motion/MotionPointInterpolator.hpp"
 
 // Bring in gtest
 #include "gtest/gtest.h"
@@ -7,18 +7,18 @@
 
 namespace Iarc7Motion
 {
-    TEST(UAVMotionPointInterpolatorTests, testTrimMotionPointQueue)
+    TEST(MotionPointInterpolatorTests, testTrimMotionPointQueue)
     {
-        typedef Iarc7Motion::UAVMotionPointInterpolator Planner;
+        typedef Iarc7Motion::MotionPointInterpolator Planner;
 
         ros::Time::init();
         ros::Time current_time(ros::Time::now());
 
-        Iarc7Motion::UAVMotionPointStampedArray motion_points;
+        Iarc7Motion::MotionPointStampedArray motion_points;
         // Create an array of 10 motion_points
         for(int32_t i = 0; i < 10; i++)
         {
-            UAVMotionPointStamped motion_point;
+            MotionPointStamped motion_point;
             motion_point.header.stamp = current_time + ros::Duration(i);
             motion_points.push_back(motion_point);
         }
@@ -48,19 +48,19 @@ namespace Iarc7Motion
         ASSERT_FALSE(Planner::trimMotionPointQueue(motion_points, current_time));
     }
 
-    TEST(UAVMotionPointInterpolatorTests, testAppendMotionPointQueue)
+    TEST(MotionPointInterpolatorTests, testAppendMotionPointQueue)
     {
-        typedef Iarc7Motion::UAVMotionPointInterpolator Planner;
+        typedef Iarc7Motion::MotionPointInterpolator Planner;
 
         ros::Time::init();
         ros::Time current_time(ros::Time::now());
 
-        Iarc7Motion::UAVMotionPointStampedArray motion_points;
-        Iarc7Motion::UAVMotionPointStampedArray motion_points_append;
+        Iarc7Motion::MotionPointStampedArray motion_points;
+        Iarc7Motion::MotionPointStampedArray motion_points_append;
         // Create an array of 10 motion points and ten motion points to append
         for(int32_t i = 0; i < 10; i++)
         {
-            UAVMotionPointStamped motion_point;
+            MotionPointStamped motion_point;
             motion_point.header.stamp = current_time + ros::Duration(i);
             motion_points.push_back(motion_point);
             motion_point.header.stamp = current_time + ros::Duration(i+11.0);
@@ -115,7 +115,7 @@ namespace Iarc7Motion
         // Create an array of 10 motion points and ten motion points to append
         for(int32_t i = 0; i < 10; i++)
         {
-            UAVMotionPointStamped motion_point;
+            MotionPointStamped motion_point;
             motion_point.header.stamp = current_time + ros::Duration(i);
             motion_points.push_back(motion_point);
             motion_point.header.stamp = current_time + ros::Duration(i+11.0);

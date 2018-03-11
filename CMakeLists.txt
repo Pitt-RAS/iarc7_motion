@@ -136,7 +136,7 @@ include_directories(
 # add_dependencies(iarc7_motion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/PidController.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp src/UAVMotionPointInterpolator.cpp src/TakeoffController.cpp src/LandPlanner.cpp)
+add_executable(low_level_motion_controller src/LowLevelMotionController.cpp src/PidController.cpp src/QuadVelocityController.cpp src/QuadTwistRequestLimiter.cpp src/MotionPointInterpolator.cpp src/TakeoffController.cpp src/LandPlanner.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -188,8 +188,8 @@ target_link_libraries(low_level_motion_controller
 
 ## Add gtest based cpp test target and link libraries
 catkin_add_gtest(motion_point_interpolator_test test/MotionPointInterpolatorTest.cpp src/MotionPointInterpolator.cpp)
-if(TARGET uav_motion_point_interpolator_test)
-  target_link_libraries(uav_motion_point_interpolator_test ${catkin_LIBRARIES}
+if(TARGET motion_point_interpolator_test)
+  target_link_libraries(motion_point_interpolator_test ${catkin_LIBRARIES}
 )
 endif()
 
