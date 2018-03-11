@@ -187,7 +187,7 @@ target_link_libraries(low_level_motion_controller
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(uav_motion_point_interpolator_test test/UAVMotionPointInterpolatorTest.cpp src/UAVMotionPointInterpolator.cpp)
+catkin_add_gtest(motion_point_interpolator_test test/MotionPointInterpolatorTest.cpp src/MotionPointInterpolator.cpp)
 if(TARGET uav_motion_point_interpolator_test)
   target_link_libraries(uav_motion_point_interpolator_test ${catkin_LIBRARIES}
 )
