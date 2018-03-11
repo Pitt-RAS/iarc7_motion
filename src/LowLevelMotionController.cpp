@@ -3,7 +3,7 @@
 // LowLevelMotionController
 //
 // This is the top level class for the velocity controller.
-// It uses an AccelerationPlanner to get velocities.
+// It uses an UAVMotionPointInterpolator to get velocities.
 // Sends them to a QuadVelocityController who runs the PID loops that set the angles
 // to output to the flight controller.
 // The angles and throttle values are sent to a TwistLimiter class which limits the
@@ -16,7 +16,7 @@
 
 #include "actionlib/server/simple_action_server.h"
 
-#include "iarc7_motion/AccelerationPlanner.hpp"
+#include "iarc7_motion/UAVMotionPointInterpolator.hpp"
 #include "iarc7_motion/LandPlanner.hpp"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
@@ -202,9 +202,9 @@ int main(int argc, char **argv)
     }
 
 
-    // Create an acceleration planner. It handles interpolation between
-    // timestamped velocity requests so that smooth accelerations are possible.
-    AccelerationPlanner accelerationPlanner(nh);
+    // Create a motion point interpolator. It handles interpolation between
+    // timestamped motion point requests.
+    UAVMotionPointInterpolator uav_motion_point_interpolator(nh);
 
     // Create the publisher to send the processed uav_commands out with
     // (angles, throttle)
@@ -371,8 +371,11 @@ int main(int argc, char **argv)
             }
             else if(motion_state == MotionState::VELOCITY_CONTROL)
             {
-                // If nothing is wrong get a target velocity from the acceleration planner
-                accelerationPlanner.getTargetTwist(current_time, target_twist);
+                // If nothing is wrong get a motion point target from the uav motion point interpolator
+                UAVMotionPointStamped motion_point;
+                uav_motion_point_interpolator.getTargetMotionPoint(current_time, motion_point);
+                target_twist.header = motion_point.header;
+                target_twist.twist = motion_point.motion_point.twist;
 
                 // Request the appropriate throttle and angle settings for the desired velocity
                 quadController.setTargetVelocity(target_twist.twist);
