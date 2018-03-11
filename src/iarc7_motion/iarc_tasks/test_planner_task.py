@@ -20,18 +20,21 @@ class TestPlannerTask(AbstractTask):
         # Creates the SimpleActionClient for requesting ground interaction
         self._client = actionlib.SimpleActionClient('planner_request', PlanAction)
         self._client.wait_for_server()
+        self._plan_canceled = False
 
     def get_desired_command(self):
-        goal = PlanGoal(frame_id='test_planner')
+        goal = PlanGoal(x_pos_goal=5, y_pos_goal=5)
         self._client.send_goal(goal, None, None, self._feedback_callback)
-        self._client.wait_for_result()
-        rospy.logwarn("Planning success: {}".format(self._client.get_result().success))
-
-        return (TaskDone(), NopCommand())
+        if self._plan_canceled: 
+            return (TaskDone(), NopCommand())
+        else: 
+            return (TaskRunning(),)
 
     def _feedback_callback(self, msg): 
         self._feedback = msg
-        rospy.logwarn(msg.plan.header.frame_id)
+        rospy.logwarn('Feedback recieved')
+        self._client.cancel_goal()
+        self._plan_canceled = True
 
     def cancel(self):
         rospy.loginfo("TestPlannerTask canceling")
