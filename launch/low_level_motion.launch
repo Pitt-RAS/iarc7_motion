@@ -8,6 +8,9 @@
             file="$(find iarc7_motion)/param/low_level_motion_$(arg platform).yaml" />
     </node>
 
+    <node name="thrust_target_to_motion_point_transcriber" pkg="iarc7_motion"
+        type="thrust_target_to_motion_point_transcriber.py"/>
+
     <param name="$(arg bond_id_namespace)/low_level_motion/form_bond"
         value="true" />
 </launch>
