@@ -122,8 +122,8 @@ bool MotionPointInterpolator::interpolateMotionPoints(
 // x is to be between 0-1 if the interpolation is to
 // range from start to end.
 double MotionPointInterpolator::interpolate(double x,
-                                             double start,
-                                             double end)
+                                            double start,
+                                            double end)
 {
     return (end-start)*x +start;
 }

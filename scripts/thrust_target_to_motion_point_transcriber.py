@@ -22,6 +22,4 @@ if __name__ == '__main__':
     velocity_sub = rospy.Subscriber('movement_velocity_targets', TwistStampedArray, callback)
     motion_point_pub = rospy.Publisher('motion_point_targets', MotionPointStampedArray, queue_size=0)
 
-    rate = rospy.Rate(30)
-    while not rospy.is_shutdown():
-        rate.sleep()
+    rospy.spin()
