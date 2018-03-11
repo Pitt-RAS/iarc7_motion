@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-// UAV Motion Point Interpolator
+// Motion Point Interpolator
 //
-// Stores a queue of UAV Motion Points commands from a topic. Interpolates
-// between points when a UAV Motion Point is requested.
+// Stores a queue of Motion Points commands from a topic. Interpolates
+// between points when a Motion Point is requested.
 //
 ////////////////////////////////////////////////////////////////////////////
 
 // Associated header
-#include "iarc7_motion/UAVMotionPointInterpolator.hpp"
+#include "iarc7_motion/MotionPointInterpolator.hpp"
 
 //System Headers
 #include <algorithm>
@@ -17,43 +17,43 @@ using namespace Iarc7Motion;
 
 // Construct the object need a node handle to register
 // the subscriber for velocity targets
-UAVMotionPointInterpolator::UAVMotionPointInterpolator(ros::NodeHandle& nh) :
-uav_motion_points_subscriber_(),
-uav_motion_point_targets_()
+MotionPointInterpolator::MotionPointInterpolator(ros::NodeHandle& nh) :
+motion_points_subscriber_(),
+motion_point_targets_()
 {
-    uav_motion_points_subscriber_ = nh.subscribe(
-                    "uav_motion_point_targets",
+    motion_points_subscriber_ = nh.subscribe(
+                    "motion_point_targets",
                     100,
-                    &UAVMotionPointInterpolator::processMotionPointArray,
+                    &MotionPointInterpolator::processMotionPointArray,
                     this);
 
     // Put an initial time in the buffer so that buffer is never empty
-    UAVMotionPointStamped zero_state;
+    MotionPointStamped zero_state;
     zero_state.header.stamp = ros::Time::now();
-    uav_motion_point_targets_.emplace_back(zero_state);
+    motion_point_targets_.emplace_back(zero_state);
 }
 
 // Called by a class user to get a target motion point
 // Makes the call to trim the queue during the class
 // Interpolates if there is more than one twist
-void UAVMotionPointInterpolator::getTargetMotionPoint(
+void MotionPointInterpolator::getTargetMotionPoint(
                 const ros::Time& current_time,
-                UAVMotionPointStamped& target_uav_motion_point)
+                MotionPointStamped& target_motion_point)
 {
 
     // Trim velocity queue when done we will have one or two velocities available.
-    trimMotionPointQueue(uav_motion_point_targets_, current_time);
+    trimMotionPointQueue(motion_point_targets_, current_time);
 
-    if(uav_motion_point_targets_.size() == 1)
+    if(motion_point_targets_.size() == 1)
     {
-        target_uav_motion_point = uav_motion_point_targets_[0];
+        target_motion_point = motion_point_targets_[0];
     }
     else
     {
         bool success = interpolateMotionPoints(
-            uav_motion_point_targets_[0],
-            uav_motion_point_targets_[1],
-            target_uav_motion_point,
+            motion_point_targets_[0],
+            motion_point_targets_[1],
+            target_motion_point,
             current_time);
 
         if(!success)
@@ -66,10 +66,10 @@ void UAVMotionPointInterpolator::getTargetMotionPoint(
 
 // Takes two twists and interpolates between their values
 // using linear interpolation
-bool UAVMotionPointInterpolator::interpolateMotionPoints(
-        UAVMotionPointStamped& begin,
-        UAVMotionPointStamped& end,
-        UAVMotionPointStamped& interpolated,
+bool MotionPointInterpolator::interpolateMotionPoints(
+        MotionPointStamped& begin,
+        MotionPointStamped& end,
+        MotionPointStamped& interpolated,
         ros::Time time)
 {
 
@@ -121,7 +121,7 @@ bool UAVMotionPointInterpolator::interpolateMotionPoints(
 // Interpolate between arbitrary values and waypoints
 // x is to be between 0-1 if the interpolation is to
 // range from start to end.
-double UAVMotionPointInterpolator::interpolate(double x,
+double MotionPointInterpolator::interpolate(double x,
                                              double start,
                                              double end)
 {
@@ -129,8 +129,8 @@ double UAVMotionPointInterpolator::interpolate(double x,
 }
 
 // Trim the velocity queue so that there aren't old velocities in the queue
-bool UAVMotionPointInterpolator::trimMotionPointQueue(
-    UAVMotionPointStampedArray& motion_points,
+bool MotionPointInterpolator::trimMotionPointQueue(
+    MotionPointStampedArray& motion_points,
     const ros::Time& time)
 {
     // Check for empty array of twists
@@ -146,7 +146,7 @@ bool UAVMotionPointInterpolator::trimMotionPointQueue(
     // Find the first time more than or equal
     // Uses a lambda (and an auto specifier) to compare
     //the current time and a header's time stamp
-    UAVMotionPointStampedArray::iterator it = std::lower_bound(
+    MotionPointStampedArray::iterator it = std::lower_bound(
                     motion_points.begin(),
                     motion_points.end(),
                     time,
@@ -174,9 +174,9 @@ bool UAVMotionPointInterpolator::trimMotionPointQueue(
 
 // Append velocity targets to the velocity queue. If the velocity targets are older than the newest velocity target queued
 // the queued velocity targets are discarded
-bool UAVMotionPointInterpolator::appendMotionPointQueue(
-    UAVMotionPointStampedArray& current_motion_points,
-    const UAVMotionPointStampedArray& new_motion_points,
+bool MotionPointInterpolator::appendMotionPointQueue(
+    MotionPointStampedArray& current_motion_points,
+    const MotionPointStampedArray& new_motion_points,
     const ros::Time& time)
 {
     // Check for an empty array of new twists
@@ -188,7 +188,7 @@ bool UAVMotionPointInterpolator::appendMotionPointQueue(
 
     // Find the first time from the new twists more than or equal to the current time
     // we won't keep anything prior
-    UAVMotionPointStampedArray::const_iterator first_valid_motion_point = std::lower_bound(
+    MotionPointStampedArray::const_iterator first_valid_motion_point = std::lower_bound(
         new_motion_points.begin(),
         new_motion_points.end(),
         time,
@@ -211,7 +211,7 @@ bool UAVMotionPointInterpolator::appendMotionPointQueue(
 
         // Get an iterator to the first queue velocity with a timestamp more than or equal to the
         // first time we're appending from the new twists
-        UAVMotionPointStampedArray::iterator it = std::lower_bound(
+        MotionPointStampedArray::iterator it = std::lower_bound(
             current_motion_points.begin(),
             current_motion_points.end(),
             target_time,
@@ -235,11 +235,11 @@ bool UAVMotionPointInterpolator::appendMotionPointQueue(
 }
 
 // Receive a new list of velocities commands and call appendVelocityQueue to insert them into the queue
-void UAVMotionPointInterpolator::processMotionPointArray(
-    const iarc7_msgs::UAVMotionPointStampedArray::ConstPtr& message)
+void MotionPointInterpolator::processMotionPointArray(
+    const iarc7_msgs::MotionPointStampedArray::ConstPtr& message)
 {
 
-    for(UAVMotionPointStampedArray::const_iterator checkMessageOrder = message->motion_points.begin();
+    for(MotionPointStampedArray::const_iterator checkMessageOrder = message->motion_points.begin();
         checkMessageOrder != message->motion_points.end() - 1; 
         checkMessageOrder++)
     {
@@ -257,12 +257,12 @@ void UAVMotionPointInterpolator::processMotionPointArray(
     if(message->motion_points.empty())
     {
         ROS_WARN("processMotionPointArray passed an empty array" 
-                  "of UAVMotionPointStampedArray, not accepting");
+                  "of MotionPointStampedArray, not accepting");
         return;
     }
 
     // Cache time to make sure it stays the same for the proceeding function calls
     ros::Time current_time = ros::Time::now();
 
-    appendMotionPointQueue(uav_motion_point_targets_, message->motion_points, current_time);
+    appendMotionPointQueue(motion_point_targets_, message->motion_points, current_time);
 }
