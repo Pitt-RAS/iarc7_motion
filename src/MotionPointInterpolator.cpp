@@ -105,7 +105,7 @@ bool MotionPointInterpolator::interpolateMotionPoints(
     interpolated.motion_point.twist.linear.z = interpolate(x, begin.motion_point.twist.linear.z, end.motion_point.twist.linear.z);
 
     // z interpolation is left in for now since
-    // there yaw is not supported by any other way in the controller
+    // yaw is not supported by any other way in the controller
     interpolated.motion_point.twist.angular.z = interpolate(x, begin.motion_point.twist.angular.z, end.motion_point.twist.angular.z);
 
     interpolated.motion_point.accel.linear.x = interpolate(x, begin.motion_point.accel.linear.x, end.motion_point.accel.linear.x);

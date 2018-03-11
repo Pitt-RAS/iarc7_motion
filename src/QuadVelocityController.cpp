@@ -26,7 +26,7 @@
 // ROS message headers
 #include "geometry_msgs/AccelWithCovarianceStamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
-#include "iarc7_msgs/UAVMotionPointStamped.h"
+#include "iarc7_msgs/MotionPointStamped.h"
 
 using namespace Iarc7Motion;
 
