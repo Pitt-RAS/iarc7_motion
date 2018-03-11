@@ -10,7 +10,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskAborted)
 from iarc_tasks.task_commands import NopCommand
 
-from iarc7_msgs.msg import PlanGoal, PlanAction
+from iarc7_msgs.msg import PlanGoal, PlanAction, MotionPointStamped
 
 class TestPlannerTask(AbstractTask):
 
@@ -23,7 +23,9 @@ class TestPlannerTask(AbstractTask):
         self._plan_canceled = False
 
     def get_desired_command(self):
-        goal = PlanGoal(x_pos_goal=5, y_pos_goal=5)
+        goal = PlanGoal()
+        goal.goal.motion_point.pose.position.x = 5
+        goal.goal.motion_point.pose.position.y = 5
         self._client.send_goal(goal, None, None, self._feedback_callback)
         if self._plan_canceled: 
             return (TaskDone(), NopCommand())
