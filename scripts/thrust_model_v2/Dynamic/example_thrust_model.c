@@ -1,0 +1,4 @@
+struct thrust_model
+{
+	
+}

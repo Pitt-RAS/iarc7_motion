@@ -1,0 +1,25 @@
+time_constant_calculation:
+    resolution: 0.001
+    low_pass_cutoff: 25
+    low_pass_taps: 50
+    load_cell_sample_rate: 80
+
+voltage_to_thrust_estimator:
+    degree: 3
+    
+time_constant_fit:
+    rising_edge_thrust_order: 2
+    rising_edge_voltage_order: 2
+    falling_edge_thrust_order: 2
+    falling_edge_voltage_order: 2
+    
+voltage_to_jerk_estimator:
+    thrust_min: 0.0
+    thrust_max: 0.85
+    voltage_min: 0.0
+    voltage_max: 12.0
+
+    thrust_points: 12
+    voltage_points: 10
+
+    timestep: 0.020
