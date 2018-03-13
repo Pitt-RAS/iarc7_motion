@@ -6,8 +6,7 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
-from geometry_msgs.msg import TwistStamped, PointStamped, Point
-from geometry_msgs.msg import Vector3Stamped, Vector3
+from geometry_msgs.msg import TwistStamped, PointStamped
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -18,11 +17,12 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand)
 
+from task_utilities.pid_controller import PidSettings, PidController
 from task_utilities.height_holder import HeightHolder
 from task_utilities.height_settings_checker import HeightSettingsChecker
 from task_utilities.acceleration_limiter import AccelerationLimiter
 
-class TrackObjectTaskState(object):
+class TrackRoombaTaskState(object):
     init = 0
     track = 1
     waiting = 2
@@ -32,23 +32,30 @@ class TrackRoombaTask(AbstractTask):
     def __init__(self, task_request):
         super(TrackRoombaTask, self).__init__()
 
+        # id of the roomba we are tracking
         self._roomba_id = task_request.frame_id  + '/base_link'
+        # how long to track the roomba
         self._time_to_track = task_request.time_to_track
+        # overshoot from the center of the roomba
         self._x_overshoot = task_request.x_overshoot
         self._y_overshoot = task_request.y_overshoot
 
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
 
+        # data about roomba(s)
         self._roomba_odometry = None
         self._roomba_point = None
         self._roomba_found = False
+        # used for acceleration limiting
         self._current_velocity = None
+        # keeping track of total track time
         self._start_time = None
+        # transition from MCC
         self._transition = None
-
+        # used by MCC to cancel task
         self._canceled = False
-
+        # thread safe
         self._lock = threading.RLock()
 
         try:
@@ -56,8 +63,10 @@ class TrackRoombaTask(AbstractTask):
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
-            self._K_X = rospy.get_param('~k_term_tracking_x')
-            self._K_Y = rospy.get_param('~k_term_tracking_y')
+            
+            _x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
+            _y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
+            
             TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
@@ -66,12 +75,14 @@ class TrackRoombaTask(AbstractTask):
         self._z_holder = HeightHolder(TRACK_HEIGHT)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
+        self._x_pid = PidController(_x_pid_settings)
+        self._y_pid = PidController(_y_pid_settings)
 
         if self._MAX_TASK_DIST < math.sqrt(self._x_overshoot**2
                             + self._y_overshoot**2):
             raise ValueError('The overshoot is outside the max distance')
 
-        self._state = TrackObjectTaskState.init
+        self._state = TrackRoombaTaskState.init
 
     def get_desired_command(self):
         with self._lock:
@@ -86,21 +97,21 @@ class TrackRoombaTask(AbstractTask):
             if self._canceled:
                 return (TaskCanceled(),)
 
-            if (self._state == TrackObjectTaskState.init):
+            if (self._state == TrackRoombaTaskState.init):
                 if (not self.topic_buffer.has_roomba_message()
                  or not self.topic_buffer.has_odometry_message()):
-                    self._state = TrackObjectTaskState.waiting
+                    self._state = TrackRoombaTaskState.waiting
                 else:
-                    self._state = TrackObjectTaskState.track
+                    self._state = TrackRoombaTaskState.track
 
-            if (self._state == TrackObjectTaskState.waiting):
+            if (self._state == TrackRoombaTaskState.waiting):
                 if (not self.topic_buffer.has_roomba_message()
                  or not self.topic_buffer.has_odometry_message()):
                     return (TaskRunning(), NopCommand())
                 else:
-                    self._state = TrackObjectTaskState.track
+                    self._state = TrackRoombaTaskState.track
 
-            if self._state == TrackObjectTaskState.track:
+            if self._state == TrackRoombaTaskState.track:
 
                 if not (self._height_checker.above_min_maneuver_height(
                         self.topic_buffer.get_odometry_message().pose.pose.position.z)):
@@ -147,11 +158,29 @@ class TrackRoombaTask(AbstractTask):
                 y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_velocity )
                                                         + math.atan2(self._y_overshoot, self._x_overshoot))
 
+                x_diff = self._roomba_point.point.x + x_overshoot
+                y_diff = self._roomba_point.point.y + y_overshoot
+
+                x_success, x_vel_target = self._x_pid.update(x_diff, rospy.Time.now(), True)
+                y_success, y_vel_target = self._y_pid.update(y_diff, rospy.Time.now(), True)
+
+                if x_success: 
+                    x_vel_target = x_vel_target + roomba_x_velocity
+                else: 
+                    x_vel_target = roomba_y_velocity
+
+                if y_success: 
+                    y_vel_target = y_vel_target + roomba_y_velocity
+                else: 
+                    y_vel_target = y_vel_target + roomba_y_velocity
+
+                """
                 # p-controller
                 x_vel_target = ((self._roomba_point.point.x + x_overshoot)
                                     * self._K_X + roomba_x_velocity)
                 y_vel_target = ((self._roomba_point.point.y + y_overshoot)
                                     * self._K_Y + roomba_y_velocity)
+                """
                 
                 z_vel_target = self._z_holder.get_height_hold_response(
                     self.topic_buffer.get_odometry_message().pose.pose.position.z)
