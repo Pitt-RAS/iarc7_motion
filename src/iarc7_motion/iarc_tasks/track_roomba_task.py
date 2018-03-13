@@ -112,7 +112,6 @@ class TrackRoombaTask(AbstractTask):
                     self._state = TrackRoombaTaskState.track
 
             if self._state == TrackRoombaTaskState.track:
-
                 if not (self._height_checker.above_min_maneuver_height(
                         self.topic_buffer.get_odometry_message().pose.pose.position.z)):
                     return (TaskAborted(msg='Drone is too low'),)
@@ -158,31 +157,22 @@ class TrackRoombaTask(AbstractTask):
                 y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_velocity )
                                                         + math.atan2(self._y_overshoot, self._x_overshoot))
 
-                rospy.logerr('x_overshoot is ' + str(x_overshoot))
-
                 x_diff = self._roomba_point.point.x + x_overshoot
                 y_diff = self._roomba_point.point.y + y_overshoot
 
-                x_success, x_vel_target = self._x_pid.update(x_diff, rospy.Time.now(), True)
-                y_success, y_vel_target = self._y_pid.update(y_diff, rospy.Time.now(), True)
+                x_success, x_vel_target = self._x_pid.update(x_diff, rospy.Time.now(), False)
+                y_success, y_vel_target = self._y_pid.update(y_diff, rospy.Time.now(), False)
 
+                # PID controller does setpoint - current; we assume opposite 
                 if x_success: 
-                    x_vel_target = x_vel_target + roomba_x_velocity
+                    x_vel_target = -x_vel_target + roomba_x_velocity
                 else: 
                     x_vel_target = roomba_x_velocity
 
                 if y_success: 
-                    y_vel_target = y_vel_target + roomba_y_velocity
+                    y_vel_target = -y_vel_target + roomba_y_velocity
                 else: 
-                    y_vel_target =  roomba_y_velocity
-
-                """
-                # p-controller
-                x_vel_target = ((self._roomba_point.point.x + x_overshoot)
-                                    * self._K_X + roomba_x_velocity)
-                y_vel_target = ((self._roomba_point.point.y + y_overshoot)
-                                    * self._K_Y + roomba_y_velocity)
-                """
+                    y_vel_target = roomba_y_velocity
                 
                 z_vel_target = self._z_holder.get_height_hold_response(
                     self.topic_buffer.get_odometry_message().pose.pose.position.z)
@@ -235,7 +225,6 @@ class TrackRoombaTask(AbstractTask):
     def _check_max_roomba_range(self):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
-        rospy.logerr(str(_distance_to_roomba))
         return (_distance_to_roomba <= self._MAX_TASK_DIST)
 
     def cancel(self):
