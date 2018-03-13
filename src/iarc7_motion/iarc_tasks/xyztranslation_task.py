@@ -12,7 +12,7 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskFailed)
 from iarc_tasks.task_commands import (VelocityCommand, NopCommand)
 
-from translate_stop_planner import TranslateStopPlanner
+from task_utilities.translate_stop_planner import TranslateStopPlanner
 
 class XYZTranslationTaskState(object):
     init = 0
