@@ -4,12 +4,12 @@ import numpy as np
 
 class PidSettings(object): 
     def __init__(self, settings_dict):
-        self.kp = settings_dict.get(kp, 0)
-        self.ki = settings_dict.get(ki, 0)
-        self.kd = settings_dict.get(kd, 0)
-        self.accum_max = settings_dict.get(accumulator_max, 0)
-        self.accum_min = settings_dict.get(accumulator_min, 0)
-        self.accum_en_threshold = settings_dict.get(accumulator_enable_threshold, 0)
+        self.kp = settings_dict.get('kp', 0)
+        self.ki = settings_dict.get('ki', 0)
+        self.kd = settings_dict.get('kd', 0)
+        self.accum_max = settings_dict.get('accumulator_max', 0)
+        self.accum_min = settings_dict.get('accumulator_min', 0)
+        self.accum_en_threshold = settings_dict.get('accumulator_enable_threshold', 0)
 
 class PidController(object):
     def __init__(self, settings):
@@ -80,7 +80,7 @@ class PidController(object):
                                     + self._i_gain * difference * time_delta)
 
                 if log_debug:
-                    log = ('Set accumulator to' + str(self._i_accumulator) + 
+                    log = ('Set accumulator to ' + str(self._i_accumulator) + 
                             ', i_gain to ' + str(self._i_gain) + 
                             ', difference is ' + str(difference) +
                             ', time delta is ' + str(time_delta))

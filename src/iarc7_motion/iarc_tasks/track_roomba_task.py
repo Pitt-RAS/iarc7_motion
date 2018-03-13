@@ -130,9 +130,9 @@ class TrackRoombaTask(AbstractTask):
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,
                         tf2_ros.ExtrapolationException) as ex:
-                    rospy.logerr('ObjectTrackTask: Exception when looking up transform')
+                    rospy.logerr('TrackRoombaTask: Exception when looking up transform')
                     rospy.logerr(ex.message)
-                    return (TaskAborted(msg='Exception when looking up transform during roomba track'),)
+                    return (TaskAborted(msg='Exception when looking up transform during TrackRoombaTask'),)
 
                 # Creat point centered at drone's center
                 stamped_point = PointStamped()
@@ -158,6 +158,8 @@ class TrackRoombaTask(AbstractTask):
                 y_overshoot = overshoot * math.sin(math.atan2(roomba_y_velocity, roomba_x_velocity )
                                                         + math.atan2(self._y_overshoot, self._x_overshoot))
 
+                rospy.logerr('x_overshoot is ' + str(x_overshoot))
+
                 x_diff = self._roomba_point.point.x + x_overshoot
                 y_diff = self._roomba_point.point.y + y_overshoot
 
@@ -167,12 +169,12 @@ class TrackRoombaTask(AbstractTask):
                 if x_success: 
                     x_vel_target = x_vel_target + roomba_x_velocity
                 else: 
-                    x_vel_target = roomba_y_velocity
+                    x_vel_target = roomba_x_velocity
 
                 if y_success: 
                     y_vel_target = y_vel_target + roomba_y_velocity
                 else: 
-                    y_vel_target = y_vel_target + roomba_y_velocity
+                    y_vel_target =  roomba_y_velocity
 
                 """
                 # p-controller
@@ -233,6 +235,7 @@ class TrackRoombaTask(AbstractTask):
     def _check_max_roomba_range(self):
         _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
+        rospy.logerr(str(_distance_to_roomba))
         return (_distance_to_roomba <= self._MAX_TASK_DIST)
 
     def cancel(self):

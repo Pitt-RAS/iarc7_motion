@@ -46,16 +46,16 @@ k_term_tracking_y: .45
 # TRACK, BLOCK, AND HIT ROOMBA PID TERMS
 roomba_pid_settings: 
   x_terms:
-    k_p: .45
-    k_i: 0.0
-    k_d: 0.0
+    kp: .20
+    ki: 0.005
+    kd: 0.005
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    k_p: .45
-    k_i: 0.0
-    k_d: 0.0
+    kp: .20
+    ki: 0.005
+    kd: 0.005
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
@@ -64,7 +64,7 @@ roomba_pid_settings:
 # height at which roomba tracking takes place
 track_roomba_height: 1.5
 # maximum radial distance from roomba
-max_roomba_dist: 1.1
+max_roomba_dist: 2.0
 
 # HIT AND BLOCK ROOMBA
 # maximum radial distance from roomba
