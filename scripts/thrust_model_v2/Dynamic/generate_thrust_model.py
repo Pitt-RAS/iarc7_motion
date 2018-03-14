@@ -94,8 +94,15 @@ class Ramp(object):
         self.start_voltage = np.median([x for (t,x) in zip(self._original_voltage_times, self.motor_voltages) if t < self.transition_start_time])
         self.end_voltage = np.median([x for (t,x) in zip(self._original_voltage_times, self.motor_voltages) if t >= self.transition_start_time])
 
-        self.start_thrust = np.median([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
-        self.end_thrust = np.median([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+        #self.start_thrust = np.median([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+        #self.end_thrust = np.median([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+
+        if self.start_throttle > self.end_throttle:
+            self.start_thrust = np.max([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+            self.end_thrust = np.min([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+        else:
+            self.start_thrust = np.min([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+            self.end_thrust = np.max([x[self.THRUST_COLUMN] for x in self.post_transition_data])
 
         b = signal.firwin(self.LOW_PASS_TAPS, self.LOW_PASS_CUTOFF, window='hamming', nyq=self.LOAD_CELL_SAMPLE_FREQ/2.0)
 
@@ -471,8 +478,8 @@ if __name__ == "__main__":
     #plot_groups(ramps, group_plotter=plot_all_filtered)
     #plot_groups(ramps, group_plotter=plot_all_voltages)
 
-    #plot_groups(ramps, group_plotter=plot_all_fft)
-    #plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
+    plot_groups(ramps, group_plotter=plot_all_fft)
+    plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
 
     response_lag = calculate_response_lags(ramps)
     voltage_to_thrust_poly, thrust_to_voltage_poly = create_voltage_to_thrust(ramps, settings['voltage_to_thrust_estimator'])
