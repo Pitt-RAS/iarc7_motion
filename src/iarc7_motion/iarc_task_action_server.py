@@ -18,6 +18,7 @@ from iarc_tasks.hold_position_task import HoldPositionTask
 from iarc_tasks.height_recovery_task import HeightRecoveryTask
 from iarc_tasks.velocity_task import VelocityTask
 from iarc_tasks.joystick_velocity_task import JoystickVelocityTask
+from iarc_tasks.go_to_roomba_task import GoToRoombaTask
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -48,7 +49,8 @@ class IarcTaskActionServer:
                            'velocity_test': VelocityTask,
                            'test_task': TestTask,
                            'test_planner': TestPlannerTask,
-                           'joystick_velocity_task': JoystickVelocityTask}
+                           'joystick_velocity_task': JoystickVelocityTask,
+                           'go_to_roomba': GoToRoombaTask}
 
     # Private method
     def _new_goal(self, goal):
@@ -56,6 +58,7 @@ class IarcTaskActionServer:
             rospy.logdebug("_new_goal: %s", goal.get_goal_id().id)
 
             task_request = goal.get_goal()
+
 
             try:
                 new_task_type = self._task_dict[task_request.movement_type]
@@ -164,7 +167,7 @@ class IarcTaskActionServer:
             self._current_goal, self._current_task = self._goal_tasks.pop(0)
             self._cancel_requested = False
 
-            rospy.logdebug("New task accepted")
+            rospy.logdebug("New task fed")
             self._current_goal.set_accepted()
 
             return self._current_task

@@ -57,7 +57,7 @@ level_flight_required_height: 0.35
 level_flight_required_hysteresis: 0.10
 
 update_frequency: 60.0
-startup_timeout: 10.0
+startup_timeout: 20.0
 update_timeout: 2.0
 
 # Time to delay after arming
