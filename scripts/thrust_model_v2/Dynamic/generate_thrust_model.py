@@ -328,6 +328,7 @@ def create_voltage_to_thrust(ramps, settings):
     fit_voltages = np.linspace(0, np.max(voltages)*1.2, 100)
 
     z = np.polyfit(thrusts, voltages, deg=settings['degree'])
+    print z
     thrust_to_voltage = np.poly1d(z)
     fit_thrusts = np.linspace(0, np.max(thrusts)*1.2, 100)
 
@@ -348,13 +349,21 @@ def create_time_constant_to_last_thrust_and_voltage(ramps, poly, settings):
     falling_thrust_order = settings['falling_edge_thrust_order']
     falling_voltage_order = settings['falling_edge_voltage_order']
 
-    up_start_thrusts = [ramp.start_thrust for ramp in ramps if ramp.start_thrust < ramp.end_thrust]
-    up_end_voltages = [ramp.end_voltage for ramp in ramps if ramp.start_thrust < ramp.end_thrust]
-    up_time_constants = [ramp.time_constant for ramp in ramps if ramp.start_thrust < ramp.end_thrust]
+    # Try to find a file format, if no string assume 1.0
+    try:
+        max_time_constant = settings['max_time_constant']
+    except KeyError as e:
+        max_time_constant = float("inf")
 
-    down_start_thrusts = [ramp.start_thrust for ramp in ramps if ramp.start_thrust >= ramp.end_thrust]
-    down_end_voltages = [ramp.end_voltage for ramp in ramps if ramp.start_thrust >= ramp.end_thrust]
-    down_time_constants = [ramp.time_constant for ramp in ramps if ramp.start_thrust >= ramp.end_thrust]
+    up_start_thrusts, up_end_voltages, up_time_constants = zip(*[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
+                                                                 for ramp in ramps
+                                                                 if ramp.start_thrust < ramp.end_thrust
+                                                                     and ramp.time_constant < max_time_constant])
+
+    down_start_thrusts, down_end_voltages, down_time_constants = zip(*[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
+                                                                      for ramp in ramps
+                                                                      if ramp.start_thrust >= ramp.end_thrust
+                                                                          and ramp.time_constant < max_time_constant])
 
     start_thrusts = up_start_thrusts+down_start_thrusts
     end_voltages = up_end_voltages+down_end_voltages
@@ -366,8 +375,23 @@ def create_time_constant_to_last_thrust_and_voltage(ramps, poly, settings):
     ax.scatter(down_start_thrusts, down_end_voltages, down_time_constants, 'b+')
 
     #least_squares_and_plot(time_constants, start_thrusts, end_voltages, 3, 2, ax)
-    poly_rising = least_squares_and_plot(up_time_constants, up_start_thrusts, up_end_voltages, rising_thrust_order, rising_voltage_order, ax, poly=poly, plot_rising_only=True)
-    poly_falling = least_squares_and_plot(down_time_constants, down_start_thrusts, down_end_voltages, falling_thrust_order, falling_voltage_order, ax, poly=poly, plot_rising_only=False)
+    poly_rising = least_squares_and_plot(up_time_constants,
+                                         up_start_thrusts,
+                                         up_end_voltages,
+                                         rising_thrust_order,
+                                         rising_voltage_order,
+                                         ax,
+                                         poly=poly,
+                                         plot_rising_only=True)
+    poly_falling = least_squares_and_plot(down_time_constants,
+                                          down_start_thrusts,
+                                          down_end_voltages,
+                                          falling_thrust_order,
+                                          falling_voltage_order,
+                                          ax,
+                                          poly=poly,
+                                          plot_rising_only=False,
+                                          plot = True)
 
     ax.set_xlabel('Thrusts (kg)')
     ax.set_ylabel('End Voltages (V)')
@@ -375,7 +399,15 @@ def create_time_constant_to_last_thrust_and_voltage(ramps, poly, settings):
 
     return lambda thrust, voltage: find_time_constant_with_multiple_fits(thrust, voltage, poly_rising, poly_falling, poly)
 
-def least_squares_and_plot(time_constants, start_thrusts, end_voltages, degree_thrust, degree_voltage, ax, poly=None, plot_rising_only=None):
+def least_squares_and_plot(time_constants,
+                           start_thrusts,
+                           end_voltages,
+                           degree_thrust,
+                           degree_voltage,
+                           ax,
+                           poly=None,
+                           plot_rising_only=None,
+                           plot = True):
     # Generate the A matrix
     A = generate_2d_polynomial_terms(start_thrusts, degree_thrust, end_voltages, degree_voltage)
     lsq_sol = lsq_linear(A, time_constants)
@@ -391,13 +423,16 @@ def least_squares_and_plot(time_constants, start_thrusts, end_voltages, degree_t
     voltage_fit_mesh = voltage_fit_mesh.flatten()
 
     if plot_rising_only is not None:
-        if plot_rising_only:
+        if (plot_rising_only):
             thrust_fit_mesh, voltage_fit_mesh = zip(*[(x,y) for (x,y) in zip(thrust_fit_mesh, voltage_fit_mesh) if x <= poly(y)])
         else:
             thrust_fit_mesh, voltage_fit_mesh = zip(*[(x,y) for (x,y) in zip(thrust_fit_mesh, voltage_fit_mesh) if x > poly(y)])
 
     fitted = np.polynomial.polynomial.polyval2d(thrust_fit_mesh, voltage_fit_mesh, c)
-    ax.plot_trisurf(thrust_fit_mesh, voltage_fit_mesh, fitted, alpha=0.5)
+
+    if(plot):
+        ax.scatter(thrust_fit_mesh, voltage_fit_mesh, fitted, alpha=0.5, color='r')
+
     return c
 
 def find_time_constant_with_multiple_fits(thrusts, voltages, accelerating_time_constant_coefficients, braking_time_constant_coefficients, voltage_to_thrust):
@@ -478,8 +513,8 @@ if __name__ == "__main__":
     #plot_groups(ramps, group_plotter=plot_all_filtered)
     #plot_groups(ramps, group_plotter=plot_all_voltages)
 
-    plot_groups(ramps, group_plotter=plot_all_fft)
-    plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
+    #plot_groups(ramps, group_plotter=plot_all_fft)
+    #plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
 
     response_lag = calculate_response_lags(ramps)
     voltage_to_thrust_poly, thrust_to_voltage_poly = create_voltage_to_thrust(ramps, settings['voltage_to_thrust_estimator'])

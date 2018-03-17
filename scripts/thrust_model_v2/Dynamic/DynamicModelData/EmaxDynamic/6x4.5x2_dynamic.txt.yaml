@@ -20,7 +20,7 @@ voltage_to_jerk_estimator:
     voltage_min: 0.0
     voltage_max: 12.0
 
-    thrust_points: 12
+    thrust_points: 10
     voltage_points: 10
 
     timestep: 0.020

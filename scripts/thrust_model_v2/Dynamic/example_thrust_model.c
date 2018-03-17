@@ -1,4 +1,0 @@
-struct thrust_model
-{
-	
-}

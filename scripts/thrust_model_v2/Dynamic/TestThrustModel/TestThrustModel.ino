@@ -18,7 +18,7 @@ int adcCountOffset = 0;
 float ampsPerADCCount = -(5.0f/1024.0f) / 0.015f;
 
 int voltagePin = A6;
-float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(23.84f/24.60f);
+float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(12.25f/12.11f);
 
 int safetySwitchPin = 3;
 
@@ -38,7 +38,7 @@ const unsigned long throttle_change_delay = 1500000; //3000000; //1500000;
 const int max_throttle = 100; //70;
 
 void setup() {
-  Serial.begin(250000);
+  Serial.begin(230400);
   Serial.setTimeout(50);
 
   pinMode(safetySwitchPin, INPUT);
@@ -74,6 +74,10 @@ unsigned long scale_measurement_stamp = micros();
 // Set last voltage to a small number initially to avoid divide by zero
 float last_voltage = 0.1;
 
+char buffer[100];
+
+int command = 0 ;
+
 void loop() {
 
   ////////////////////////////////////////////////////////////////////////////
@@ -101,11 +105,13 @@ void loop() {
   }
   else {
     // Get throttle from the serial port
+    static bool full_test = false;
+
     if (Serial.available() > 0) {
       // Read the new throttle value
       int raw = Serial.parseInt();
-      int command = constrain(raw, 0, 100);
-  
+      command = constrain(raw, 0, 100);
+
       if(command == 0)
       {
         esc.writeMicroseconds(minPulse);
@@ -113,12 +119,49 @@ void loop() {
         Serial.println("STOP COMMANDED");
         throttle = 0;
       }
-      else
-      {
-        Serial.println("START");
+      else if(command > 0 && command < 7){
         testing_active = true;
         ramp_start_time = micros();
       }
+      else if(command == 7){
+        // Going to run 1,2,3 in that order
+        full_test = true;
+      }
+      else
+      {
+        Serial.println("UNKOWN COMMAND");
+      }
+    }
+
+    //Serial.print(command); Serial.print(" "); Serial.print(full_test); Serial.print(" "); Serial.println(testing_active);
+
+    if(command == 7 && full_test){
+      command = 1;
+      testing_active = true;
+      ramp_start_time = micros();
+    }
+    else if(command == 1 && full_test && !testing_active){
+      command = 2;
+      testing_active = true;
+      ramp_start_time = micros();
+    }
+    else if(command == 2 && full_test && !testing_active){
+      command = 3;
+      testing_active = true;
+      ramp_start_time = micros();
+    }
+    else if(command == 3 && full_test && !testing_active){
+      command = 4;
+      testing_active = true;
+      ramp_start_time = micros();
+    }
+    else if(command == 4 && full_test && !testing_active){
+      command = 5;
+      testing_active = true;
+      ramp_start_time = micros();
+    }
+    else if(command == 5 && full_test && !testing_active){
+      full_test = false;
     }
   }
 
@@ -133,75 +176,210 @@ void loop() {
   // if continuous uniform distribution is assumed this means the average lag
   // is 10ms (it is not valid to assume continuous uniform but its good enough for now)
   // Use the lower line if testing the non dynamic model
-  const unsigned long expected_response_lag_micros = (response_lag * 1000) + 10000;
+  //const unsigned long expected_response_lag_micros = (response_lag * 1000000) + 10000;
+  const unsigned long expected_response_lag_micros = 20000;
   // const unsigned long expected_response_lag_micros = 0;
 
-  if(micros() - last_esc_update > esc_update_rate) {
-    last_esc_update = micros();
-
-    const int triangles_per_test = 3;
-    const float thrust_increment_rate_increment = 0.1;
-    const float max_thrust_increment_rate = 0.5;
-    const float thrust_bounds_margin = 0.1;
+  if(esc.lastWriteStamp() - last_esc_update > 0) {
 
     static float last_thrust = 0;
-    static bool going_up = true;
+    static int state = -1;
     static uint8_t triangles_completed = 0;
-    static float thrust_increment_rate = thrust_increment_rate_increment;
+    static int triangles_per_test = 0;
+    static int pauses_per_pause = 0;
+    static float thrust_increment_rate = 0;
+    static bool first_entry = true;
 
     if(testing_active) {
 
-    	if(going_up) {
-    		current_thrust = last_thrust + thrust_increment_rate;
-    		if(current_thrust >= thrust_max - thrust_bounds_margin) {
-    			going_up = false;
-    		}
-    	}
-    	else {
-    		current_thrust = last_thrust - thrust_increment_rate;
-    		if(current_thrust <= thrust_min + thrust_bounds_margin) {
-    			going_up = true;
-    			triangles_completed++;
-    		}
-    	}
+      float next_voltage = 0.0;
 
-    	if (triangles_completed > triangles_per_test) {
-        triangles_completed = 0;
-        thrust_increment_rate += thrust_increment_rate_increment;
+      if(command == 1 || command == 2 || command == 3 || command == 4) {
+        const float start_thrust_increment_rate = 0.025;
+        const float thrust_increment_rate_increment = 0.05;
+        const float max_thrust_increment_rate = 0.9;
+        const int min_triangles_per_test = 4;
+        const int max_pauses = 5;
+        const int start_up_settle_counts = 50;
 
-        if (thrust_increment_rate > max_thrust_increment_rate) {
+        float thrust_bounds_margin;
+        if(command == 1 || command == 2){
+          thrust_bounds_margin = (thrust_max-thrust_min) * 0.25;
+        }
+        else{
+          thrust_bounds_margin = (thrust_max-thrust_min) * 0.05;
+        }
+
+        if(first_entry) {
+          first_entry = false;
+
+          last_thrust = 0;
+          triangles_completed = 0;
+          thrust_increment_rate = start_thrust_increment_rate;
+          current_thrust = 0.0;
+          current_thrust_timestamp =  expected_response_lag_micros + esc.lastWriteStamp();
+          triangles_per_test = min_triangles_per_test;
+          pauses_per_pause = max_pauses;
+          state = -1;
+        }
+        if (state == -1) {
+          static int pause_counter = 0;
+          pause_counter++;
+          current_thrust = thrust_min + thrust_bounds_margin;
+          if(pause_counter > start_up_settle_counts) {
+            pause_counter = 0;
+            state = 0;
+            Serial.println("START");
+            Serial.println(command);
+            Serial.println(thrust_increment_rate, 4);
+          }
+        }
+        else if(state == 0) {
+          current_thrust = last_thrust + thrust_increment_rate;
+          if(current_thrust >= thrust_max - thrust_bounds_margin) {
+            current_thrust = thrust_max - thrust_bounds_margin;
+            state = 1;
+          }
+        }
+       else if(state == 1) {
+         static int pause_counter = 0;
+         pause_counter++;
+         if(pause_counter > pauses_per_pause) {
+           pause_counter = 0;
+           state = 2;
+         }
+       }
+       else if(state == 2) {
+          current_thrust = last_thrust - thrust_increment_rate;
+          if(current_thrust <= thrust_min + thrust_bounds_margin) {
+            current_thrust = thrust_min + thrust_bounds_margin;
+            state = 3;
+          }
+       }
+       else {
+         static int pause_counter = 0;
+         pause_counter++;
+         if(pause_counter > pauses_per_pause) {
+           pause_counter = 0;
+           triangles_completed++;
+           state = 0;
+         }
+       }
+
+        if (triangles_completed >= triangles_per_test) {
+          triangles_completed = 0;
+          thrust_increment_rate = thrust_increment_rate * 2;
+          //thrust_increment_rate += thrust_increment_rate_increment;
+          //triangles_per_test = (thrust_increment_rate / thrust_increment_rate_increment) * min_triangles_per_test;
+          //pauses_per_pause = min_triangles_per_test * max_pauses / triangles_per_test;
+
+          if (thrust_increment_rate > max_thrust_increment_rate) {
+            Serial.println("STOP");
+            first_entry = true;
+            testing_active = false;
+          }
+          else {
+            Serial.println("RESPONSE END\nRESPONSE START");
+            Serial.println(thrust_increment_rate);
+          }
+        }
+
+        // Generate ramps for specified thrusts
+        // Use the bottom line if testing the static model.
+        if(command == 1 || command == 3) {
+          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust);
+        }
+        else if(command == 2 || command == 4) {
+          next_voltage = get_voltage_for_thrust(current_thrust);
+        }
+
+        last_thrust = current_thrust;
+      }
+
+      else if(command == 5 || command == 6) {
+        const float start_thrust_increment_rate = 0.05;
+        const float thrust_increment_rate_increment = 0.05;
+        const float max_thrust_increment_rate = 0.45;
+        const float thrust_bounds_margin = 0.05;
+        const int min_triangles_per_test = 4;
+        const int max_pauses = 150;
+        const int start_up_settle_counts = 50;
+
+        if(first_entry) {
+            first_entry = false;
+
+            last_thrust = 0;
+            triangles_completed = 0;
+            thrust_increment_rate = thrust_increment_rate_increment;
+            current_thrust = 0.0;
+            current_thrust_timestamp =  expected_response_lag_micros + esc.lastWriteStamp();
+            triangles_per_test = min_triangles_per_test;
+            pauses_per_pause = max_pauses;
+            state = -1;
+
+            Serial.println("START");
+            Serial.println(command);
+            Serial.println(thrust_increment_rate);
+        }
+        if (state == -1) {
+          static int pause_counter = 0;
+          pause_counter++;
+          current_thrust = thrust_min + thrust_bounds_margin;
+          if(pause_counter > start_up_settle_counts) {
+            pause_counter = 0;
+            state = 0;
+          }
+        }
+        else if(state == 0) {
+          current_thrust = last_thrust + thrust_increment_rate;
+          state = 1;
+          if(current_thrust >= thrust_max - thrust_bounds_margin) {
+            current_thrust = thrust_max - thrust_bounds_margin;
+            state = 2;
+          }
+        }
+        else if(state == 1) {
+          static int pause_counter = 0;
+          pause_counter++;
+          if(pause_counter > pauses_per_pause) {
+            pause_counter = 0;
+            state = 0;
+          }
+        }
+        else if(state == 2) {
+          current_thrust = 0;
           Serial.println("STOP");
+          first_entry = true;
           testing_active = false;
         }
-        else {
-          Serial.println("RESPONSE END\nRESPONSE START");
-          Serial.println(thrust_increment_rate);
+
+        // Generate ramps for specified thrusts
+        // Use the bottom line if testing the static model.
+        if(command == 5) {
+          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust);
         }
-    	}
+        else if(command == 6) {
+          next_voltage = get_voltage_for_thrust(current_thrust);
+        }
 
-    	// Generate ramps for specified thrusts
-      // Use the bottom line if testing the static model.
-      float next_voltage = get_voltage_for_jerk(last_thrust, current_thrust);
-      //float next_voltage = get_voltage_for_thrust(current_thrust);
+        last_thrust = current_thrust;
+      }
 
-    	last_thrust = current_thrust;
-
-    	throttle = 100.0f * next_voltage / last_voltage;
+      throttle = 100.0f * next_voltage / last_voltage;
 
       // Write the throttle to the esc
       throttle = constrain(throttle, 0, 100);
       int micro_seconds = (((float)throttle / 100.0f) * (maxThrottle - minThrottle)) + minThrottle;
 
-      current_thrust_timestamp = micros() + expected_response_lag_micros;
+      // one period for the time till the next value to be written
+      // Do not include one more period for the time required to rise
+      // If the thrust model is too fast the thrust might be achieved before the target and
+      // that can confuse the autocorrelation processing
+      current_thrust_timestamp = expected_response_lag_micros + esc.lastWriteStamp();
+      last_esc_update = esc.lastWriteStamp();
       esc.writeMicroseconds(micro_seconds);
     }
     else{
-      last_thrust = 0;
-      going_up = true;
-      triangles_completed = 0;
-      thrust_increment_rate = thrust_increment_rate_increment;
-      current_thrust = 0.0;
-      current_thrust_timestamp = micros() + expected_response_lag_micros;
       esc.writeMicroseconds(minPulse);
     }
   }
@@ -265,7 +443,6 @@ void loop() {
   float updateRateHz = 1000000.0f/(float)deltaT;
   lastUpdate = micros();
 
-  char buffer[250];
   char thrust_str[15];
   dtostrf(thrust, 3, 3, thrust_str);
   char current_str[15];
@@ -277,7 +454,7 @@ void loop() {
   char current_thrust_str[15];
   dtostrf(current_thrust, 3, 3, current_thrust_str);
 
-  sprintf(buffer, "%s, %ld, %s, %ld, %s, %ld, %s, %d, %ld, %d, %s, %ld", thrust_str, 
+  snprintf(buffer, sizeof(buffer), "%s, %ld, %s, %ld, %s, %ld, %s, %d, %ld, %d, %s, %ld", thrust_str, 
                                                            scale_measurement_stamp - ramp_start_time,
                                                            current_str,
                                                            current_stamp - ramp_start_time,
