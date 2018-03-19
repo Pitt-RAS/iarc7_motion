@@ -95,9 +95,14 @@ QuadVelocityController::QuadVelocityController(
                          update_timeout_,
                          ros::Duration(0),
                          [](const nav_msgs::Odometry& msg) {
-                             return tf2::Vector3(msg.twist.twist.linear.x,
-                                                 msg.twist.twist.linear.y,
-                                                 msg.twist.twist.linear.z);
+                              Eigen::VectorXd v(6);
+                              v[0] = msg.twist.twist.linear.x;
+                              v[1] = msg.twist.twist.linear.y;
+                              v[2] = msg.twist.twist.linear.z;
+                              v[3] = msg.pose.pose.position.x;
+                              v[4] = msg.pose.pose.position.y;
+                              v[5] = msg.pose.pose.position.z;
+                              return v;
                          },
                          100),
       min_thrust_(ros_utils::ParamUtils::getParam<double>(
@@ -145,9 +150,9 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
-    // Get the current velocity of the quad.
-    tf2::Vector3 velocity;
-    bool success = odom_interpolator_.getInterpolatedMsgAtTime(velocity, time);
+    // Get the current odometry of the quad.
+    Eigen::VectorXd odometry;
+    bool success = odom_interpolator_.getInterpolatedMsgAtTime(odometry, time);
     if (!success) {
         ROS_ERROR("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -207,11 +212,11 @@ bool QuadVelocityController::update(const ros::Time& time,
     double pitch_output;
     double roll_output;
 
-    // Update throttle PID loop
-    success = throttle_pid_.update(velocity.z(),
+    // Update throttle PID loop with position and velocity
+    success = throttle_pid_.update(odometry[5],
                                    time,
                                    vertical_accel_output,
-                                   accel.z());
+                                   odometry[2]);
 
     if (!success) {
         ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
@@ -219,10 +224,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Calculate local frame velocities
-    double local_x_velocity = std::cos(current_yaw) * velocity.x()
-                            + std::sin(current_yaw) * velocity.y();
-    double local_y_velocity = -std::sin(current_yaw) * velocity.x()
-                            +  std::cos(current_yaw) * velocity.y();
+    double local_x_velocity = std::cos(current_yaw) * odometry[0]
+                            + std::sin(current_yaw) * odometry[1];
+    double local_y_velocity = -std::sin(current_yaw) * odometry[0]
+                            +  std::cos(current_yaw) * odometry[1];
     // Calculate local frame accelerations
     double local_x_accel = std::cos(current_yaw) * accel.x()
                          + std::sin(current_yaw) * accel.y();
@@ -306,9 +311,9 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Print the velocity and throttle information
     ROS_DEBUG("Vz: %f Vx: %f Vy: %f",
-             velocity.z(),
-             velocity.x(),
-             velocity.y());
+             odometry[2],
+             odometry[0],
+             odometry[1]);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
              uav_command.throttle,
              uav_command.data.pitch,

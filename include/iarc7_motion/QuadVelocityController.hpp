@@ -11,6 +11,16 @@
 #define QUAD_VELOCITY_CONTROLLER_H
 
 #include <ros/ros.h>
+
+//Bad Header
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#include <Eigen/Geometry>
+#pragma GCC diagnostic pop
+//End Bad Header
+
 #include "iarc7_motion/PidController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
 #include "ros_utils/LinearMsgInterpolator.hpp"
@@ -110,7 +120,7 @@ private:
             battery_interpolator_;
     ros_utils::LinearMsgInterpolator<
         nav_msgs::Odometry,
-        tf2::Vector3>
+        Eigen::VectorXd>
             odom_interpolator_;
 
     // Min allowed requested thrust in m/s^2

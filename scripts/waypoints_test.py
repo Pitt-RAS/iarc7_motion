@@ -40,12 +40,12 @@ if __name__ == '__main__':
 
     # Target points in global (X, Y, Z) coordinates
     waypoints = [
-            (0, 0, 3, 0 * math.pi),
-            (3, 0, 3, 1.75 * math.pi),
-            (-3, 1, 4, 0.25 * math.pi),
-            (-3, 1, 4, 1.5 * math.pi),
-            (0, 0, 5, 1 * math.pi),
-            (1, 2, 2, 1.25 * math.pi),
+            (0, 0, .7, 0 * math.pi),
+            (0, 0, .9, 1.75 * math.pi),
+            (0, 0, .9, 0.25 * math.pi),
+            (0, 0, .9, 1.5 * math.pi),
+            (0, 0, .5, 1 * math.pi),
+            (0, 0, 0, 1.25 * math.pi),
             ]
     waypoints_iter = iter(waypoints)
     target = next(waypoints_iter)
@@ -66,12 +66,12 @@ if __name__ == '__main__':
     goal = GroundInteractionGoal(interaction_type='takeoff')
     # Sends the goal to the action server.
     ground_interaction_client.send_goal(goal)
-
     # Waits for the server to finish performing the action.
     ground_interaction_client.wait_for_result()
     rospy.logwarn("Takeoff success: {}".format(ground_interaction_client.get_result()))
 
     rate = rospy.Rate(30)
+    time = rospy.Time.now().to_sec() 
     while not rospy.is_shutdown():
         try:
             (trans, rot) = tf_listener.lookupTransform('/map',
@@ -93,50 +93,41 @@ if __name__ == '__main__':
         velocity = TwistStamped()
         velocity.header.frame_id = 'level_quad'
         velocity.header.stamp = rospy.Time.now()
+
+        #Setting x,y velocities and z position
         if abs(target[0] - trans[0]) >= 0.02:
             error = target[0] - trans[0]
             target_v = math.copysign(kP * abs(error)**gamma, error)
             velocity.twist.linear.x = constrain(target_v, -max_vel, max_vel)
+        
         if abs(target[1] - trans[1]) >= 0.02:
             error = target[1] - trans[1]
             target_v = math.copysign(kP * abs(error)**gamma, error)
             velocity.twist.linear.y = constrain(target_v, -max_vel, max_vel)
-        if abs(target[2] - trans[2]) >= 0.02:
-            error = target[2] - trans[2]
-            target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.z = constrain(target_v, -max_vel, max_vel)
         
-        # Get the yaw (z axis) rotation from the quanternion
-        current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
-        
-        # Transform current yaw to be between 0 and 2pi because the points
-        # are encoded from 0 to 2pi
-        if current_yaw < 0:
-            current_yaw = (2.0 * math.pi) + current_yaw
-
-        # Calculate the difference
-        yaw_difference = target[3] - current_yaw
-
-        # Avoid taking the long way around
-        if(yaw_difference > math.pi):
-            yaw_difference = yaw_difference - 2.0 * math.pi
-
-        # Avoid taking the long way around
-        if(yaw_difference < -math.pi):
-            yaw_difference = yaw_difference + 2.0 * math.pi
-
-        # Finally set the desired twist velocity
-        if abs(yaw_difference) >= 0.02:
-            velocity.twist.angular.z = constrain(yaw_difference * kP_yaw,
-                                                 -max_yaw_vel,
-                                                 max_yaw_vel)
+        velocity.twist.linear.z = target[2]
 
         velocity_msg = TwistStampedArray()
         velocity_msg.twists = [velocity]
         velocity_pub.publish(velocity_msg)
 
-        if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
-            if abs(yaw_difference) < 0.15:
-                target = next(waypoints_iter, target)
+        #Sets next target after a set time has passed
+        if ((rospy.Time.now().to_sec() - time) > 4):
+            target = next(waypoints_iter, target)
+            time = rospy.Time.now().to_sec()
+            rospy.logerr('Switching targets')
+            print(target)
+
+        #Breaks out if Z position set to zero
+        if (target[2] == 0):
+            break;
 
         rate.sleep()
+
+    # Test land
+    goal = GroundInteractionGoal(movement_type="land")
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+    rospy.logwarn("Land success: {}".format(client.get_result()))
