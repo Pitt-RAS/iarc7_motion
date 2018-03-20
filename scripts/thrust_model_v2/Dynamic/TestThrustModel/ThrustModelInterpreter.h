@@ -17,13 +17,14 @@
 // Automatically generated thrust model data
 // Change this to use a different thrust model
 //#include "apc_12_6_dynamic.h"
+#include "apc_12_6_dynamic_r2.h"
 //#include "unknown_10_45_dynamic.h"
-#include "6x4.5x2_dynamic_r2.h"
+//#include "6x4.5x2_dynamic_r2.h"
 //#include "6x4.5x3_dynamic.h"
 
 float get_voltage_for_thrust(float thrust);
 
-const float start_thrust_increment = (thrust_max - thrust_min) / num_thrust_points;
+const float start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_points-1);
 
 float linear_interpolate(float x, float x_i, float x_f, float y_i, float y_f) {
 
@@ -34,12 +35,12 @@ float linear_interpolate(float x, float x_i, float x_f, float y_i, float y_f) {
 
     float result = a*x+b;
 
-    //Serial.print("x: "); Serial.print(x);
+    //Serial.print("x: "); Serial.print(x*1000);
     //Serial.print(" x_i: "); Serial.print(x_i*1000);
     //Serial.print(" x_f: "); Serial.print(x_f*1000);
-    //Serial.print(" y_i: "); Serial.print(y_i); 
-    //Serial.print(" y_f: "); Serial.print(y_f);
-    // Serial.print(" r: "); Serial.println(result); 
+    //Serial.print(" y_i: "); Serial.print(y_i*1000); 
+    //Serial.print(" y_f: "); Serial.print(y_f*1000);
+    //Serial.print(" r: "); Serial.println(result); 
 
     return result;
 }
@@ -67,9 +68,9 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
                                              voltage_to_jerk_mapping[bottom_thrust_index][1][1], // End thrust bottom
                                              voltage_to_jerk_mapping[top_thrust_index][1][1]); // End thrust top
     
-    //if(zero_voltage_thrust >= desired_thrust) {
-    //    return 0.0;
-    //}
+    if(zero_voltage_thrust >= desired_thrust) {
+        return 0.0;
+    }
 
     float last_final_thrust = zero_voltage_thrust;
 
@@ -83,6 +84,7 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
         // greater than desired thrust.
         // Implicitly the thrust in the element before is the last thrust
         // that is less than the desired thrust.
+        //Serial.print("Interpolating thrust: "); Serial.println(i+1);
         float current_final_thrust = linear_interpolate(start_thrust,
                                              voltage_to_jerk_mapping[bottom_thrust_index][0][0], // Start thrust bottom
                                              voltage_to_jerk_mapping[top_thrust_index][0][0], // Start thrust top
@@ -90,32 +92,18 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
                                              voltage_to_jerk_mapping[top_thrust_index][i+1][1]); // End thrust top
         //Serial.println(current_final_thrust);
         if(current_final_thrust >= desired_thrust) {
-            //Serial.print("CURRENT FINAL: "); Serial.print(current_final_thrust); Serial.print("  "); Serial.println(i+1);
-            // Use bilinear interpolation to find the correct voltage.
-
-            // Find the voltage between the voltages associated with the output thrust
-            // just below the desired thrust through linear interpolation
-            float voltage_bottom = linear_interpolate(start_thrust,
-                                         voltage_to_jerk_mapping[bottom_thrust_index][0][0],
-                                         voltage_to_jerk_mapping[top_thrust_index][0][0],
-                                         voltage_to_jerk_mapping[bottom_thrust_index][i][0],
-                                         voltage_to_jerk_mapping[top_thrust_index][i][0]);
-
-            // Find the voltage between the voltages associated with the output thrust
-            // just above the desired thrust through linear interpolation between the two
-            // previously found thrusts that are between the output thrust elements
-            float voltage_top = linear_interpolate(start_thrust,
-                                         voltage_to_jerk_mapping[bottom_thrust_index][0][0],
-                                         voltage_to_jerk_mapping[top_thrust_index][0][0],
-                                         voltage_to_jerk_mapping[bottom_thrust_index][i+1][0],
-                                         voltage_to_jerk_mapping[top_thrust_index][i+1][0]);
-
-            // Interpolate between the voltage from just below and just above
+            //Serial.println("interpolating voltage");
             voltage = linear_interpolate(desired_thrust,
-                                         last_final_thrust,
-                                         current_final_thrust,
-                                         voltage_bottom,
-                                         voltage_top);
+                                               last_final_thrust,
+                                               current_final_thrust,
+                                               voltage_to_jerk_mapping[0][i][0],
+                                               voltage_to_jerk_mapping[0][i+1][0]);
+
+            //if(voltage > voltage_to_jerk_mapping[0][i+1][0]){
+            //    Serial.println("HHHSDFHSALKDFJ:LASIJFLKDSAJHLKAJSHFALKSJHFLK");
+           // }
+
+            //Serial.print("CURRENT FINAL: "); Serial.print(current_final_thrust); Serial.print("  "); Serial.println(i+1);
             // Return the voltage found
             break;
         }

@@ -97,12 +97,15 @@ class Ramp(object):
         #self.start_thrust = np.median([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
         #self.end_thrust = np.median([x[self.THRUST_COLUMN] for x in self.post_transition_data])
 
-        if self.start_throttle > self.end_throttle:
-            self.start_thrust = np.max([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
-            self.end_thrust = np.min([x[self.THRUST_COLUMN] for x in self.post_transition_data])
-        else:
-            self.start_thrust = np.min([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
-            self.end_thrust = np.max([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+        self.start_thrust = np.median([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+        self.end_thrust = np.median([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+
+        #if self.start_throttle > self.end_throttle:
+        #    self.start_thrust = np.max([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+        #    self.end_thrust = np.min([x[self.THRUST_COLUMN] for x in self.post_transition_data])
+        #else:
+        #    self.start_thrust = np.min([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
+        #    self.end_thrust = np.max([x[self.THRUST_COLUMN] for x in self.post_transition_data])
 
         b = signal.firwin(self.LOW_PASS_TAPS, self.LOW_PASS_CUTOFF, window='hamming', nyq=self.LOAD_CELL_SAMPLE_FREQ/2.0)
 

@@ -9,17 +9,19 @@ voltage_to_thrust_estimator:
 
 time_constant_fit:
     rising_edge_thrust_order: 2
-    rising_edge_voltage_order: 2
+    rising_edge_voltage_order: 1
     falling_edge_thrust_order: 2
     falling_edge_voltage_order: 1
+    max_time_constant: 0.8
+    min_time_constant: 0.1
     
 voltage_to_jerk_estimator:
     thrust_min: 0.0
-    thrust_max: 1.2
+    thrust_max: 1.0
     voltage_min: 0.0
     voltage_max: 12.0
 
-    thrust_points: 12
-    voltage_points: 10
+    thrust_points: 20
+    voltage_points: 20
 
     timestep: 0.020
