@@ -55,6 +55,12 @@ yaw_max           : 0.5
 yaw_min           : -0.5
 yaw_max_rate      : 10.0
 
+# Height below which the drone is required to be level
+level_flight_required_height: 0.35
+# Height above the level flight height at which to allow the drone
+# to begin tilting again
+level_flight_required_hysteresis: 0.10
+
 update_frequency: 60.0
 startup_timeout: 10.0
 update_timeout: 0.2
