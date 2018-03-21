@@ -43,10 +43,9 @@ class TrackRoombaTask(AbstractTask):
         if self._roomba_id is None:
             raise ValueError('A null roomba id was provided')
 
-        # data about roomba(s)
+        # data about roombas
         self._roomba_odometry = None
         self._roomba_point = None
-        self._roomba_found = False
         # used for acceleration limiting
         self._current_velocity = None
         # keeping track of total track time
@@ -63,10 +62,8 @@ class TrackRoombaTask(AbstractTask):
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
-            
-            _x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
-            _y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
-            
+            x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
+            y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
             TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for track roomba task')
@@ -75,8 +72,8 @@ class TrackRoombaTask(AbstractTask):
         self._z_holder = HeightHolder(TRACK_HEIGHT)
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
-        self._x_pid = PidController(_x_pid_settings)
-        self._y_pid = PidController(_y_pid_settings)
+        self._x_pid = PidController(x_pid_settings)
+        self._y_pid = PidController(y_pid_settings)
 
         if self._MAX_TASK_DIST < math.sqrt(self._x_overshoot**2
                             + self._y_overshoot**2):
@@ -91,7 +88,7 @@ class TrackRoombaTask(AbstractTask):
             
             if self._time_to_track != 0 and (rospy.Time.now() 
                 - self._start_time >= rospy.Duration(self._time_to_track)):
-                rospy.loginfo('Timed out')
+                rospy.loginfo('TrackRoombaTask has tracked the roomba for the specified duration')
                 return (TaskDone(),)
 
             if self._canceled:
@@ -114,12 +111,12 @@ class TrackRoombaTask(AbstractTask):
             if self._state == TrackRoombaTaskState.track:
                 if not (self._height_checker.above_min_maneuver_height(
                         self.topic_buffer.get_odometry_message().pose.pose.position.z)):
-                    return (TaskAborted(msg='Drone is too low'),)
+                    return (TaskAborted(msg='TrackRoombaTask: Drone is too low to maneuver'),)
                 elif not (self._z_holder.check_z_error(
                         self.topic_buffer.get_odometry_message().pose.pose.position.z)):
-                    return (TaskAborted(msg='Z error is too high'),)
+                    return (TaskAborted(msg='TrackRoombaTask: Z height error is too high'),)
                 elif not self._check_roomba_in_sight():
-                    return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
+                    return (TaskAborted(msg='TrackRoombaTask: The provided roomba is not in sight of quad'),)
                 try:
                     roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
                                         'level_quad',
@@ -133,7 +130,7 @@ class TrackRoombaTask(AbstractTask):
                     rospy.logerr(ex.message)
                     return (TaskAborted(msg='Exception when looking up transform during TrackRoombaTask'),)
 
-                # Creat point centered at drone's center
+                # Create point centered at drone's center (0,0,0)
                 stamped_point = PointStamped()
                 stamped_point.point.x = 0
                 stamped_point.point.y = 0
@@ -163,7 +160,9 @@ class TrackRoombaTask(AbstractTask):
                 x_success, x_vel_target = self._x_pid.update(x_diff, rospy.Time.now(), False)
                 y_success, y_vel_target = self._y_pid.update(y_diff, rospy.Time.now(), False)
 
-                # PID controller does setpoint - current; we assume opposite 
+                # PID controller does setpoint - current; 
+                # the difference from do_transform_point is from the drone to the roomba, 
+                # which is the equivalent of current-setpoint, so take the negative response
                 if x_success: 
                     x_vel_target = -x_vel_target + roomba_x_velocity
                 else: 
@@ -194,6 +193,7 @@ class TrackRoombaTask(AbstractTask):
                 drone_vel_y = odometry.twist.twist.linear.y
                 drone_vel_z = odometry.twist.twist.linear.z
 
+                # capping acceleration
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 

@@ -119,9 +119,7 @@ class PidController(object):
         self._last_time = time
 
         if not np.isfinite(response):
-            rospy.logwarn(
-                    "Invalid result from PidController.update (response = %f)",
-                    response)
+            rospy.logwarn('Invalid result from PidController.update (response = {})'.format(response))
             return False, response
         else:
             return True, response
