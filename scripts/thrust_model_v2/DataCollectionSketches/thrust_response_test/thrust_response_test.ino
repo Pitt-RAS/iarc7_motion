@@ -16,7 +16,7 @@ int adcCountOffset = 0;
 float ampsPerADCCount = -(5.0f/1024.0f) / 0.015f;
 
 int voltagePin = A6;
-float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(12.25f/12.11f);
+float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(12.25f/12.11f)*(12.58f/12.7f);
 
 int safetySwitchPin = 3;
 
@@ -32,7 +32,7 @@ const unsigned long ramp_pause_at_full_throttle = 1000000;
 const unsigned long total_ramp_duration = 100 * ramp_speed + ramp_pause_at_full_throttle;
 unsigned long ramp_start_time = 0;
 
-const unsigned long throttle_change_delay = 5000000; //1500000; //3000000; //1500000;
+const unsigned long throttle_change_delay = 2500000; //1500000; //3000000; //1500000;
 const int max_throttle = 100; //70;
 
 void setup() {

@@ -18,7 +18,7 @@ int adcCountOffset = 0;
 float ampsPerADCCount = -(5.0f/1024.0f) / 0.015f;
 
 int voltagePin = A6;
-float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(12.25f/12.11f);
+float voltsPerADCCount = (5.0f/1024.0f)*(1.0f/(1.0f/5.7f))*(12.25f/12.11f)*(12.58f/12.7f);
 
 int safetySwitchPin = 3;
 
@@ -170,6 +170,7 @@ void loop() {
   ////////////////////////////////////////////////////////////////////////////
 
   static float current_thrust;
+  static float predicted_thrust = 0;
   static unsigned long current_thrust_timestamp;
 
   // Take response lag and add 10ms because esc updates go out every 20ms
@@ -216,6 +217,7 @@ void loop() {
           last_thrust = 0;
           triangles_completed = 0;
           thrust_increment_rate = start_thrust_increment_rate;
+          predicted_thrust = 0.0;
           current_thrust = 0.0;
           current_thrust_timestamp =  expected_response_lag_micros + esc.lastWriteStamp();
           triangles_per_test = min_triangles_per_test;
@@ -274,6 +276,8 @@ void loop() {
           //pauses_per_pause = min_triangles_per_test * max_pauses / triangles_per_test;
 
           if (thrust_increment_rate > max_thrust_increment_rate) {
+            predicted_thrust = 0;
+            current_thrust = 0;
             Serial.println("STOP");
             first_entry = true;
             testing_active = false;
@@ -287,10 +291,13 @@ void loop() {
         // Generate ramps for specified thrusts
         // Use the bottom line if testing the static model.
         if(command == 1 || command == 3) {
-          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust);
+          float next_predicted_thrust;
+          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust, next_predicted_thrust);
+          predicted_thrust = next_predicted_thrust;
         }
         else if(command == 2 || command == 4) {
           next_voltage = get_voltage_for_thrust(current_thrust);
+          predicted_thrust = current_thrust;
         }
 
         last_thrust = current_thrust;
@@ -311,6 +318,7 @@ void loop() {
             last_thrust = 0;
             triangles_completed = 0;
             thrust_increment_rate = thrust_increment_rate_increment;
+            predicted_thrust = 0.0;
             current_thrust = 0.0;
             current_thrust_timestamp =  expected_response_lag_micros + esc.lastWriteStamp();
             triangles_per_test = min_triangles_per_test;
@@ -348,6 +356,7 @@ void loop() {
         }
         else if(state == 2) {
           current_thrust = 0;
+          predicted_thrust = 0;
           Serial.println("STOP");
           first_entry = true;
           testing_active = false;
@@ -356,10 +365,13 @@ void loop() {
         // Generate ramps for specified thrusts
         // Use the bottom line if testing the static model.
         if(command == 5) {
-          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust);
+          float next_predicted_thrust;
+          next_voltage = get_voltage_for_jerk(last_thrust, current_thrust, next_predicted_thrust);
+          predicted_thrust = next_predicted_thrust;
         }
         else if(command == 6) {
           next_voltage = get_voltage_for_thrust(current_thrust);
+          predicted_thrust = current_thrust;
         }
 
         last_thrust = current_thrust;
@@ -453,8 +465,10 @@ void loop() {
   dtostrf(voltage*current, 3, 2, wattage_str);
   char current_thrust_str[15];
   dtostrf(current_thrust, 3, 3, current_thrust_str);
+  char predicted_thrust_str[15];
+  dtostrf(predicted_thrust, 3, 3, predicted_thrust_str);
 
-  snprintf(buffer, sizeof(buffer), "%s, %ld, %s, %ld, %s, %ld, %s, %d, %ld, %d, %s, %ld", thrust_str, 
+  snprintf(buffer, sizeof(buffer), "%s, %ld, %s, %ld, %s, %ld, %s, %d, %ld, %d, %s, %s, %ld", thrust_str, 
                                                            scale_measurement_stamp - ramp_start_time,
                                                            current_str,
                                                            current_stamp - ramp_start_time,
@@ -465,6 +479,7 @@ void loop() {
                                                            last_actual_esc_write_stamp - ramp_start_time,
                                                            (int)updateRateHz,
                                                            current_thrust_str,
+                                                           predicted_thrust_str,
                                                            current_thrust_timestamp - ramp_start_time);
   Serial.println(buffer);
 

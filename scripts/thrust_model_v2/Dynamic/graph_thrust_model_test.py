@@ -38,7 +38,8 @@ class RampResponse(object):
         self.THROTTLE_COLUMN = 7
         self.THROTTLE_TIME_COLUMN = 8
         self.EXPECTED_THRUST_COLUMN = 10
-        self.EXPECTED_THRUST_TIME_COLUMN = 11
+        self.PREDICTED_THRUST_COLUMN = 11
+        self.EXPECTED_THRUST_TIME_COLUMN = 12
 
         # Use voltage/current measurements to find the start time since it is the fastest updated
         self._start_time = self.data[0][self.THROTTLE_TIME_COLUMN]/1000000.0
@@ -62,7 +63,9 @@ class RampResponse(object):
         self.throttle_interp = interp1d(self._original_throttle_times, self._original_throttles, kind='zero', bounds_error=False, fill_value=(self._original_throttles[0], self._original_throttles[-1]))
         self.motor_voltages = np.array([battery_voltage*self.throttle_interp(time)/100.0 for (time, battery_voltage) in zip(self._original_voltage_times, self._original_battery_voltages)])
 
-        (self._original_expected_thrust_times , self._original_expected_thrust) = [x[self.EXPECTED_THRUST_TIME_COLUMN]/1000000.0 for x in self.data], [x[self.EXPECTED_THRUST_COLUMN] for x in self.data]
+        (self.dummy, self._original_predicted_thrust) = remove_consecutive_duplicates([x[self.EXPECTED_THRUST_TIME_COLUMN]/1000000.0 for x in self.data], [x[self.PREDICTED_THRUST_COLUMN] for x in self.data])
+
+        (self._original_expected_thrust_times , self._original_expected_thrust) = remove_consecutive_duplicates([x[self.EXPECTED_THRUST_TIME_COLUMN]/1000000.0 for x in self.data], [x[self.EXPECTED_THRUST_COLUMN] for x in self.data])
         self._original_expected_thrust_times = [x - self._start_time + self._expected_thrust_offset for x in self._original_expected_thrust_times]
 
         self.find_time_offset()
@@ -127,6 +130,9 @@ class RampResponse(object):
         self.thrust_error_times = self._shifted_expected_thrust_times[start_index:end_index]
         self.shifted_thrust_rms_error = (np.sum(np.square(self.thrust_error))/len(self.thrust_error))**0.5
 
+        self.predicted_thrust_error = self._original_predicted_thrust[start_index:end_index] - interpolated_thrust[start_index:end_index]
+        self.shifted_predicted_thrust_rms_error = (np.sum(np.square(self.predicted_thrust_error))/len(self.predicted_thrust_error))**0.5
+
     def __str__(self):
         return 'Ramp Response Object for {} kg/s'.format(self.ramp_rate)
 
@@ -139,8 +145,14 @@ class RampResponse(object):
     def get_voltages(self):
         return (self._original_voltage_times, self.motor_voltages)
 
+    def get_predicted_thrusts_and_times(self):
+        return (self._original_expected_thrust_times, self._original_predicted_thrust)
+
     def get_expected_thrusts_and_times(self):
         return (self._original_expected_thrust_times, self._original_expected_thrust)
+
+    def get_shifted_predicted_thrusts_and_times(self):
+        return (self._shifted_expected_thrust_times, self._original_predicted_thrust)
 
     def get_shifted_expected_thrusts_and_times(self):
         return (self._shifted_expected_thrust_times, self._original_expected_thrust)
@@ -150,6 +162,9 @@ class RampResponse(object):
 
     def get_interpolated_expected_thrusts_and_times(self):
         return (self.interp_times, self.interpolated_expected_thrusts)
+
+    def get_interpolated_predicted_thrust_error(self):
+        return (self.thrust_error_times, self.predicted_thrust_error)
 
     def get_interpolated_thrust_error(self):
         return (self.thrust_error_times, self.thrust_error)
@@ -224,34 +239,41 @@ def parse_data_log(log):
 def plot_all_responses(ramps, n, m, thrust_getter=RampResponse.get_thrusts_and_times,
                                     voltage_getter=RampResponse.get_voltages,
                                     expected_thrust_getter=RampResponse.get_expected_thrusts_and_times,
-                                    thrust_error_getter=RampResponse.get_interpolated_thrust_error):
+                                    thrust_error_getter=RampResponse.get_interpolated_thrust_error,
+                                    predicted_thrust_error_getter=RampResponse.get_interpolated_predicted_thrust_error,
+                                    predicted_thrust_getter=RampResponse.get_predicted_thrusts_and_times):
     plt.figure(figsize=FIGURE_SIZE)
     for i in range(0, len(ramps)):
 
         (thrust_times , thrusts) = thrust_getter(ramps[i])
         (expected_thrust_times, expected_thrusts) = expected_thrust_getter(ramps[i])
+        (predicted_thrust_times, predicted_thrusts) = predicted_thrust_getter(ramps[i])
         ax1 = plt.subplot(n, m, i+1)
         ax1.plot(thrust_times, thrusts, 'b',
-                thrust_times, thrusts, 'bo',
-                 expected_thrust_times, expected_thrusts, 'ro')
+                 thrust_times, thrusts, 'bo',
+                 expected_thrust_times, expected_thrusts, 'ro',
+                 predicted_thrust_times, predicted_thrusts, 'k')
 
         #ax3 = ax1.twinx()
         #(filtered_voltage_times, filtered_voltages) = voltage_getter(ramps[i])
         #ax3.plot(filtered_voltage_times, filtered_voltages, 'k')
 
-        ax4 = ax1.twinx()
+        ax3 = ax1.twinx()
         (thrust_error_times, thrust_error) = thrust_error_getter(ramps[i])
-        ax4.plot(thrust_error_times, thrust_error, 'c')
+        (predicted_thrust_error_times, predicted_thrust_error) = predicted_thrust_error_getter(ramps[i])
+        ax3.plot(thrust_error_times, thrust_error, 'c',
+                 predicted_thrust_error_times, predicted_thrust_error, 'm')
 
         set_title(ramps[i])
 
 def plot_all_responses_shifted(ramps, n, m):
-    plot_all_responses(ramps, n, m, expected_thrust_getter=RampResponse.get_shifted_expected_thrusts_and_times)
-    #plt.suptitle('All measured thrusts shifted left {} ms'.format(expected_offset))
+    plot_all_responses(ramps, n, m, expected_thrust_getter=RampResponse.get_shifted_expected_thrusts_and_times,
+                                    predicted_thrust_getter=RampResponse.get_shifted_predicted_thrusts_and_times)
 
 def plot_all_responses_interpolated(ramps, n, m):
     plot_all_responses(ramps, n, m, thrust_getter=RampResponse.get_interpolated_thrusts_and_times,
-                                    expected_thrust_getter=RampResponse.get_interpolated_expected_thrusts_and_times)
+                                    expected_thrust_getter=RampResponse.get_interpolated_expected_thrusts_and_times,
+                                    predicted_thrust_getter=RampResponse.get_interpolated_expected_thrusts_and_times)
 
 def plot_all_correlations(ramps, n, m):
 
@@ -263,11 +285,14 @@ def plot_all_correlations(ramps, n, m):
         set_title(ramps[i])
 
 def set_title(ramp):
-    plt.title('Ramp Response rate: {0:.2f} kg/s \nlag: {1:.2f} ms RMS error: {2:.2f} kg\nMax gain: {3:.2f} Max error: {4:.2f}'.format(ramp.ramp_rate,
-                                                                                              ramp.time_offset*1000,
-                                                                                              ramp.shifted_thrust_rms_error,
-                                                                                              ramp.peak_gain,
-                                                                                              ramp.max_error))
+    plt.title(('Ramp Response rate: {0:.2f} kg/s lag: {1:.2f} ms\n'
+               + 'RMS error: {2:.2f} kg RMS error predict: {3:.3f} kg\n'
+               + 'Max gain: {4:.2f} Max error: {5:.2f}').format(ramp.ramp_rate,
+                                                               ramp.time_offset*1000,
+                                                               ramp.shifted_thrust_rms_error,
+                                                               ramp.shifted_predicted_thrust_rms_error,
+                                                               ramp.peak_gain,
+                                                               ramp.max_error))
 
 def plot_power_consumption(ramps, n, m):
     plt.figure(figsize=FIGURE_SIZE)

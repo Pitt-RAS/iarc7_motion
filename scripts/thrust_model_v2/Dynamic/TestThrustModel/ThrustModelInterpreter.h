@@ -17,8 +17,9 @@
 // Automatically generated thrust model data
 // Change this to use a different thrust model
 //#include "apc_12_6_dynamic.h"
-#include "apc_12_6_dynamic_r2.h"
+//#include "apc_12_6_dynamic_r2.h"
 //#include "unknown_10_45_dynamic.h"
+#include "unknown_10_45_dynamic_r2.h"
 //#include "6x4.5x2_dynamic_r2.h"
 //#include "6x4.5x3_dynamic.h"
 
@@ -45,9 +46,10 @@ float linear_interpolate(float x, float x_i, float x_f, float y_i, float y_f) {
     return result;
 }
 
-float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
+float get_voltage_for_jerk(float start_thrust, float desired_thrust, float& predicted_thrust) {
 
     if(abs(desired_thrust - start_thrust) < 0.01){
+        predicted_thrust = desired_thrust;
         return get_voltage_for_thrust(desired_thrust);
     }
 
@@ -69,6 +71,7 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
                                              voltage_to_jerk_mapping[top_thrust_index][1][1]); // End thrust top
     
     if(zero_voltage_thrust >= desired_thrust) {
+        predicted_thrust = zero_voltage_thrust;
         return 0.0;
     }
 
@@ -78,6 +81,7 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
     // the maximum voltage will be used.
     float voltage = voltage_max;
 
+    bool voltage_found = false;
     for(uint8_t i = 1; i < num_voltage_points; i++) {
         // Interpolate between starting thrust rows while incrementing
         // by each array element, to find the first resulting thrust
@@ -105,9 +109,15 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust) {
 
             //Serial.print("CURRENT FINAL: "); Serial.print(current_final_thrust); Serial.print("  "); Serial.println(i+1);
             // Return the voltage found
+            predicted_thrust = desired_thrust;
+            voltage_found = true;
             break;
         }
         last_final_thrust = current_final_thrust;
+    }
+
+    if(!voltage_found) {
+        predicted_thrust = last_final_thrust;
     }
 
     return constrain(voltage, voltage_min, voltage_max);
