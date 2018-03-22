@@ -1,4 +1,5 @@
 response_lag: 0.02927899725948535
+small_thrust_epsilon: 0.004
 thrust_to_voltage: [24.423022689072347, -38.158334665459364, 27.392258059749036, 0.4532568696643405]
 voltage_to_jerk:
   mapping:

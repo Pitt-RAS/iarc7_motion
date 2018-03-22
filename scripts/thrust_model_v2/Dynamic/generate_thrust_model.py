@@ -526,6 +526,9 @@ if __name__ == "__main__":
     voltage_to_jerk_model = generate_model_map(voltage_to_thrust_poly, thrust_voltage_to_time_constant, settings['voltage_to_jerk_estimator'])
 
     output_model = {'response_lag': response_lag,
+                    'small_thrust_epsilon': (voltage_to_jerk_model['thrust_max']
+                                             - voltage_to_jerk_model['thrust_min'])
+                                             / 100,
                     'thrust_to_voltage': thrust_to_voltage_poly.coef.tolist(),
                     'voltage_to_jerk': voltage_to_jerk_model}
 

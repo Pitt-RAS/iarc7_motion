@@ -10,7 +10,7 @@ voltage_to_thrust_estimator:
 time_constant_fit:
     rising_edge_thrust_order: 2
     rising_edge_voltage_order: 2
-    falling_edge_thrust_order: 
+    falling_edge_thrust_order: 2
     falling_edge_voltage_order: 2
     max_time_constant: 0.3
 
