@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     double throttle_pid[pid_param_array_size];
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
-    ThrustModel thrust_model;
+    ThrustModel thrust_model(private_nh);
     double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
@@ -117,20 +117,6 @@ int main(int argc, char **argv)
     private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
     private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
     private_nh.param("roll_accumulator_enable_threshold", roll_pid[5], 0.0);
-
-    // Thrust model settings retrieve
-    ROS_ASSERT(private_nh.getParam("thrust_model/thrust_scale_factor",
-                                   thrust_model.thrust_scale_factor));
-    ROS_ASSERT(private_nh.getParam("thrust_model/A_ge", thrust_model.A_ge));
-    ROS_ASSERT(private_nh.getParam("thrust_model/d0", thrust_model.d0));
-    ROS_ASSERT(private_nh.getParam("thrust_model/voltage_polynomial",
-                                   thrust_model.voltage_polynomial));
-    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_b",
-                                   thrust_model.throttle_b));
-    ROS_ASSERT(private_nh.getParam("thrust_model/throttle_c",
-                                   thrust_model.throttle_c));
-    ROS_ASSERT(private_nh.getParam("thrust_model/expected_hover_throttle",
-                                    thrust_model.expected_hover_throttle));
 
     // Battery timeout setting
     ROS_ASSERT(private_nh.getParam("battery_timeout", battery_timeout));
@@ -375,7 +361,9 @@ int main(int argc, char **argv)
             {
                 // If nothing is wrong get a motion point target from the uav motion point interpolator
                 MotionPointStamped motion_point;
-                motion_point_interpolator.getTargetMotionPoint(current_time, motion_point);
+                motion_point_interpolator.getTargetMotionPoint(
+                        current_time + ros::Duration(thrust_model.response_lag),
+                        motion_point);
                 target_twist.header = motion_point.header;
                 target_twist.twist = motion_point.motion_point.twist;
 

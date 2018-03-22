@@ -281,10 +281,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     // an average throttle value at 0 velocity in the z axis.
     ROS_DEBUG("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
     double thrust_request = hover_accel + tilt_accel + vertical_accel_output;
-    uav_command.throttle = thrust_model_.throttleFromAccel(
-            boost::algorithm::clamp(thrust_request, min_thrust_, max_thrust_),
-            voltage,
-            col_height);
+    uav_command.throttle = thrust_model_.voltageFromThrust(
+            std::min(std::max(thrust_request, min_thrust_), max_thrust_),
+            col_height)
+            / voltage;
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
 

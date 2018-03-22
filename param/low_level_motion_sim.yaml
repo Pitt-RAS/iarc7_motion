@@ -7,6 +7,8 @@ throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 throttle_accumulator_enable_threshold: 10.0
 
+model_mass: 3.0
+
 thrust_model:
     thrust_scale_factor: 3
     A_ge: 0
