@@ -4,12 +4,12 @@ import numpy as np
 
 class PidSettings(object): 
     def __init__(self, settings_dict):
-        self.kp = settings_dict.get('kp', 0)
-        self.ki = settings_dict.get('ki', 0)
-        self.kd = settings_dict.get('kd', 0)
-        self.accum_max = settings_dict.get('accumulator_max', 0)
-        self.accum_min = settings_dict.get('accumulator_min', 0)
-        self.accum_en_threshold = settings_dict.get('accumulator_enable_threshold', 0)
+        self.kp = settings_dict['kp']
+        self.ki = settings_dict['ki']
+        self.kd = settings_dict['kd']
+        self.accum_max = settings_dict['accumulator_max']
+        self.accum_min = settings_dict['accumulator_min']
+        self.accum_en_threshold = settings_dict['accumulator_enable_threshold']
 
 class PidController(object):
     def __init__(self, settings):
@@ -72,48 +72,47 @@ class PidController(object):
         p_term = self._p_gain * difference
         response = p_term
 
-        if self._initialized:
-            time_delta = (time - self._last_time).to_sec()
+        time_delta = (time - self._last_time).to_sec()
 
-            if np.absolute(difference) < self._i_accumulator_enable_threshold:
-                self._i_accumulator = (self._i_accumulator
-                                    + self._i_gain * difference * time_delta)
-
-                if log_debug:
-                    log = ('Set accumulator to ' + str(self._i_accumulator) + 
-                            ', i_gain to ' + str(self._i_gain) + 
-                            ', difference is ' + str(difference) +
-                            ', time delta is ' + str(time_delta))
-                    rospy.logwarn(log)
-
-                self._i_accumulator = max(min(self._i_accumulator_max,
-                                              self._i_accumulator),
-                                              self._i_accumulator_min)
-
-                if log_debug:
-                    log = ('Accumulator clamped to ' + str(self._i_accumulator) + 
-                            ' (min: ' + str(self._i_accumulator_min) + 
-                            ', max: ' + str(self._i_accumulator_max) + ')')
-                    rospy.logwarn(log)
-            else:
-                if log_debug:
-                    log = ('Ignoring difference ' + str(difference) + 
-                            ' above threshold ' + str(self._i_accumulator_enable_threshold))
-                    rospy.logwarn(log)
-
-            response = response + self._i_accumulator
-
-            derivative = (current_value - self._last_current_value) / time_delta
-
-            d_term = self._d_gain * derivative
-            response = response - d_term
+        if np.absolute(difference) < self._i_accumulator_enable_threshold:
+            self._i_accumulator = (self._i_accumulator
+                                + self._i_gain * difference * time_delta)
 
             if log_debug:
-                log = ('p: ' + str(p_term) + 
-                        ' I: ' + str(self._i_accumulator) +
-                        ' D: ' + str(d_term))
-
+                log = ('Set accumulator to ' + str(self._i_accumulator) + 
+                        ', i_gain to ' + str(self._i_gain) + 
+                        ', difference is ' + str(difference) +
+                        ', time delta is ' + str(time_delta))
                 rospy.logwarn(log)
+
+            self._i_accumulator = max(min(self._i_accumulator_max,
+                                          self._i_accumulator),
+                                          self._i_accumulator_min)
+
+            if log_debug:
+                log = ('Accumulator clamped to ' + str(self._i_accumulator) + 
+                        ' (min: ' + str(self._i_accumulator_min) + 
+                        ', max: ' + str(self._i_accumulator_max) + ')')
+                rospy.logwarn(log)
+        else:
+            if log_debug:
+                log = ('Ignoring difference ' + str(difference) + 
+                        ' above threshold ' + str(self._i_accumulator_enable_threshold))
+                rospy.logwarn(log)
+
+        response = response + self._i_accumulator
+
+        derivative = (current_value - self._last_current_value) / time_delta
+
+        d_term = self._d_gain * derivative
+        response = response - d_term
+
+        if log_debug:
+            log = ('p: ' + str(p_term) + 
+                    ' I: ' + str(self._i_accumulator) +
+                    ' D: ' + str(d_term))
+
+            rospy.logwarn(log)
 
         self._last_current_value = current_value
         self._last_time = time

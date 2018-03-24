@@ -157,19 +157,19 @@ class TrackRoombaTask(AbstractTask):
                 x_diff = self._roomba_point.point.x + x_overshoot
                 y_diff = self._roomba_point.point.y + y_overshoot
 
-                x_success, x_vel_target = self._x_pid.update(x_diff, rospy.Time.now(), False)
-                y_success, y_vel_target = self._y_pid.update(y_diff, rospy.Time.now(), False)
+                x_success, x_response = self._x_pid.update(x_diff, rospy.Time.now(), False)
+                y_success, y_response = self._y_pid.update(y_diff, rospy.Time.now(), False)
 
                 # PID controller does setpoint - current; 
                 # the difference from do_transform_point is from the drone to the roomba, 
                 # which is the equivalent of current-setpoint, so take the negative response
                 if x_success: 
-                    x_vel_target = -x_vel_target + roomba_x_velocity
+                    x_vel_target = -x_response + roomba_x_velocity
                 else: 
                     x_vel_target = roomba_x_velocity
 
                 if y_success: 
-                    y_vel_target = -y_vel_target + roomba_y_velocity
+                    y_vel_target = -y_response + roomba_y_velocity
                 else: 
                     y_vel_target = roomba_y_velocity
                 
