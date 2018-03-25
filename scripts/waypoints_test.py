@@ -40,10 +40,18 @@ if __name__ == '__main__':
 
     # Target points in global (X, Y, Z) coordinates
     waypoints = [
-            (0, 0, .7, 0 * math.pi),
-            (0, 0, .9, 1.75 * math.pi),
+            (0, 0, .1, 1 * math.pi),
+            (0, 0, .2, 0 * math.pi),
+            (0, 0, .3, 0 * math.pi),
+            (0, 0, .4, 0 * math.pi),
+            (0, 0, .5, 0 * math.pi),
+            (0, 0, .7, 1.75 * math.pi),
             (0, 0, .9, 0.25 * math.pi),
             (0, 0, .9, 1.5 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .7, 1 * math.pi),
+            (0, 0, .6, 1 * math.pi),
             (0, 0, .5, 1 * math.pi),
             (0, 0, 0, 1.25 * math.pi),
             ]
@@ -112,7 +120,7 @@ if __name__ == '__main__':
         velocity_pub.publish(velocity_msg)
 
         #Sets next target after a set time has passed
-        if ((rospy.Time.now().to_sec() - time) > 4):
+        if ((rospy.Time.now().to_sec() - time) > 1):
             target = next(waypoints_iter, target)
             time = rospy.Time.now().to_sec()
             rospy.logerr('Switching targets')
@@ -125,9 +133,9 @@ if __name__ == '__main__':
         rate.sleep()
 
     # Test land
-    goal = GroundInteractionGoal(movement_type="land")
+    goal = GroundInteractionGoal(interaction_type = "land")
     # Sends the goal to the action server.
-    client.send_goal(goal)
+    ground_interaction_client.send_goal(goal)
     # Waits for the server to finish performing the action.
-    client.wait_for_result()
-    rospy.logwarn("Land success: {}".format(client.get_result()))
+    ground_interaction_client.wait_for_result()
+    rospy.logwarn("Land success: {}".format(ground_interaction_client.get_result()))

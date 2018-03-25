@@ -34,6 +34,7 @@
 #include "geometry_msgs/Vector3Stamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
+#include "iarc7_msgs/MotionPointStamped.h"
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Float32.h"
 
@@ -61,7 +62,7 @@ public:
     QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
     // Set a target velocity for the PID loops
-    void setTargetVelocity(geometry_msgs::Twist twist);
+    void setTargetVelocity(iarc7_msgs::MotionPointStamped motion_point);
 
     // Use a new thrust model
     void setThrustModel(const ThrustModel& thrust_model);
@@ -99,7 +100,7 @@ private:
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
     // The current setpoint
-    geometry_msgs::Twist setpoint_;
+    iarc7_msgs::MotionPointStamped setpoint_;
 
     // Last time an update was successful
     ros::Time last_update_time_;

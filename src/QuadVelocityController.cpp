@@ -126,9 +126,9 @@ QuadVelocityController::QuadVelocityController(
 // Take in a target velocity that does not take into account the quads current heading
 // And transform it to the velocity vectors that correspond to the quads current yaw
 // Set the PID's set points accordingly
-void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
+void QuadVelocityController::setTargetVelocity(iarc7_msgs::MotionPointStamped motion_point)
 {
-    setpoint_ = twist;
+    setpoint_ = motion_point;
 }
 
 // Use a new thrust model
@@ -297,7 +297,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Yaw rate needs no correction because the input and output are both
     // velocities
-    uav_command.data.yaw = -setpoint_.angular.z;
+    uav_command.data.yaw = -setpoint_.motion_point.twist.angular.z;
 
     // Check that the PID loops did not return invalid values before returning
     if (!std::isfinite(uav_command.throttle)
@@ -377,14 +377,14 @@ bool QuadVelocityController::waitUntilReady()
 
 void QuadVelocityController::updatePidSetpoints(double current_yaw)
 {
-    throttle_pid_.setSetpoint(setpoint_.linear.z);
+    throttle_pid_.setSetpoint(setpoint_.motion_point.pose.position.z); //variable.position.z
 
     // Pitch and roll velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
-    double local_x_velocity = setpoint_.linear.x * std::cos(current_yaw)
-                            + setpoint_.linear.y * std::sin(current_yaw);
-    double local_y_velocity = setpoint_.linear.x * -std::sin(current_yaw)
-                            + setpoint_.linear.y *  std::cos(current_yaw);
+    double local_x_velocity = setpoint_.motion_point.twist.linear.x * std::cos(current_yaw)
+                            + setpoint_.motion_point.twist.linear.y * std::sin(current_yaw);
+    double local_y_velocity = setpoint_.motion_point.twist.linear.x * -std::sin(current_yaw)
+                            + setpoint_.motion_point.twist.linear.y *  std::cos(current_yaw);
 
     pitch_pid_.setSetpoint(local_x_velocity);
 

@@ -1,8 +1,8 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 3.5
-throttle_i: 1.5
-throttle_d: 0.25
+throttle_p: 0
+throttle_i: 0
+throttle_d: 0
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
@@ -67,10 +67,10 @@ descend_acceleration: 0.1
 
 # Rate at which to descent
 # must be negative
-descend_rate: -0.3
+descend_rate: 0 #Temporarily set to zero because land planner is now sending out postions instread of velocities
 
 # How hard to brace
-brace_impact_velocity: -0.3
+brace_impact_velocity: 0 #Temporarily set to zero because land planner is now sending out postions instread of velocities
 
 # When to begin bracing
 brace_impact_start_height: 0.15

@@ -364,11 +364,12 @@ int main(int argc, char **argv)
                 motion_point_interpolator.getTargetMotionPoint(
                         current_time + ros::Duration(thrust_model.response_lag),
                         motion_point);
-                target_twist.header = motion_point.header;
+                //Still setting target twist so that cmd_vel is published
+                target_twist.header = motion_point.header ;
                 target_twist.twist = motion_point.motion_point.twist;
 
-                // Request the appropriate throttle and angle settings for the desired velocity
-                quadController.setTargetVelocity(target_twist.twist);
+                // Request the appropriate throttle and angle settings for the desired motion point
+                quadController.setTargetVelocity(motion_point);
 
                 // Get the next uav command that is appropriate for the desired velocity
                 bool success = quadController.update(current_time, uav_command);
@@ -397,7 +398,11 @@ int main(int argc, char **argv)
                 bool success = landPlanner.getTargetTwist(current_time, target_twist);
                 ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner getTargetTwist failed");
 
-                quadController.setTargetVelocity(target_twist.twist);
+                MotionPointStamped motion_point;
+                motion_point.header = target_twist.header;
+                motion_point.motion_point.twist = target_twist.twist;
+
+                quadController.setTargetVelocity(motion_point);
 
                 // Get the next uav command that is appropriate for the desired velocity
                 success = quadController.update(current_time, uav_command);
@@ -424,7 +429,11 @@ int main(int argc, char **argv)
                 if (last_msg != nullptr && last_msg->header.stamp >= passthrough_start_time) {
                     geometry_msgs::Twist twist;
                     twist.linear.z = last_msg->throttle;
-                    quadController.setTargetVelocity(twist);
+                    
+                    MotionPointStamped motion_point;
+                    motion_point.motion_point.twist.linear.z = twist.linear.z;
+
+                    quadController.setTargetVelocity(motion_point);
                     bool success = quadController.update(current_time,
                                                          uav_command,
                                                          true,

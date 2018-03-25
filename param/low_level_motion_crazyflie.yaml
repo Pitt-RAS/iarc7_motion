@@ -1,7 +1,7 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
 throttle_p: 7.5
-throttle_i: 1.2
+throttle_i: 0.8
 throttle_d: 5.0
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
@@ -11,7 +11,7 @@ model_mass: 0.020
 
 # Thrust levels are in m/s^2
 min_thrust: 6.0
-max_thrust: 12.0
+max_thrust: 11.8
 
 battery_timeout: 0.5
 
