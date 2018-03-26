@@ -8,6 +8,7 @@ from scipy.optimize import lsq_linear
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.polynomial import Polynomial as P
 import yaml
+import datetime
 
 def generate_2d_polynomial_terms(m_terms, m_degree, n_terms, n_degree):
     rows = len(m_terms)
@@ -533,6 +534,7 @@ if __name__ == "__main__":
                     'voltage_to_jerk': voltage_to_jerk_model}
 
     with open(filename+'.output.yaml', 'w') as f:
+        f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))
         f.write(yaml.safe_dump(output_model))
 
     plt.show()
