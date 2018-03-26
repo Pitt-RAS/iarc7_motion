@@ -1,0 +1,11 @@
+# Using the weight of the thrust stand (389 grams or so with the F80). No accounting for the disadvantaged lever.
+417123.00
+
+# Measured with a tattu and CNHL battery pack hanging off of the F80 when the stand
+# was in a vertical position. 2583g total. Disadvantaged lever is being used.
+# When measured the lever factor was 16.72/12 (long (horizontal) / short (vertical)
+# (310556.71 * 16.75/12) / 417123.00 = 1.039 implying that there is only a 4% difference
+# between the two measurements.
+# The below value will be used since a larger weight was used and it accounts for the
+# disadvantaged lever
+310556.71

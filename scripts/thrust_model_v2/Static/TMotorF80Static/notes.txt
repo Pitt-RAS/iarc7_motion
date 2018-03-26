@@ -1,0 +1,8 @@
+Notes
+
+5x5x3_fpv_backward emergency stopped due to extremely loud high pitched whistling
+
+6x5x3_fpb_backward emergency stopped due to extremely loud high pitched whistling
+
+The buttercutter / gate breakers keep the motor significantly cooler do to increase wind around the windings due to airfoil design.
+With the other props its clear that high currents could not be sustained. The motor smells after a single 20 seconds ramp run and is often too hot to touch.
