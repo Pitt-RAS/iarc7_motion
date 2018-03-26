@@ -11,23 +11,9 @@ from numpy.polynomial import Polynomial as P
 import yaml
 import datetime
 
-number_of_props = 1
-prop_diameter = 0.25
-prop_pitch = 0.1
-prop_max_speed = 12214 / 60.0
-
-AIR_DENSITY = 1.225
+# Derived from https://wiki.bitcraze.io/misc:investigations:thrust
 def voltage_to_thrust(voltage):
-    throttle = voltage / max_voltage
-    prop_area = math.pi * (prop_diameter / 2)**2
-    volume_per_rev = prop_pitch * prop_area
-    mass_per_rev = AIR_DENSITY * volume_per_rev
-
-    prop_speed = throttle * prop_max_speed
-    thrust = (prop_speed * prop_pitch) * mass_per_rev * prop_speed
-    thrust *= number_of_props
-
-    return thrust/9.8
+    return (3.747*voltage**2 + 5.804*voltage + 0.745)/1000.0
 
 def create_voltage_to_thrust(voltages, thrusts):
     z = np.polyfit(voltages, thrusts, deg=poly_fit_degree)
@@ -115,14 +101,14 @@ def generate_model_map(voltage_to_thrust):
     return voltage_to_jerk_model
 
 min_voltage = 0
-max_voltage = 12.6
+max_voltage = 3.2
 
 min_thrust = 0
 max_thrust = voltage_to_thrust(max_voltage)
 
 response_lag = 0.0
 
-poly_fit_degree = 3
+poly_fit_degree = 2
 
 voltages = np.linspace(min_voltage, max_voltage, 20)
 thrusts = [voltage_to_thrust(v) for v in voltages]
@@ -135,7 +121,7 @@ output_model = {'response_lag': response_lag,
                 'thrust_to_voltage': thrust_to_voltage_poly.coef.tolist(),
                 'voltage_to_jerk': voltage_to_jerk_model}
 
-with open('thrust_model_sim.yaml', 'w') as f:
+with open('thrust_model_crazyflie.yaml', 'w') as f:
     f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))
     f.write(yaml.safe_dump(output_model))
 
