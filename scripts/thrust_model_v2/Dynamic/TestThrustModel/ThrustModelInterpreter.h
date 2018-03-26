@@ -14,6 +14,8 @@
 #ifndef THRUST_MODEL_INTERPRETER_H
 #define THRUST_MODEL_INTERPRETER_H
 
+//#define DEBUG_PRINT
+
 // Automatically generated thrust model data
 // Change this to use a different thrust model
 //#include "apc_12_6_dynamic.h"
@@ -30,18 +32,19 @@ const float start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_poi
 float linear_interpolate(float x, float x_i, float x_f, float y_i, float y_f) {
 
     float a = ((y_f - y_i)/(x_f - x_i));
-    //Serial.print("a: "); Serial.println(a);
     float b = y_i - a*x_i;
-    //Serial.print("b: "); Serial.println(b);
-
     float result = a*x+b;
 
-    //Serial.print("x: "); Serial.print(x*1000);
-    //Serial.print(" x_i: "); Serial.print(x_i*1000);
-    //Serial.print(" x_f: "); Serial.print(x_f*1000);
-    //Serial.print(" y_i: "); Serial.print(y_i*1000); 
-    //Serial.print(" y_f: "); Serial.print(y_f*1000);
-    //Serial.print(" r: "); Serial.println(result); 
+    #ifdef DEBUG_PRINT
+        Serial.print("a: "); Serial.println(a);
+        Serial.print("b: "); Serial.println(b);
+        Serial.print("x: "); Serial.print(x*1000);
+        Serial.print(" x_i: "); Serial.print(x_i*1000);
+        Serial.print(" x_f: "); Serial.print(x_f*1000);
+        Serial.print(" y_i: "); Serial.print(y_i*1000);
+        Serial.print(" y_f: "); Serial.print(y_f*1000);
+        Serial.print(" r: "); Serial.println(result);
+    #endif
 
     return result;
 }
@@ -53,7 +56,9 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust, float& pred
         return get_voltage_for_thrust(desired_thrust);
     }
 
-    //Serial.print("START THRUST: "); Serial.print(start_thrust); Serial.print("END: "); Serial.println(desired_thrust);
+    #ifdef DEBUG_PRINT
+        Serial.print("START THRUST: "); Serial.print(start_thrust); Serial.print("END: "); Serial.println(desired_thrust);
+    #endif
 
     start_thrust = constrain(start_thrust, thrust_min, thrust_max);
 
@@ -83,31 +88,41 @@ float get_voltage_for_jerk(float start_thrust, float desired_thrust, float& pred
 
     bool voltage_found = false;
     for(uint8_t i = 1; i < num_voltage_points; i++) {
+
         // Interpolate between starting thrust rows while incrementing
         // by each array element, to find the first resulting thrust
         // greater than desired thrust.
         // Implicitly the thrust in the element before is the last thrust
         // that is less than the desired thrust.
-        //Serial.print("Interpolating thrust: "); Serial.println(i+1);
+
+        #ifdef DEBUG_PRINT
+            Serial.print("Interpolating thrust: "); Serial.println(i+1);
+        #endif
+
         float current_final_thrust = linear_interpolate(start_thrust,
                                              voltage_to_jerk_mapping[bottom_thrust_index][0][0], // Start thrust bottom
                                              voltage_to_jerk_mapping[top_thrust_index][0][0], // Start thrust top
                                              voltage_to_jerk_mapping[bottom_thrust_index][i+1][1], // End thrust bottom
                                              voltage_to_jerk_mapping[top_thrust_index][i+1][1]); // End thrust top
-        //Serial.println(current_final_thrust);
+
+        #ifdef DEBUG_PRINT
+            Serial.println(current_final_thrust);
+        #endif
+
         if(current_final_thrust >= desired_thrust) {
-            //Serial.println("interpolating voltage");
+            #ifdef DEBUG_PRINT
+                Serial.println("interpolating voltage");
+            #endif
             voltage = linear_interpolate(desired_thrust,
                                                last_final_thrust,
                                                current_final_thrust,
                                                voltage_to_jerk_mapping[0][i][0],
                                                voltage_to_jerk_mapping[0][i+1][0]);
 
-            //if(voltage > voltage_to_jerk_mapping[0][i+1][0]){
-            //    Serial.println("HHHSDFHSALKDFJ:LASIJFLKDSAJHLKAJSHFALKSJHFLK");
-           // }
+            #ifdef DEBUG_PRINT
+                Serial.print("CURRENT FINAL: "); Serial.print(current_final_thrust); Serial.print("  "); Serial.println(i+1);
+            #endif
 
-            //Serial.print("CURRENT FINAL: "); Serial.print(current_final_thrust); Serial.print("  "); Serial.println(i+1);
             // Return the voltage found
             predicted_thrust = desired_thrust;
             voltage_found = true;
@@ -131,5 +146,7 @@ float get_voltage_for_thrust(float thrust) {
     }
     return sum;
 }
+
+#undef DEBUG_PRINT
 
 #endif // THRUST_MODEL_INTERPRETER_H
