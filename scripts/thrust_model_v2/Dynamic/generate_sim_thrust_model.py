@@ -10,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from numpy.polynomial import Polynomial as P
 import yaml
 
-number_of_props = 4
+number_of_props = 1
 prop_diameter = 0.25
 prop_pitch = 0.1
 prop_max_speed = 12214 / 60.0
