@@ -2,7 +2,6 @@
 #define IARC7_MOTION_THRUST_MODEL_HPP_
 
 #include <cmath>
-#include <boost/iterator/zip_iterator.hpp>
 
 #include <ros/ros.h>
 
