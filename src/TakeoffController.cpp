@@ -63,31 +63,6 @@ TakeoffController::TakeoffController(
                                     this);
 }
 
-bool TakeoffController::calibrateThrustModel(const ros::Time& time)
-{
-    double voltage;
-    if (!battery_interpolator_.getInterpolatedMsgAtTime(voltage, time)) {
-        ROS_ERROR("Failed to get battery voltage to calibrate thrust model");
-        return false;
-    }
-
-    geometry_msgs::TransformStamped transform;
-    bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                         "map",
-                                                         "center_of_lift",
-                                                         time,
-                                                         update_timeout_);
-    if (!success) {
-        ROS_ERROR("Failed to get current transform to calibrate thrust model");
-        return false;
-    }
-
-    geometry_msgs::PointStamped col_point;
-    tf2::doTransform(col_point, col_point, transform);
-
-    return true;
-}
-
 // Used to reset and check initial conditions for takeoff
 // Update needs to begin being called shortly after this is called.
 bool TakeoffController::prepareForTakeover(const ros::Time& time)
@@ -161,20 +136,13 @@ bool TakeoffController::update(const ros::Time& time,
             ROS_ERROR("Arming service failed");
             return false;
         }
-        if (!calibrateThrustModel(time)) {
-            ROS_ERROR("Failed to calibrate thrust model");
-            return false;
-        }
-        arm_time_=time;
+
+        arm_time_= time;
         state_ = TakeoffState::PAUSE;
     }
     else if (state_ == TakeoffState::PAUSE){
         if (time > arm_time_ + post_arm_delay_){
             state_ = TakeoffState::RAMP;
-            if (!calibrateThrustModel(time)) {
-                ROS_ERROR("Failed to calibrate thrust model");
-                return false;
-            }
             ramp_start_time_ = time;
         }
     }
@@ -182,7 +150,7 @@ bool TakeoffController::update(const ros::Time& time,
         if (time <= ramp_start_time_ + takeoff_throttle_ramp_duration_){
             double voltage;
             if (!battery_interpolator_.getInterpolatedMsgAtTime(voltage, time)) {
-                ROS_ERROR("Failed to get battery voltage to calibrate thrust model");
+                ROS_ERROR("Failed to get battery voltage to interpret results of thrust model");
                 return false;
             }
 
@@ -193,7 +161,7 @@ bool TakeoffController::update(const ros::Time& time,
                                                                  time,
                                                                  update_timeout_);
             if (!success) {
-                ROS_ERROR("Failed to get current transform to calibrate thrust model");
+                ROS_ERROR("Takeoff controller failed to get height transform");
                 return false;
             }
 
