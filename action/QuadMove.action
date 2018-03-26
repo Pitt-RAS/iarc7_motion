@@ -1,20 +1,32 @@
-#goal definition
+# goal definition
 string movement_type
 string frame_id
 bool preempt
+
+# hold position task
 bool hold_current_position
+
+# test task
 float64 takeoff_height
+
+# track roomba task
 float64 time_to_track
+
+# track roomba task
 float64 x_overshoot
 float64 y_overshoot
+
+# hold and XYZ tasks
 float64 x_position
 float64 y_position
 float64 z_position
+
+# velocity task
 float64 x_velocity
 float64 y_velocity
 ---
-#result definition
+# result definition
 bool success
 ---
-#feedback
+# feedback
 float64 completion

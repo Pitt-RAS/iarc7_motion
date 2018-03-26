@@ -37,17 +37,34 @@ translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
 
-# TRACK, BLOCK, AND HIT ROOMBA
+# BLOCK AND HIT ROOMBA
 # p-term for X direction when tracking roombas 
 k_term_tracking_x: .45
 # p-term for Y direction when tracking roombas 
 k_term_tracking_y: .45
 
+# TRACK ROOMBA PID TERMS
+roomba_pid_settings: 
+  x_terms:
+    kp: .80
+    ki: 0.015
+    kd: 0.015
+    accumulator_max: 10.0
+    accumulator_min: -10.0
+    accumulator_enable_threshold: 10.0
+  y_terms:
+    kp: .80
+    ki: 0.015
+    kd: 0.015
+    accumulator_max: 10.0
+    accumulator_min: -10.0
+    accumulator_enable_threshold: 10.0
+
 # TRACK ROOMBA
 # height at which roomba tracking takes place
 track_roomba_height: 1.5
 # maximum radial distance from roomba
-max_roomba_dist: 1.1
+max_roomba_dist: 2.0
 
 # HIT AND BLOCK ROOMBA
 # maximum radial distance from roomba
