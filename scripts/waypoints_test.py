@@ -8,9 +8,8 @@ import math
 from actionlib_msgs.msg import GoalStatus
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
-from iarc7_msgs.msg import TwistStampedArray
+from iarc7_msgs.msg import MotionPointStampedArray, MotionPointStamped
 from iarc7_msgs.srv import Arm
-from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
 
 def constrain(x, l, h):
@@ -22,7 +21,7 @@ if __name__ == '__main__':
     safety_client = SafetyClient('motion_command_coordinator')
     assert safety_client.form_bond()
 
-    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArray, queue_size=0)
+    motion_point_pub = rospy.Publisher('motion_point_targets', MotionPointStampedArray, queue_size=0)
     tf_listener = tf.TransformListener()
 
     while not rospy.is_shutdown() and rospy.Time.now() == 0:
@@ -98,26 +97,26 @@ if __name__ == '__main__':
         if safety_client.is_safety_active():
             target = (trans[0], trans[1], 0, 0)
 
-        velocity = TwistStamped()
-        velocity.header.frame_id = 'level_quad'
-        velocity.header.stamp = rospy.Time.now()
+        motion_point = MotionPointStamped()
+        motion_point.header.frame_id = 'level_quad'
+        motion_point.header.stamp = rospy.Time.now()
 
         #Setting x,y velocities and z position
         if abs(target[0] - trans[0]) >= 0.02:
             error = target[0] - trans[0]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.x = constrain(target_v, -max_vel, max_vel)
+            motion_point.twist.linear.x = constrain(target_v, -max_vel, max_vel)
         
         if abs(target[1] - trans[1]) >= 0.02:
             error = target[1] - trans[1]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.y = constrain(target_v, -max_vel, max_vel)
+            motion_point.twist.linear.y = constrain(target_v, -max_vel, max_vel)
         
-        velocity.twist.linear.z = target[2]
+        motion_point.pose.position.z = target[2]
 
-        velocity_msg = TwistStampedArray()
-        velocity_msg.twists = [velocity]
-        velocity_pub.publish(velocity_msg)
+        motion_point_msg = MotionPointStampedArray()
+        motion_point_msg.motion_points = [motion_point]
+        motion_point_pub.publish(motion_point_msg)
 
         #Sets next target after a set time has passed
         if ((rospy.Time.now().to_sec() - time) > 1):
