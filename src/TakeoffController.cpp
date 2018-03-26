@@ -200,7 +200,6 @@ bool TakeoffController::update(const ros::Time& time,
 
             geometry_msgs::PointStamped col_point;
             tf2::doTransform(col_point, col_point, transform);
-            ROS_ERROR("TAKEOFF");
             double hover_throttle = thrust_model_.voltageFromThrust(
                                                   9.8,
                                                   col_point.point.z)/voltage;
