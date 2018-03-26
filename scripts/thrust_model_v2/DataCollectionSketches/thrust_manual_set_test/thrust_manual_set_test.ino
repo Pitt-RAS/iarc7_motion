@@ -26,7 +26,7 @@ unsigned long current_limit_accumulator = 0;
 
 
 void setup() {
-  Serial.begin(250000);
+  Serial.begin(230400);
   Serial.setTimeout(50);
 
   pinMode(safetySwitchPin, INPUT);
