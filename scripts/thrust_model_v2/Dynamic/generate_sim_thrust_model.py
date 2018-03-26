@@ -55,7 +55,7 @@ def create_voltage_to_thrust(voltages, thrusts):
 
 def generate_2d_polynomial_terms(m_terms, m_degree, n_terms, n_degree):
     rows = len(m_terms)
-    if(rows != len(n_terms)):
+    if (rows != len(n_terms)):
         raise ValueError(
             'M terms and N terms do not have the same number of data points')
 
@@ -69,6 +69,7 @@ def generate_2d_polynomial_terms(m_terms, m_degree, n_terms, n_degree):
                     row]**i * n_terms[row]**j
 
     return terms
+
 
 thrust_points_count = 10
 voltage_points_count = 10
@@ -111,24 +112,30 @@ def generate_model_map(voltage_to_thrust):
     # print voltage_to_jerk_mapping
     # print voltage_to_jerk_mapping.shape
 
-    voltage_to_jerk_model = {'thrust_min': thrust_min,
-                             'thrust_max': thrust_max,
-                             'voltage_min': voltage_min,
-                             'voltage_max': voltage_max,
-                             'timestep': Ts,
-                             'mapping': voltage_to_jerk_mapping}
+    voltage_to_jerk_model = {
+        'thrust_min': thrust_min,
+        'thrust_max': thrust_max,
+        'voltage_min': voltage_min,
+        'voltage_max': voltage_max,
+        'timestep': Ts,
+        'mapping': voltage_to_jerk_mapping
+    }
 
-    ax.scatter(thrust_points_mesh, thrust_points_mesh,
-               voltage_points_mesh, alpha=0.3)
+    ax.scatter(
+        thrust_points_mesh, thrust_points_mesh, voltage_points_mesh, alpha=0.3)
 
-    ax.plot_trisurf(thrust_points_mesh, voltage_to_thrust(
-        voltage_points_mesh), voltage_points_mesh, alpha=0.3)
+    ax.plot_trisurf(
+        thrust_points_mesh,
+        voltage_to_thrust(voltage_points_mesh),
+        voltage_points_mesh,
+        alpha=0.3)
 
     ax.set_xlabel('Current Thrust (kg)')
     ax.set_ylabel('Next Thrust (kg)')
     ax.set_zlabel('Applied Voltage (V)')
 
     return voltage_to_jerk_model
+
 
 min_voltage = 0
 max_voltage = 12.6
@@ -147,10 +154,12 @@ voltage_to_thrust_poly, thrust_to_voltage_poly = create_voltage_to_thrust(
 
 voltage_to_jerk_model = generate_model_map(voltage_to_thrust)
 
-output_model = {'response_lag': response_lag,
-                'small_thrust_epsilon': (max_thrust - min_thrust) / 200,
-                'thrust_to_voltage': thrust_to_voltage_poly.coef.tolist(),
-                'voltage_to_jerk': voltage_to_jerk_model}
+output_model = {
+    'response_lag': response_lag,
+    'small_thrust_epsilon': (max_thrust - min_thrust) / 200,
+    'thrust_to_voltage': thrust_to_voltage_poly.coef.tolist(),
+    'voltage_to_jerk': voltage_to_jerk_model
+}
 
 with open('thrust_model_sim.yaml', 'w') as f:
     f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))

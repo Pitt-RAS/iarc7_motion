@@ -13,7 +13,7 @@ import datetime
 
 def generate_2d_polynomial_terms(m_terms, m_degree, n_terms, n_degree):
     rows = len(m_terms)
-    if(rows != len(n_terms)):
+    if (rows != len(n_terms)):
         raise ValueError(
             'M terms and N terms do not have the same number of data points')
 
@@ -43,14 +43,8 @@ def remove_consecutive_duplicates(times, values):
 
 
 class Ramp(object):
-
-    def __init__(
-        self,
-        start_throttle,
-     end_throttle,
-     start_data,
-     end_data,
-     settings):
+    def __init__(self, start_throttle, end_throttle, start_data, end_data,
+                 settings):
         self.start_throttle = start_throttle
         self.end_throttle = end_throttle
         self.pre_transition_data = start_data
@@ -82,44 +76,68 @@ class Ramp(object):
 
         # Use voltage/current measurements to find the start time since it is
         # the fastest updated
-        self._start_time = self.pre_transition_data[
-            0][self.THROTTLE_TIME_COLUMN] / 1000000.0
+        self._start_time = self.pre_transition_data[0][
+            self.THROTTLE_TIME_COLUMN] / 1000000.0
         # Use the ESC timestamp to find the actual transition start time
         # this is the time a new throttle value was sent to the ESC
 
         for i in range(0, len(self.post_transition_data)):
-            if self.post_transition_data[i][self.THROTTLE_COLUMN] != self.start_throttle:
-                self.transition_start_time = (self.post_transition_data[
-                                              i][self.THROTTLE_TIME_COLUMN] / 1000000.0) - self._start_time
+            if self.post_transition_data[i][self.
+                                            THROTTLE_COLUMN] != self.start_throttle:
+                self.transition_start_time = (
+                    self.post_transition_data[i][self.THROTTLE_TIME_COLUMN] /
+                    1000000.0) - self._start_time
                 break
 
         data_concatenated = self.pre_transition_data + \
             self.post_transition_data
 
-        (self._original_thrust_times, self._original_thrusts) = remove_consecutive_duplicates(
-            [x[self.THRUST_TIME_COLUMN] / 1000000.0 for x in data_concatenated], [x[self.THRUST_COLUMN] for x in data_concatenated])
+        (self._original_thrust_times,
+         self._original_thrusts) = remove_consecutive_duplicates([
+             x[self.THRUST_TIME_COLUMN] / 1000000.0 for x in data_concatenated
+         ], [x[self.THRUST_COLUMN] for x in data_concatenated])
         self._original_thrust_times = [
-            x - self._start_time for x in self._original_thrust_times]
+            x - self._start_time for x in self._original_thrust_times
+        ]
 
-        (self._original_throttle_times, self._original_throttles) = remove_consecutive_duplicates(
-            [x[self.THROTTLE_TIME_COLUMN] / 1000000.0 for x in data_concatenated], [x[self.THROTTLE_COLUMN] for x in data_concatenated])
+        (self._original_throttle_times,
+         self._original_throttles) = remove_consecutive_duplicates([
+             x[self.THROTTLE_TIME_COLUMN] / 1000000.0
+             for x in data_concatenated
+         ], [x[self.THROTTLE_COLUMN] for x in data_concatenated])
         self._original_throttle_times = [
-            x - self._start_time for x in self._original_throttle_times]
+            x - self._start_time for x in self._original_throttle_times
+        ]
 
         (self._original_voltage_times, self._original_battery_voltages) = [
-            x[self.VOLTAGE_STAMP_COLUMN] / 1000000.0 for x in data_concatenated], [x[self.VOLTAGE_COLUMN] for x in data_concatenated]
+            x[self.VOLTAGE_STAMP_COLUMN] / 1000000.0 for x in data_concatenated
+        ], [x[self.VOLTAGE_COLUMN] for x in data_concatenated]
         self._original_voltage_times = [
-            x - self._start_time for x in self._original_voltage_times]
+            x - self._start_time for x in self._original_voltage_times
+        ]
         self.throttle_interp = interp1d(
-            self._original_throttle_times, self._original_throttles, kind='zero',
-                                        bounds_error=False, fill_value=(self._original_throttles[0], self._original_throttles[-1]))
-        self.motor_voltages = np.array([battery_voltage * self.throttle_interp(time) / 100.0 for (
-            time, battery_voltage) in zip(self._original_voltage_times, self._original_battery_voltages)])
+            self._original_throttle_times,
+            self._original_throttles,
+            kind='zero',
+            bounds_error=False,
+            fill_value=(self._original_throttles[0],
+                        self._original_throttles[-1]))
+        self.motor_voltages = np.array([
+            battery_voltage * self.throttle_interp(time) / 100.0
+            for (time, battery_voltage) in zip(self._original_voltage_times,
+                                               self._original_battery_voltages)
+        ])
 
-        self.start_voltage = np.median(
-            [x for (t, x) in zip(self._original_voltage_times, self.motor_voltages) if t < self.transition_start_time])
-        self.end_voltage = np.median(
-            [x for (t, x) in zip(self._original_voltage_times, self.motor_voltages) if t >= self.transition_start_time])
+        self.start_voltage = np.median([
+            x for (t,
+                   x) in zip(self._original_voltage_times, self.motor_voltages)
+            if t < self.transition_start_time
+        ])
+        self.end_voltage = np.median([
+            x for (t,
+                   x) in zip(self._original_voltage_times, self.motor_voltages)
+            if t >= self.transition_start_time
+        ])
 
         # self.start_thrust = np.median([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
         # self.end_thrust = np.median([x[self.THRUST_COLUMN] for x in
@@ -127,8 +145,8 @@ class Ramp(object):
 
         self.start_thrust = np.median(
             [x[self.THRUST_COLUMN] for x in self.pre_transition_data])
-        self.end_thrust = np.median([x[self.THRUST_COLUMN]
-                                    for x in self.post_transition_data])
+        self.end_thrust = np.median(
+            [x[self.THRUST_COLUMN] for x in self.post_transition_data])
 
         # if self.start_throttle > self.end_throttle:
         #    self.start_thrust = np.max([x[self.THRUST_COLUMN] for x in self.pre_transition_data])
@@ -138,31 +156,44 @@ class Ramp(object):
         # self.end_thrust = np.max([x[self.THRUST_COLUMN] for x in
         # self.post_transition_data])
 
-        b = signal.firwin(self.LOW_PASS_TAPS, self.LOW_PASS_CUTOFF,
-                          window='hamming', nyq=self.LOAD_CELL_SAMPLE_FREQ / 2.0)
+        b = signal.firwin(
+            self.LOW_PASS_TAPS,
+            self.LOW_PASS_CUTOFF,
+            window='hamming',
+            nyq=self.LOAD_CELL_SAMPLE_FREQ / 2.0)
 
-        self._filtered_thrusts = signal.filtfilt(
-            b, [1.0], self._original_thrusts)
+        self._filtered_thrusts = signal.filtfilt(b, [1.0],
+                                                 self._original_thrusts)
         self._filtered_thrusts_interpolator = interp1d(
             self._original_thrust_times, self._original_thrusts, kind='linear')
 
         self.calculate_time_constant()
         self.fitted_response_curve_times = np.linspace(
-            self.fitted_transition_start_time, self.rise_end_time + 0.5, num=200, endpoint=True)
+            self.fitted_transition_start_time,
+            self.rise_end_time + 0.5,
+            num=200,
+            endpoint=True)
         self.fitted_response_thrust = (self.end_thrust - self.start_thrust) * (
-            1 - np.exp(-(self.fitted_response_curve_times - self.fitted_transition_start_time) / self.time_constant)) + self.start_thrust
+            1 - np.exp(-(self.fitted_response_curve_times - self.
+                         fitted_transition_start_time) / self.time_constant)
+        ) + self.start_thrust
 
     def __str__(self):
-        return 'Ramp Object {} to {}'.format(self.start_throttle, self.end_throttle)
+        return 'Ramp Object {} to {}'.format(self.start_throttle,
+                                             self.end_throttle)
 
     def get_thrusts_and_times(self):
         RESAMPLE_FREQUENCY = 2000
         thrust_interpolator = interp1d(
             self._original_thrust_times, self._original_thrusts, kind='linear')
-        num_samples = (self._original_thrust_times[
-                       -1] - self._original_thrust_times[0]) * RESAMPLE_FREQUENCY
-        interpolated_times = np.linspace(self._original_thrust_times[
-                                         0], self._original_thrust_times[-1], num=num_samples, endpoint=True)
+        num_samples = (
+            self._original_thrust_times[-1] - self._original_thrust_times[0]
+        ) * RESAMPLE_FREQUENCY
+        interpolated_times = np.linspace(
+            self._original_thrust_times[0],
+            self._original_thrust_times[-1],
+            num=num_samples,
+            endpoint=True)
         return (interpolated_times, thrust_interpolator(interpolated_times))
 
     def get_throttles_and_times(self):
@@ -194,7 +225,8 @@ class Ramp(object):
             (self.end_thrust - self.start_thrust) + self.start_thrust
 
         max_samples = int(
-            (self._original_throttle_times[-1] - self.transition_start_time) / self.TIME_CONSTANT_CALCULATION_RESOLUTION)
+            (self._original_throttle_times[-1] - self.transition_start_time) /
+            self.TIME_CONSTANT_CALCULATION_RESOLUTION)
 
         # Find the time for the 10% threshold
         for i in range(0, max_samples):
@@ -256,11 +288,12 @@ def parse_data_log(log, ramp_settings):
         line = line.rstrip()
 
         if log_began:
-            if (line == 'RESPONSE END' or line == 'STOP') and last_data_block is not None:
+            if (line == 'RESPONSE END'
+                    or line == 'STOP') and last_data_block is not None:
                 # End of a response
                 # print((start_throttle, end_throttle))
-                new_ramp = Ramp(
-                    start_throttle, end_throttle, last_data_block, new_data_block, ramp_settings)
+                new_ramp = Ramp(start_throttle, end_throttle, last_data_block,
+                                new_data_block, ramp_settings)
                 ramp_objects.append(new_ramp)
             elif line == 'RESPONSE END' or line == 'STOP':
                 # Haven't processed a starting block yet so can't make a ramp
@@ -310,16 +343,19 @@ def plot_all_voltages(ramps, n, m):
 
 def plot_all_voltages_filtered(ramps, n, m):
     plot_all_responses(
-        ramps, n, m, filtered_getter=Ramp.get_filtered_thrust, voltage_getter=Ramp.get_voltages)
+        ramps,
+        n,
+        m,
+        filtered_getter=Ramp.get_filtered_thrust,
+        voltage_getter=Ramp.get_voltages)
 
 
-def plot_all_responses(
-    ramps,
-     n,
-     m,
-     thrust_getter=Ramp.get_thrusts_and_times,
-     filtered_getter=None,
-     voltage_getter=None):
+def plot_all_responses(ramps,
+                       n,
+                       m,
+                       thrust_getter=Ramp.get_thrusts_and_times,
+                       filtered_getter=None,
+                       voltage_getter=None):
     plt.figure()
     for i in range(0, len(ramps)):
         (thrust_times, thrusts) = thrust_getter(ramps[i])
@@ -330,16 +366,17 @@ def plot_all_responses(
         ax2 = ax1.twinx()
 
         if filtered_getter is not None:
-            (filtered_thrust_times,
-             filtered_thrusts) = filtered_getter(ramps[i])
-            ax1.plot(thrust_times, thrusts, 'b-',
-                     filtered_thrust_times, filtered_thrusts, 'm--',
-                     ramps[i].fitted_response_curve_times, ramps[
-                         i].fitted_response_thrust, 'c:',
-                     ramps[i].rise_start_time, ramps[
-                         i]._filtered_thrusts_interpolator(
-                             ramps[i].rise_start_time), 'kx',
-                     ramps[i].rise_end_time, ramps[i]._filtered_thrusts_interpolator(ramps[i].rise_end_time), 'kx')
+            (filtered_thrust_times, filtered_thrusts) = filtered_getter(
+                ramps[i])
+            ax1.plot(
+                thrust_times, thrusts, 'b-', filtered_thrust_times,
+                filtered_thrusts, 'm--', ramps[i].fitted_response_curve_times,
+                ramps[i].fitted_response_thrust, 'c:',
+                ramps[i].rise_start_time,
+                ramps[i]._filtered_thrusts_interpolator(
+                    ramps[i].rise_start_time), 'kx', ramps[i].rise_end_time,
+                ramps[i]._filtered_thrusts_interpolator(
+                    ramps[i].rise_end_time), 'kx')
         else:
             ax1.plot(thrust_times, thrusts, 'b-')
 
@@ -348,8 +385,8 @@ def plot_all_responses(
 
         if voltage_getter is not None:
             ax3 = ax1.twinx()
-            (filtered_voltage_times,
-             filtered_voltages) = voltage_getter(ramps[i])
+            (filtered_voltage_times, filtered_voltages) = voltage_getter(
+                ramps[i])
             ax3.plot(filtered_voltage_times, filtered_voltages, 'k')
             ax3.axhline(y=ramps[i].start_voltage, linewidth=1, color='c')
             ax3.axhline(y=ramps[i].end_voltage, linewidth=1, color='c')
@@ -434,15 +471,15 @@ def create_time_constant_to_last_thrust_and_voltage(ramps, poly, settings):
     except KeyError as e:
         max_time_constant = float("inf")
 
-    up_start_thrusts, up_end_voltages, up_time_constants = zip(*[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
-                                                                 for ramp in ramps
-                                                                 if ramp.start_thrust < ramp.end_thrust
-                                                                 and ramp.time_constant < max_time_constant])
+    up_start_thrusts, up_end_voltages, up_time_constants = zip(
+        *[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
+          for ramp in ramps if ramp.start_thrust < ramp.end_thrust
+          and ramp.time_constant < max_time_constant])
 
-    down_start_thrusts, down_end_voltages, down_time_constants = zip(*[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
-                                                                       for ramp in ramps
-                                                                       if ramp.start_thrust >= ramp.end_thrust
-                                                                       and ramp.time_constant < max_time_constant])
+    down_start_thrusts, down_end_voltages, down_time_constants = zip(
+        *[(ramp.start_thrust, ramp.end_voltage, ramp.time_constant)
+          for ramp in ramps if ramp.start_thrust >= ramp.end_thrust
+          and ramp.time_constant < max_time_constant])
 
     start_thrusts = up_start_thrusts + down_start_thrusts
     end_voltages = up_end_voltages + down_end_voltages
@@ -451,28 +488,30 @@ def create_time_constant_to_last_thrust_and_voltage(ramps, poly, settings):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(up_start_thrusts, up_end_voltages, up_time_constants, 'b+')
-    ax.scatter(down_start_thrusts,
-               down_end_voltages, down_time_constants, 'b+')
+    ax.scatter(down_start_thrusts, down_end_voltages, down_time_constants,
+               'b+')
 
     # least_squares_and_plot(time_constants, start_thrusts, end_voltages, 3,
     # 2, ax)
-    poly_rising = least_squares_and_plot(up_time_constants,
-                                         up_start_thrusts,
-                                         up_end_voltages,
-                                         rising_thrust_order,
-                                         rising_voltage_order,
-                                         ax,
-                                         poly=poly,
-                                         plot_rising_only=True)
-    poly_falling = least_squares_and_plot(down_time_constants,
-                                          down_start_thrusts,
-                                          down_end_voltages,
-                                          falling_thrust_order,
-                                          falling_voltage_order,
-                                          ax,
-                                          poly=poly,
-                                          plot_rising_only=False,
-                                          plot=True)
+    poly_rising = least_squares_and_plot(
+        up_time_constants,
+        up_start_thrusts,
+        up_end_voltages,
+        rising_thrust_order,
+        rising_voltage_order,
+        ax,
+        poly=poly,
+        plot_rising_only=True)
+    poly_falling = least_squares_and_plot(
+        down_time_constants,
+        down_start_thrusts,
+        down_end_voltages,
+        falling_thrust_order,
+        falling_voltage_order,
+        ax,
+        poly=poly,
+        plot_rising_only=False,
+        plot=True)
 
     ax.set_xlabel('Thrusts (kg)')
     ax.set_ylabel('End Voltages (V)')
@@ -491,19 +530,21 @@ def least_squares_and_plot(time_constants,
                            plot_rising_only=None,
                            plot=True):
     # Generate the A matrix
-    A = generate_2d_polynomial_terms(
-        start_thrusts, degree_thrust, end_voltages, degree_voltage)
+    A = generate_2d_polynomial_terms(start_thrusts, degree_thrust,
+                                     end_voltages, degree_voltage)
     lsq_sol = lsq_linear(A, time_constants)
     c = lsq_sol.x.reshape(degree_thrust + 1, degree_voltage + 1)
 
     thrust_fit_points_count = 25
     voltage_fit_points_count = 25
     thrust_fit_points = np.linspace(
-        min(start_thrusts) * 0.9, max(start_thrusts), thrust_fit_points_count * 1.1)
+        min(start_thrusts) * 0.9, max(start_thrusts),
+        thrust_fit_points_count * 1.1)
     voltage_fit_points = np.linspace(
-        min(end_voltages) * 0.9, max(end_voltages), voltage_fit_points_count * 1.1)
-    thrust_fit_mesh, voltage_fit_mesh = np.meshgrid(
-        thrust_fit_points, voltage_fit_points)
+        min(end_voltages) * 0.9, max(end_voltages),
+        voltage_fit_points_count * 1.1)
+    thrust_fit_mesh, voltage_fit_mesh = np.meshgrid(thrust_fit_points,
+                                                    voltage_fit_points)
 
     thrust_fit_mesh = thrust_fit_mesh.flatten()
     voltage_fit_mesh = voltage_fit_mesh.flatten()
@@ -511,15 +552,17 @@ def least_squares_and_plot(time_constants,
     if plot_rising_only is not None:
         if (plot_rising_only):
             thrust_fit_mesh, voltage_fit_mesh = zip(
-                *[(x, y) for (x, y) in zip(thrust_fit_mesh, voltage_fit_mesh) if x <= poly(y)])
+                *[(x, y) for (x, y) in zip(thrust_fit_mesh, voltage_fit_mesh)
+                  if x <= poly(y)])
         else:
             thrust_fit_mesh, voltage_fit_mesh = zip(
-                *[(x, y) for (x, y) in zip(thrust_fit_mesh, voltage_fit_mesh) if x > poly(y)])
+                *[(x, y) for (x, y) in zip(thrust_fit_mesh, voltage_fit_mesh)
+                  if x > poly(y)])
 
-    fitted = np.polynomial.polynomial.polyval2d(
-        thrust_fit_mesh, voltage_fit_mesh, c)
+    fitted = np.polynomial.polynomial.polyval2d(thrust_fit_mesh,
+                                                voltage_fit_mesh, c)
 
-    if(plot):
+    if (plot):
         ax.scatter(
             thrust_fit_mesh, voltage_fit_mesh, fitted, alpha=0.5, color='r')
 
@@ -527,19 +570,18 @@ def least_squares_and_plot(time_constants,
 
 
 def find_time_constant_with_multiple_fits(
-    thrusts,
-     voltages,
-     accelerating_time_constant_coefficients,
-     braking_time_constant_coefficients,
-     voltage_to_thrust):
+        thrusts, voltages, accelerating_time_constant_coefficients,
+        braking_time_constant_coefficients, voltage_to_thrust):
     time_constants = []
     for (thrust, voltage) in zip(thrusts, voltages):
         if thrust <= voltage_to_thrust(voltage):
-            time_constants.append(np.polynomial.polynomial.polyval2d(
-                thrust, voltage, accelerating_time_constant_coefficients))
+            time_constants.append(
+                np.polynomial.polynomial.polyval2d(
+                    thrust, voltage, accelerating_time_constant_coefficients))
         else:
-            time_constants.append(np.polynomial.polynomial.polyval2d(
-                thrust, voltage, braking_time_constant_coefficients))
+            time_constants.append(
+                np.polynomial.polynomial.polyval2d(
+                    thrust, voltage, braking_time_constant_coefficients))
     return np.array(time_constants)
 
 
@@ -585,18 +627,23 @@ def generate_model_map(voltage_to_thrust, time_constant_function, settings):
     # print voltage_to_jerk_mapping
     # print voltage_to_jerk_mapping.shape
 
-    voltage_to_jerk_model = {'thrust_min': thrust_min,
-                             'thrust_max': thrust_max,
-                             'voltage_min': voltage_min,
-                             'voltage_max': voltage_max,
-                             'timestep': Ts,
-                             'mapping': voltage_to_jerk_mapping}
+    voltage_to_jerk_model = {
+        'thrust_min': thrust_min,
+        'thrust_max': thrust_max,
+        'voltage_min': voltage_min,
+        'voltage_max': voltage_max,
+        'timestep': Ts,
+        'mapping': voltage_to_jerk_mapping
+    }
 
-    ax.scatter(thrust_points_mesh, thrust_points_mesh,
-               voltage_points_mesh, alpha=0.3)
+    ax.scatter(
+        thrust_points_mesh, thrust_points_mesh, voltage_points_mesh, alpha=0.3)
 
-    ax.plot_trisurf(thrust_points_mesh, voltage_to_thrust(
-        voltage_points_mesh), voltage_points_mesh, alpha=0.3)
+    ax.plot_trisurf(
+        thrust_points_mesh,
+        voltage_to_thrust(voltage_points_mesh),
+        voltage_points_mesh,
+        alpha=0.3)
 
     ax.set_xlabel('Current Thrust (kg)')
     ax.set_ylabel('Next Thrust (kg)')
@@ -630,14 +677,19 @@ if __name__ == "__main__":
         ramps, voltage_to_thrust_poly, settings['time_constant_fit'])
 
     voltage_to_jerk_model = generate_model_map(
-        voltage_to_thrust_poly, thrust_voltage_to_time_constant, settings['voltage_to_jerk_estimator'])
+        voltage_to_thrust_poly, thrust_voltage_to_time_constant,
+        settings['voltage_to_jerk_estimator'])
 
-    output_model = {'response_lag': response_lag,
-                    'small_thrust_epsilon': (voltage_to_jerk_model['thrust_max']
-                                             - voltage_to_jerk_model['thrust_min'])
-                    / 100,
-                    'thrust_to_voltage': thrust_to_voltage_poly.coef.tolist(),
-                    'voltage_to_jerk': voltage_to_jerk_model}
+    output_model = {
+        'response_lag':
+        response_lag,
+        'small_thrust_epsilon': (voltage_to_jerk_model['thrust_max'] -
+                                 voltage_to_jerk_model['thrust_min']) / 100,
+        'thrust_to_voltage':
+        thrust_to_voltage_poly.coef.tolist(),
+        'voltage_to_jerk':
+        voltage_to_jerk_model
+    }
 
     with open(filename + '.output.yaml', 'w') as f:
         f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))
