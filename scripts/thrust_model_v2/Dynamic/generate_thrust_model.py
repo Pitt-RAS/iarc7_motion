@@ -44,7 +44,13 @@ def remove_consecutive_duplicates(times, values):
 
 class Ramp(object):
 
-    def __init__(self, start_throttle, end_throttle, start_data, end_data, settings):
+    def __init__(
+        self,
+        start_throttle,
+     end_throttle,
+     start_data,
+     end_data,
+     settings):
         self.start_throttle = start_throttle
         self.end_throttle = end_throttle
         self.pre_transition_data = start_data
@@ -307,7 +313,13 @@ def plot_all_voltages_filtered(ramps, n, m):
         ramps, n, m, filtered_getter=Ramp.get_filtered_thrust, voltage_getter=Ramp.get_voltages)
 
 
-def plot_all_responses(ramps, n, m, thrust_getter=Ramp.get_thrusts_and_times, filtered_getter=None, voltage_getter=None):
+def plot_all_responses(
+    ramps,
+     n,
+     m,
+     thrust_getter=Ramp.get_thrusts_and_times,
+     filtered_getter=None,
+     voltage_getter=None):
     plt.figure()
     for i in range(0, len(ramps)):
         (thrust_times, thrusts) = thrust_getter(ramps[i])
@@ -514,7 +526,12 @@ def least_squares_and_plot(time_constants,
     return c
 
 
-def find_time_constant_with_multiple_fits(thrusts, voltages, accelerating_time_constant_coefficients, braking_time_constant_coefficients, voltage_to_thrust):
+def find_time_constant_with_multiple_fits(
+    thrusts,
+     voltages,
+     accelerating_time_constant_coefficients,
+     braking_time_constant_coefficients,
+     voltage_to_thrust):
     time_constants = []
     for (thrust, voltage) in zip(thrusts, voltages):
         if thrust <= voltage_to_thrust(voltage):
