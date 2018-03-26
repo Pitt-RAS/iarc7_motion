@@ -117,15 +117,12 @@ struct ThrustModel
         return result;
     }
 
-    double voltageFromThrust(double acceleration, double) {
-        ROS_ERROR_STREAM("Asked: " << acceleration * model_mass / 9.81);
-        ROS_ERROR_STREAM("model mass: " << model_mass);
-        double desired_thrust =  model_mass * (acceleration / 9.81) / 4.0;
+    double voltageFromThrust(double acceleration, int num_props, double) {
+        double desired_thrust =  model_mass * (acceleration / 9.81) / static_cast<double>(num_props);
 
 
         if(std::abs(desired_thrust - start_thrust) < small_thrust_epsilon){
             start_thrust = desired_thrust;
-            ROS_ERROR_STREAM(" Static thrust: " << get_voltage_for_thrust(desired_thrust));
             return get_voltage_for_thrust(desired_thrust);
         }
 
@@ -133,8 +130,6 @@ struct ThrustModel
 
         int bottom_thrust_index = std::min(std::max(static_cast<int>(std::floor(start_thrust_index)), 0), num_thrust_points-1);
         int top_thrust_index = std::min(std::max(bottom_thrust_index + 1, 0), num_thrust_points-1);
-
-        ROS_ERROR_STREAM("bottom: " << bottom_thrust_index << " top: " << top_thrust_index);
 
         PossibleThrustFromThrust bottom_thrusts = voltage_to_jerk_mapping[bottom_thrust_index];
         PossibleThrustFromThrust top_thrusts = voltage_to_jerk_mapping[top_thrust_index];
@@ -183,8 +178,6 @@ struct ThrustModel
             }
             last_final_thrust = current_final_thrust;
         }
-
-        ROS_ERROR_STREAM("Voltage: " << voltage);
 
         start_thrust = desired_thrust;
         return std::min(std::max(voltage, voltage_min), voltage_max);

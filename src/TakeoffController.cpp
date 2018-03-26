@@ -85,7 +85,6 @@ bool TakeoffController::calibrateThrustModel(const ros::Time& time)
     geometry_msgs::PointStamped col_point;
     tf2::doTransform(col_point, col_point, transform);
 
-    //thrust_model_.calibrate(thrust_model_.expected_hover_throttle, voltage, col_point.point.z);
     return true;
 }
 
@@ -202,6 +201,7 @@ bool TakeoffController::update(const ros::Time& time,
             tf2::doTransform(col_point, col_point, transform);
             double hover_throttle = thrust_model_.voltageFromThrust(
                                                   9.8,
+                                                  4,
                                                   col_point.point.z)/voltage;
 
             // Linearly ramp to hover throttle

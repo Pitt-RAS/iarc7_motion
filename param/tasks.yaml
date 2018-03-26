@@ -9,7 +9,7 @@ takeoff_velocity        : 0.3
 takeoff_acceleration    : 0.3
 # Height at which to consider takeoff finished in meters
 # Should be higher than min_maneuver_height
-takeoff_complete_height: 1.3
+takeoff_complete_height: 0.8
 # Deviance from takeoff height from which to enter stabilize mode
 takeoff_complete_height_tolerance: 0.15
 # Length of time to stabilize after takeoff
