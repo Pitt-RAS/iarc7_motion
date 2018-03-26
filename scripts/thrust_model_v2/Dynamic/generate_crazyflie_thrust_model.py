@@ -15,7 +15,8 @@ import datetime
 
 
 def voltage_to_thrust(voltage):
-    return (3.747 * voltage**2 + 5.804 * voltage + 0.745) / 1000.0
+    # Model is for four propellers at once so divide thrust by 4
+    return (3.747 * voltage**2 + 5.804 * voltage + 0.745) / 1000.0 / 4.0
 
 
 def create_voltage_to_thrust(voltages, thrusts):
