@@ -536,5 +536,6 @@ if __name__ == "__main__":
     with open(filename+'.output.yaml', 'w') as f:
         f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))
         f.write(yaml.safe_dump(output_model))
+        f.write('\n')
 
     plt.show()

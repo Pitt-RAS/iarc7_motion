@@ -138,5 +138,6 @@ output_model = {'response_lag': response_lag,
 with open('thrust_model_sim.yaml', 'w') as f:
     f.write('# Generated on {}\n\n'.format(str(datetime.datetime.now())))
     f.write(yaml.safe_dump(output_model))
+    f.write('\n')
 
 plt.show()
