@@ -61,26 +61,9 @@ post_arm_delay: 0.2
 # Time to take to ramp the throttle to hover throttle
 takeoff_throttle_ramp_duration: 1.0
 
-# Rate at which to accelerate from 0 to descent velocity
-# must be positive (m/s^2)
-descend_acceleration: 0.1
-
 # Rate at which to descent
 # must be negative
 descend_rate: -0.3
-
-# How hard to brace
-brace_impact_velocity: -0.3
-
-# When to begin bracing
-brace_impact_start_height: 0.15
-
-# If we go above this height during brace low level motion considers
-# this an emergency situation. The land sequence didn't work.
-brace_impact_failure_height: 0.2
-
-# This parameter will be obsolete when the foot touch sensors are implemented
-brace_impact_success_height: 0.05
 
 #height at which the contact switches must be unpressed
 takeoff_max_height_switch_pressed: 0.25

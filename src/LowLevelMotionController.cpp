@@ -394,13 +394,13 @@ int main(int argc, char **argv)
             }
             else if(motion_state == MotionState::LAND)
             {
-
-                bool success = landPlanner.getTargetTwist(current_time, target_twist);
+                MotionPointStamped motion_point;
+                bool success = landPlanner.getTargetMotionPoint(current_time, motion_point);
                 ROS_ASSERT_MSG(success, "LowLevelMotion LandPlanner getTargetTwist failed");
 
-                MotionPointStamped motion_point;
-                motion_point.header = target_twist.header;
-                motion_point.motion_point.twist = target_twist.twist;
+                //Still setting target twist so that cmd_vel is published
+                target_twist.header = motion_point.header ;
+                target_twist.twist = motion_point.motion_point.twist;
 
                 quadController.setTargetVelocity(motion_point);
 

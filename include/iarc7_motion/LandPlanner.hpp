@@ -16,15 +16,13 @@
 
 // ROS message headers
 #include "iarc7_msgs/BoolStamped.h"
-#include "geometry_msgs/TwistStamped.h"
+#include "iarc7_msgs/MotionPointStamped.h"
 #include "iarc7_msgs/Arm.h"
 
 namespace Iarc7Motion
 {
 
-enum class LandState { ACCELERATE_TO_DESCENT_VELOCITY,
-                       DESCEND,
-                       BRACE_FOR_IMPACT,
+enum class LandState { DESCEND,
                        DONE };
 
 class LandPlanner
@@ -46,9 +44,9 @@ public:
         const ros::Time& time);
 
     // Used to get a uav control message
-    bool __attribute__((warn_unused_result)) getTargetTwist(
+    bool __attribute__((warn_unused_result)) getTargetMotionPoint(
         const ros::Time& time,
-        geometry_msgs::TwistStamped& target_twist);
+        iarc7_msgs::MotionPointStamped& target_twist);
 
     /// Waits until this object is ready to begin normal operation
     bool __attribute__((warn_unused_result)) waitUntilReady();
@@ -70,26 +68,10 @@ private:
 
     LandState state_;
 
-    double requested_z_vel_;
-
-    // Rate at which to accelerate from 0 to descent velocity
-    const double descend_acceleration_;
+    double requested_height_;
 
     // Rate at whicch to descent
     const double descend_rate_;
-
-    // How hard to brace
-    const double brace_impact_velocity_;
-
-    // When to begin bracing
-    const double brace_impact_start_height_;
-
-    // If we go above this height during brace we just report failure.
-    // The land sequence didn't work.
-    const double brace_impact_failure_height_;
-
-    // This parameter will be obsolete when the foot touch sensors are implemented
-    const double brace_impact_success_height_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
