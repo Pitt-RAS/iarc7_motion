@@ -100,9 +100,10 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
 
     if(state_ == LandState::DESCEND)
     {
-        requested_height_ -= std::max(0.0, requested_height_
-                                           + descend_rate_
-                                           * (time - last_update_time_).toSec());
+        requested_height_ = std::max(0.0, requested_height_
+                                           + (descend_rate_
+                                           * (time - last_update_time_).toSec()));
+
         if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms
             iarc7_msgs::Arm srv;

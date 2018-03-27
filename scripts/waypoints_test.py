@@ -39,8 +39,6 @@ if __name__ == '__main__':
 
     # Target points in global (X, Y, Z) coordinates
     waypoints = [
-            (0, 0, .1, 1 * math.pi),
-            (0, 0, .2, 0 * math.pi),
             (0, 0, .3, 0 * math.pi),
             (0, 0, .4, 0 * math.pi),
             (0, 0, .5, 0 * math.pi),
@@ -49,13 +47,12 @@ if __name__ == '__main__':
             (0, 0, .9, 1.5 * math.pi),
             (0, 0, .9, 1 * math.pi),
             (0, 0, .9, 1 * math.pi),
-            (0, 0, .7, 1 * math.pi),
-            (0, 0, .6, 1 * math.pi),
             (0, 0, .5, 1 * math.pi),
-            (0, 0, 0, 1.25 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .5, 1 * math.pi),
             ]
     waypoints_iter = iter(waypoints)
-    target = next(waypoints_iter)
+    target = waypoints_iter.next()
 
     kP = 0.8
     gamma = 0.8
@@ -78,7 +75,7 @@ if __name__ == '__main__':
     rospy.logwarn("Takeoff success: {}".format(ground_interaction_client.get_result()))
 
     rate = rospy.Rate(30)
-    time = rospy.Time.now().to_sec() 
+    time = rospy.Time.now().to_sec()
     while not rospy.is_shutdown():
         try:
             (trans, rot) = tf_listener.lookupTransform('/map',
@@ -120,14 +117,13 @@ if __name__ == '__main__':
 
         #Sets next target after a set time has passed
         if ((rospy.Time.now().to_sec() - time) > 1):
-            target = next(waypoints_iter, target)
+            try:
+                target = waypoints_iter.next()
+            except StopIteration:
+                break
             time = rospy.Time.now().to_sec()
             rospy.logerr('Switching targets')
             print(target)
-
-        #Breaks out if Z position set to zero
-        if (target[2] == 0):
-            break;
 
         rate.sleep()
 
