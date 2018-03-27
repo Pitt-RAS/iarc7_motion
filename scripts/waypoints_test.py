@@ -105,14 +105,14 @@ if __name__ == '__main__':
         if abs(target[0] - trans[0]) >= 0.02:
             error = target[0] - trans[0]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            motion_point.twist.linear.x = constrain(target_v, -max_vel, max_vel)
+            motion_point.motion_point.twist.linear.x = constrain(target_v, -max_vel, max_vel)
         
         if abs(target[1] - trans[1]) >= 0.02:
             error = target[1] - trans[1]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            motion_point.twist.linear.y = constrain(target_v, -max_vel, max_vel)
+            motion_point.motion_point.twist.linear.y = constrain(target_v, -max_vel, max_vel)
         
-        motion_point.pose.position.z = target[2]
+        motion_point.motion_point.pose.position.z = target[2]
 
         motion_point_msg = MotionPointStampedArray()
         motion_point_msg.motion_points = [motion_point]
