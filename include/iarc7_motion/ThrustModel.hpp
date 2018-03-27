@@ -20,7 +20,7 @@ struct ThrustModel
     int num_thrust_points;
     int num_voltage_points;
 
-    std::vector<float> thrust_to_voltage;
+    std::vector<double> thrust_to_voltage;
 
     double start_thrust = 0.0f;
 
@@ -60,7 +60,7 @@ struct ThrustModel
  
     PossibleThrustList voltage_to_jerk_mapping;
 
-    float start_thrust_increment;
+    double start_thrust_increment;
 
     ThrustModel(ros::NodeHandle& nh) {
         // Retrieve thrust model parameters
@@ -100,23 +100,23 @@ struct ThrustModel
 
         num_thrust_points = voltage_to_jerk_mapping.size();
         num_voltage_points = voltage_to_jerk_mapping[0].possible_thrusts.size();
-	start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_points-1);
+        start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_points-1);
     }
 
-    float linearInterpolate(float x,
-                             float x_i,
-                             float x_f,
-                             float y_i,
-                             float y_f) {
+    double linearInterpolate(double x,
+                             double x_i,
+                             double x_f,
+                             double y_i,
+                             double y_f) {
 
-        float a = ((y_f - y_i)/(x_f - x_i));
-        float b = y_i - a*x_i;
-        float result = a*x+b;
+        double a = ((y_f - y_i)/(x_f - x_i));
+        double b = y_i - a*x_i;
+        double result = a*x+b;
 
         return result;
     }
 
-    double voltageFromThrust(double acceleration, int num_props, double) {
+    double voltageFromThrust(double acceleration, int num_props, double /*height*/) {
         double desired_thrust =  model_mass * (acceleration / 9.81) / static_cast<double>(num_props);
 
 
@@ -125,7 +125,7 @@ struct ThrustModel
             return get_voltage_for_thrust(desired_thrust);
         }
 
-        float start_thrust_index = start_thrust / start_thrust_increment;
+        double start_thrust_index = start_thrust / start_thrust_increment;
 
         int bottom_thrust_index = std::min(std::max(static_cast<int>(std::floor(start_thrust_index)), 0), num_thrust_points-1);
         int top_thrust_index = std::min(std::max(bottom_thrust_index + 1, 0), num_thrust_points-1);
@@ -142,7 +142,6 @@ struct ThrustModel
 
         if(zero_voltage_thrust >= desired_thrust) {
             start_thrust = desired_thrust;
-            ROS_ERROR("Return: 0");
             return 0.0f;
         }
 
@@ -183,7 +182,7 @@ struct ThrustModel
     }
 
 
-    float get_voltage_for_thrust(double thrust) {
+    double get_voltage_for_thrust(double thrust) {
         double sum = 0;
         for(unsigned int i = 0; i < thrust_to_voltage.size(); i++) {
             double inc = thrust_to_voltage[i]*std::pow(thrust, thrust_to_voltage.size()-1-i);
