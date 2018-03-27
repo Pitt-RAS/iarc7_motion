@@ -46,9 +46,6 @@ public:
     TakeoffController(const TakeoffController& rhs) = delete;
     TakeoffController& operator=(const TakeoffController& rhs) = delete;
 
-    bool __attribute__((warn_unused_result)) calibrateThrustModel(
-        const ros::Time& time);
-
     // Used to prepare and check initial conditions for takeoff
     bool __attribute__((warn_unused_result)) prepareForTakeover(
         const ros::Time& time);

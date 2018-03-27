@@ -7,14 +7,7 @@ throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 throttle_accumulator_enable_threshold: 10.0
 
-thrust_model:
-    thrust_scale_factor: 3
-    A_ge: 0
-    d0: 1
-    voltage_polynomial: [0, 0, 0, 99.67]
-    throttle_b: 0
-    throttle_c: 0
-    expected_hover_throttle: 0.60
+model_mass: 3.0
 
 # Thrust levels are in m/s^2
 min_thrust: 0.1

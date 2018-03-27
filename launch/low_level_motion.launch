@@ -6,6 +6,9 @@
         type="low_level_motion_controller">
         <rosparam command="load"
             file="$(find iarc7_motion)/param/low_level_motion_$(arg platform).yaml" />
+        <rosparam command="load"
+            ns="thrust_model"
+            file="$(find iarc7_motion)/param/thrust_models/thrust_model_$(arg platform).yaml" />
     </node>
 
     <node name="thrust_target_to_motion_point_transcriber" pkg="iarc7_motion"

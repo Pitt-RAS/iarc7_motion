@@ -7,16 +7,7 @@ throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
 
-# Data derived from:
-# https://wiki.bitcraze.io/misc:investigations:thrust
-thrust_model:
-    thrust_scale_factor: 0.409 # mass (kg) / g / num_props
-    A_ge: 0.0
-    d0: 1.0
-    voltage_polynomial: [1.0]
-    throttle_b: 0.34352
-    throttle_c: -0.24205
-    expected_hover_throttle: 0.57
+model_mass: 0.020
 
 # Thrust levels are in m/s^2
 min_thrust: 0.0
