@@ -86,6 +86,7 @@ class TrackRoombaTask(AbstractTask):
 
     def get_desired_command(self):
         with self._lock:
+
             if self._start_time is None:
                 self._start_time = rospy.Time.now()
             

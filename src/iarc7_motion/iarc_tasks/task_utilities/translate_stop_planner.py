@@ -35,6 +35,10 @@ class TranslateStopPlanner():
         self._last_actual_twist = None
         self._last_target_acceleration = 0.0
 
+        rospy.loginfo('The x1 position %f', self._hold_x)
+        rospy.loginfo('The y1 position %f', self._hold_y)
+        rospy.loginfo('The z1 position %f', self._hold_z)
+
     def get_xyz_hold_response(self):
         with self._lock:
             if self._odometry is not None:
@@ -56,6 +60,10 @@ class TranslateStopPlanner():
             self._hold_x = x
             self._hold_y = y
             self._hold_z = z
+
+            # rospy.loginfo('The x2 position %f', self._hold_x)
+            # rospy.loginfo('The y2 position %f', self._hold_y)
+            # rospy.loginfo('The z2 position %f', self._hold_z)
 
 
     def _current_velocity_callback(self, odometry):
@@ -214,6 +222,7 @@ class TranslateStopPlanner():
         self._last_target_acceleration = target_acceleration
 
         return target_twist
+
 
     def is_done(self):
         return self._done
