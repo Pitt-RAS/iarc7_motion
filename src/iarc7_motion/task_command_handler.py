@@ -11,6 +11,8 @@ import iarc_tasks.task_commands as task_commands
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 
+from nav_msgs.msg import Path
+
 from iarc7_msgs.msg import MotionPointStamped, MotionPointStampedArray
 
 from iarc7_safety.iarc_safety_exception import IARCFatalSafetyException
@@ -42,6 +44,11 @@ class TaskCommandHandler:
         self._motion_point_pub = rospy.Publisher('motion_point_targets',
                                                  MotionPointStampedArray,
                                                  queue_size=0)
+
+        # Used to send Path messages for visualizatio in Rviz
+        self._local_plan_pub = rospy.Publisher('local_plan',
+                                               Path,
+                                               queue_size=0)
 
         # used to send passthrough commands to LLM
         self._passthrough_pub = rospy.Publisher('passthrough_command',
@@ -185,8 +192,8 @@ class TaskCommandHandler:
         pass
 
     def _handle_velocity_command(self, velocity_command):
-        plan = self._motion_profile_generator.get_velocity_plan(velocity_command)
-        self._publish_motion_profile(plan)
+        plan, pose_only_plan = self._motion_profile_generator.get_velocity_plan(velocity_command)
+        self._publish_motion_profile(plan, pose_only_plan)
 
     def _handle_passthrough_mode_command(self, passthrough_mode_command):
         if passthrough_mode_command.enable:
@@ -262,7 +269,8 @@ class TaskCommandHandler:
     Args:
         motion_point_stamped_array: MotionPointStampedArray
     """
-    def _publish_motion_profile(self, motion_point_stamped_array):
+    def _publish_motion_profile(self, motion_point_stamped_array, path):
+        self._local_plan_pub.publish(path)
         self._motion_point_pub.publish(motion_point_stamped_array)
 
     # public wrapper for HLM Controller to send timeouts

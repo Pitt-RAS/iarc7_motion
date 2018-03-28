@@ -3,6 +3,10 @@
 import rospy
 import numpy as np
 
+from geometry_msgs.msg import PoseStamped
+
+from nav_msgs.msg import Path
+
 from iarc7_msgs.msg import MotionPointStamped, MotionPointStampedArray
 
 # Convert a 3 element numpy array to a Vector3 message
@@ -169,6 +173,9 @@ class LinearMotionProfileGenerator(object):
                      + p_start)
 
         plan = MotionPointStampedArray()
+        pose_only_plan = Path()
+        pose_only_plan.header.stamp = rospy.Time.now()
+        pose_only_plan.header.frame_id = 'map'
 
         # Fill out the first motion point since it follows different
         # rules than the rest
@@ -177,7 +184,12 @@ class LinearMotionProfileGenerator(object):
         np_to_msg(accelerations[0], motion_point.motion_point.accel.linear)
         np_to_msg(v_start, motion_point.motion_point.twist.linear)
         np_to_msg(p_start, motion_point.motion_point.pose.position)
+
         plan.motion_points.append(motion_point)
+        pose = PoseStamped()
+        pose.header.stamp = motion_point.header.stamp
+        pose.pose = motion_point.motion_point.pose
+        pose_only_plan.poses.append(pose)
 
         # Generate the motion profile for all the remaining velocities and accelerations
         for i in range(1, velocities.shape[0]-1):
@@ -188,6 +200,10 @@ class LinearMotionProfileGenerator(object):
             np_to_msg(velocities[i], motion_point.motion_point.twist.linear)
             np_to_msg(positions[i-1], motion_point.motion_point.pose.position)
             plan.motion_points.append(motion_point)
+            pose = PoseStamped()
+            pose.header.stamp = motion_point.header.stamp
+            pose.pose = motion_point.motion_point.pose
+            pose_only_plan.poses.append(pose)
 
         self._last_motion_plan = plan
-        return plan
+        return plan, pose_only_plan
