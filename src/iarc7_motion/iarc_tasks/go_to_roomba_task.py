@@ -107,16 +107,22 @@ class GoToRoombaTask(AbstractTask):
 
                     try:
                         roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                        'level_quad',
+                                        'map',
                                         self._roomba_id,
                                         rospy.Time(0),
                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
+                        roomba_check_pos = self.topic_buffer.get_tf_buffer().lookup_transform(
+                                         'level_quad',
+                                         self._roomba_id,
+                                         rospy.Time(0),
+                                         rospy.Duration(self._TRANSFORM_TIMEOUT))
                     except (tf2_ros.LookupException,
                             tf2_ros.ConnectivityException,
                             tf2_ros.ExtrapolationException) as ex:
                         rospy.logerr('ObjectTrackTask: Exception when looking up transform')
                         rospy.logerr(ex.message)
                         return (TaskAborted(msg='Exception when looking up transform during go to roomba'),)
+                        
 
 
                     # Create point at drones center
@@ -125,35 +131,28 @@ class GoToRoombaTask(AbstractTask):
                     stamped_point.point.y = 0
                     stamped_point.point.z = 0
 
-                    # returns point distances of roomba to center point of level quad
-                    self._roomba_point = tf2_geometry_msgs.do_transform_point(
+                    # returns point distances of roomba to center point of the map
+                    self._roomba_point_map = tf2_geometry_msgs.do_transform_point(
                                                             stamped_point, roomba_transform)
-                    
+
+                    self._roomba_point_level_quad = tf2_geometry_msgs.do_transform_point(
+                                                            stamped_point, roomba_check_pos)
+
 
                     roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
                     roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
 
-                    x_vel_target = (self._roomba_point.point.x * self._K_X + roomba_x_velocity)
-                    y_vel_target = (self._roomba_point.point.y * self._K_Y + roomba_y_velocity)
-
-                    # since there is no change in z height
-                    z_vel_target = 0
-
-                    vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
-
-
-
-                    if vel_target > self._MAX_HORIZ_SPEED:
-                        x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-                        y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-
+                    x_vel_target = self._roomba_point_map.point.x + roomba_x_velocity
+                    y_vel_target = self._roomba_point_map.point.y + roomba_y_velocity
                     
-                    self._path_holder.reinitialize_translation_stop_planner(x_vel_target,y_vel_target,self._z_position)
+                    self._path_holder.reinitialize_translation_stop_planner(x_vel_target,
+                                                                            y_vel_target,
+                                                                            self._z_position)
 
 
                     """ quarantine end"""
                     hold_twist = self._path_holder.get_xyz_hold_response()
-                    if self._check_max_roomba_range(1):
+                    if self._check_max_roomba_range():
                         return (TaskDone(), VelocityCommand(hold_twist))
                     elif not self._path_holder.is_done():
                         return (TaskRunning(), VelocityCommand(hold_twist))
@@ -173,15 +172,10 @@ class GoToRoombaTask(AbstractTask):
                 return True
         return False
 
-    def _check_max_roomba_range(self, val=0):
-        _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 +
-                            self._roomba_point.point.y**2)
-        if val == 1:
-            rospy.loginfo('X point go to roomba: %f', self._roomba_point.point.x)
-            rospy.loginfo('Y point go to roomba: %f', self._roomba_point.point.y)
-            rospy.loginfo('Z point go to roomba: %f', self._roomba_point.point.z)
-            rospy.loginfo('Dist go to roomba: %f', _distance_to_roomba)
-        return (_distance_to_roomba <= self._MAX_TASK_DIST)
+    def _check_max_roomba_range(self,):
+        _distance_to_roomba = math.sqrt(self._roomba_point_level_quad.point.x**2 +
+                            self._roomba_point_level_quad.point.y**2)
+        return (_distance_to_roomba <= self._MAX_TASK_DIST * 0.75)
 
     def _on_ground(self):
         return self.topic_buffer.get_landing_message().data
