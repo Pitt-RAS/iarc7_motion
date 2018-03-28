@@ -11,10 +11,14 @@ import iarc_tasks.task_commands as task_commands
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 
+from iarc7_msgs.msg import MotionPointStamped, MotionPointStampedArray
+
 from iarc7_safety.iarc_safety_exception import IARCFatalSafetyException
 
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
+
+from linear_motion_profile_generator import LinearMotionProfileGenerator
 
 class TaskCommandHandler:
 
@@ -35,9 +39,9 @@ class TaskCommandHandler:
                                           GroundInteractionAction)
 
         # used to send velocity commands to LLM
-        self._velocity_pub = rospy.Publisher('movement_velocity_targets',
-                                             TwistStampedArray,
-                                             queue_size=0)
+        self._motion_point_pub = rospy.Publisher('motion_point_targets',
+                                                 MotionPointStampedArray,
+                                                 queue_size=0)
 
         # used to send passthrough commands to LLM
         self._passthrough_pub = rospy.Publisher('passthrough_command',
@@ -52,6 +56,8 @@ class TaskCommandHandler:
             task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
             task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
+
+        self._motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
 
     # takes in new task from HLM Controller
     # transition is of type TransitionData 
@@ -179,7 +185,8 @@ class TaskCommandHandler:
         pass
 
     def _handle_velocity_command(self, velocity_command):
-        self._publish_twist(velocity_command.target_twist)
+        plan = self._motion_profile_generator.get_velocity_plan(velocity_command)
+        self._publish_motion_profile(plan)
 
     def _handle_passthrough_mode_command(self, passthrough_mode_command):
         if passthrough_mode_command.enable:
@@ -250,23 +257,14 @@ class TaskCommandHandler:
             rospy.logerr('Ground interaction done callback received with no task callback available')
 
     """
-    Sends twist (x, y, z, and angular velocities) to LLM
+    Sends motion point stamped array to LLM
 
     Args:
-        twist: TwistStampedArray (array of twists) or just a single twist stamped.
+        motion_point_stamped_array: MotionPointStampedArray
     """
-    def _publish_twist(self, twist):
-        if type(twist) is TwistStampedArray:
-            self._last_twist = twist.twists[-1]
-            self._velocity_pub.publish(twist)
-        elif type(twist) is TwistStamped:
-            self._last_twist = twist
-            velocity_msg = TwistStampedArray()
-            velocity_msg.twists = [twist]
-            self._velocity_pub.publish(velocity_msg)
-        else:
-            raise TypeError('Illegal type provided in Task Command Handler')
+    def _publish_motion_profile(self, motion_point_stamped_array):
+        self._motion_point_pub.publish(motion_point_stamped_array)
 
     # public wrapper for HLM Controller to send timeouts
     def send_timeout(self, twist):
-        self._publish_twist(twist)
+        self._handle_velocity_command(task_commands.VelocityCommand(twist))
