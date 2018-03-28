@@ -5,18 +5,22 @@ import numpy as np
 
 from iarc7_msgs.msg import MotionPointStamped, MotionPointStampedArray
 
+# Convert a 3 element numpy array to a Vector3 message
 def np_to_msg(array, msg):
     msg.x = array[0]
     msg.y = array[1]
     msg.z = array[2]
     return msg
 
+# Convert a Vector3 message to 3 element numpy array
 def msg_to_np(msg):
     return np.array([msg.x, msg.y, msg.z])
 
+# Interpolate two values
 def interpolate(first, second, fraction):
     return fraction * (second - first) + first
 
+# Interpolate two motion points
 def interpolate_motion_points(first, second, time):
     fraction = ((time - first.header.stamp)
                 / (second.header.stamp - first.header.stamp))
@@ -65,6 +69,7 @@ def interpolate_motion_points(first, second, time):
 
     return result
 
+# Generates fully defined motion profiles
 class LinearMotionProfileGenerator(object):
     def __init__(self, start_motion_point):
         self._last_motion_plan = None
@@ -80,6 +85,11 @@ class LinearMotionProfileGenerator(object):
 
         self._last_stamp = rospy.Time.now()
 
+    # Reinitialize the start point to some desired value
+    def reinitialize_start_point(self, start_motion_point):
+        self._start_motion_point = start_motion_point
+
+    # Get a starting motion point for a given time
     def _get_start_point(self, time):
         # Get the starting point from the current motion plane
         if self._start_motion_point is not None:
@@ -105,11 +115,12 @@ class LinearMotionProfileGenerator(object):
             self._last_motion_plan.motion_points[-1].header.stamp = rospy.Time.now()
             return self._last_motion_plan.motion_points[-1]
 
+    # Get a motion plan that attempts to achieve a given velocity target
     def get_velocity_plan(self, velocity_command):
 
+        # Get the stating motion point for the time that the velocity is desired
         start_point = self._get_start_point(velocity_command.target_twist.header.stamp)
 
-        rospy.logwarn(velocity_command.target_twist.header.stamp - self._last_stamp)
         self._last_stamp = velocity_command.target_twist.header.stamp
 
         p_start = msg_to_np(start_point.motion_point.pose.position)
@@ -117,33 +128,50 @@ class LinearMotionProfileGenerator(object):
         v_desired = msg_to_np(velocity_command.target_twist.twist.linear)
         v_delta = v_desired - v_start
 
+        # Assign a direction to the target acceleration
         a_target = self._TARGET_ACCEL * v_delta / np.linalg.norm(v_delta)
 
+        # Find the time required to accelerate to the desired velocity
         acceleration_time = min(np.linalg.norm(v_delta) / self._TARGET_ACCEL, self._PLAN_DURATION)
+
+        # Use the rest of the profile duration to hold the velocity
         steady_velocity_time = self._PLAN_DURATION - acceleration_time
 
+        # Calculate the number of discrete steps spent in each state
         accel_steps = np.floor(acceleration_time / self._PROFILE_TIMESTEP)
         vel_steps = np.floor(steady_velocity_time / self._PROFILE_TIMESTEP)
 
+        # Initialize the velocities array with the starting velocity
         velocities = [v_start]
 
+        # Generate velocities corresponding to the acceleration period
         if accel_steps > 0:
-            accel_times = (np.linspace(0.0, accel_steps*self._PROFILE_TIMESTEP, accel_steps, endpoint=True)
+            accel_times = (np.linspace(0.0, accel_steps*self._PROFILE_TIMESTEP, accel_steps)
                      * accel_steps
                      * self._PROFILE_TIMESTEP)
-            velocities.extend([a_target * accel_time for accel_time in accel_times])
+            velocities.extend([a_target * accel_time + v_start for accel_time in accel_times])
 
+        # Add the velocities for the steady velocity period
         velocities.extend([v_desired for i in range(0, int(vel_steps))])
 
         velocities = np.array(velocities)
 
+        # Differentiate velocities to get the accelerations
+        # This results in an array one element shorter than
+        # the velocities array
         accelerations = np.diff(velocities, axis=0) / self._PROFILE_TIMESTEP
-        positions = np.cumsum(velocities, axis=0) * self._PROFILE_TIMESTEP
 
-        rospy.loginfo(positions)
+        # Integrate the velocities to get the position deltas
+        # This results in an array the same length as the velocities array
+        # But the positions correspond to the velocities one index higher than
+        # the given positio index
+        positions = (np.cumsum(velocities, axis=0) * self._PROFILE_TIMESTEP
+                     + p_start)
 
         plan = MotionPointStampedArray()
 
+        # Fill out the first motion point since it follows different
+        # rules than the rest
         motion_point = MotionPointStamped()
         motion_point.header.stamp = start_point.header.stamp
         np_to_msg(accelerations[0], motion_point.motion_point.accel.linear)
@@ -151,19 +179,15 @@ class LinearMotionProfileGenerator(object):
         np_to_msg(p_start, motion_point.motion_point.pose.position)
         plan.motion_points.append(motion_point)
 
-        # Don't output the last point since we don't have an
-        # acceleration for it
+        # Generate the motion profile for all the remaining velocities and accelerations
         for i in range(1, velocities.shape[0]-1):
             motion_point = MotionPointStamped()
             motion_point.header.stamp = (start_point.header.stamp
                                          + rospy.Duration(i * self._PROFILE_TIMESTEP))
             np_to_msg(accelerations[i], motion_point.motion_point.accel.linear)
-            np_to_msg(velocities[i] + v_start, motion_point.motion_point.twist.linear)
-            np_to_msg(positions[i-1] + p_start, motion_point.motion_point.pose.position)
+            np_to_msg(velocities[i], motion_point.motion_point.twist.linear)
+            np_to_msg(positions[i-1], motion_point.motion_point.pose.position)
             plan.motion_points.append(motion_point)
 
         self._last_motion_plan = plan
         return plan
-
-    def reinitialize_start_point(self, start_motion_point):
-        self._start_motion_point = start_motion_point
