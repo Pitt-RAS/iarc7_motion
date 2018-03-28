@@ -37,7 +37,7 @@ if __name__ == '__main__':
         except rospy.ServiceException as exc:
             print("Could not arm: " + str(exc))
 
-    # Target points in global (X, Y, Z) coordinates
+    # Target points in global (X, Y, Z, Yaw) coordinates
     waypoints = [
             (0, 0, .3, 0 * math.pi),
             (0, 0, .4, 0 * math.pi),
