@@ -60,7 +60,7 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "level_quad",
                                                          time,
                                                          update_timeout_);
     if (!success) {
@@ -90,7 +90,7 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "level_quad",
                                                          time,
                                                          update_timeout_);
     if (!success) {
@@ -146,7 +146,7 @@ bool LandPlanner::waitUntilReady()
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "level_quad",
                                                          ros::Time(0),
                                                          startup_timeout_);
     if (!success)
