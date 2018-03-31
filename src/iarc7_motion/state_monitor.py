@@ -186,7 +186,7 @@ class StateMonitor:
             return state
     
     # Handles no task running timeouts
-    def get_timeout_twist(self, last_twist):
+    def get_timeout_twist(self):
         twist = TwistStamped()
         twist.header.stamp = rospy.Time.now()
         return twist

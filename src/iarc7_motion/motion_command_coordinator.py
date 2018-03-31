@@ -200,7 +200,7 @@ class MotionCommandCoordinator:
                     # publish twist stamped array, which came from 
                     # the State Monitor
                     self._task_command_handler.send_timeout(
-                        self._state_monitor.get_timeout_twist(last_twist))
+                        self._state_monitor.get_timeout_twist())
 
                     self._timeout_vel_sent = True
 
