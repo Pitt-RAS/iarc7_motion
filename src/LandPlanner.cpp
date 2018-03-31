@@ -24,9 +24,13 @@ LandPlanner::LandPlanner(
       transform_wrapper_(),
       state_(LandState::DONE),
       requested_height_(0.0),
+      actual_descend_rate_(0.0),
       descend_rate_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "descend_rate")),
+      descend_acceleration_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "descend_acceleration")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -70,6 +74,8 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
 
     requested_height_ = transform.transform.translation.z;
 
+    actual_descend_rate_ = 0.0;
+
     state_ = LandState::DESCEND;
     // Mark the last update time as the current time since update may not have
     // Been called in a long time.
@@ -100,9 +106,14 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
 
     if(state_ == LandState::DESCEND)
     {
+        actual_descend_rate_ = std::min(descend_rate_,
+                                        actual_descend_rate_
+                                        + (descend_acceleration_
+                                        * (time - last_update_time_).toSec()));
+
         requested_height_ = std::max(0.0, requested_height_
-                                           + (descend_rate_
-                                           * (time - last_update_time_).toSec()));
+                                          + (actual_descend_rate_
+                                          * (time - last_update_time_).toSec()));
 
         if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms

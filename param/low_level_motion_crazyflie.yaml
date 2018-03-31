@@ -65,5 +65,9 @@ takeoff_throttle_ramp_duration: 1.0
 # must be negative
 descend_rate: -0.3
 
+# Rate at which to accelerate to descent velocity
+# must be negative
+descend_acceleration: -1.0
+
 #height at which the contact switches must be unpressed
 takeoff_max_height_switch_pressed: 0.25
