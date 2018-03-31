@@ -193,14 +193,11 @@ class MotionCommandCoordinator:
             if self._task is None: 
                 # if we have not sent a timeout velocity yet
                 if not self._timeout_vel_sent:
-                    # last twist sent by last task
-                    last_twist = self._task_command_handler.get_last_twist()
-
                     # calls public method in Task Command Handler to 
                     # publish twist stamped array, which came from 
                     # the State Monitor
                     self._task_command_handler.send_timeout(
-                        self._state_monitor.get_timeout_twist(last_twist))
+                        self._state_monitor.get_timeout_twist())
 
                     self._timeout_vel_sent = True
 

@@ -186,23 +186,11 @@ class StateMonitor:
             return state
     
     # Handles no task running timeouts
-    def get_timeout_twist(self, last_twist):
-        with self._lock:
-            commands = TwistStampedArray()
+    def get_timeout_twist(self):
+        twist = TwistStamped()
+        twist.header.stamp = rospy.Time.now()
+        return twist
 
-            if last_twist is None:
-                last_twist = TwistStamped()
-                last_twist.header.stamp = rospy.Time.now()
-
-            # send future twist with zero velocity
-            # so that LLM will interpolate between the 
-            # current velocity and 0m/s to avoid impulse in velocity
-            future_twist = TwistStamped()
-            future_twist.header.stamp = (rospy.Time.now() + 
-                self._task_timeout_deceleration_time)
-
-            commands.twists = [last_twist, future_twist]
-            return commands
 
     def signal_safety_active(self):
         with self._lock:
