@@ -25,7 +25,7 @@ land_height_tolerance   : 0.15
 
 # TRANSLATE-STOP PLANNER
 # Max acceleration in the xy plane in m/s^2
-max_translation_acceleration: 1.0
+max_translation_acceleration: 3.0
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s

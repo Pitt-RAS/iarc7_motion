@@ -95,9 +95,14 @@ QuadVelocityController::QuadVelocityController(
                          update_timeout_,
                          ros::Duration(0),
                          [](const nav_msgs::Odometry& msg) {
-                             return tf2::Vector3(msg.twist.twist.linear.x,
-                                                 msg.twist.twist.linear.y,
-                                                 msg.twist.twist.linear.z);
+                              Eigen::VectorXd v(6);
+                              v[0] = msg.twist.twist.linear.x;
+                              v[1] = msg.twist.twist.linear.y;
+                              v[2] = msg.twist.twist.linear.z;
+                              v[3] = msg.pose.pose.position.x;
+                              v[4] = msg.pose.pose.position.y;
+                              v[5] = msg.pose.pose.position.z;
+                              return v;
                          },
                          100),
       min_thrust_(ros_utils::ParamUtils::getParam<double>(
@@ -121,9 +126,9 @@ QuadVelocityController::QuadVelocityController(
 // Take in a target velocity that does not take into account the quads current heading
 // And transform it to the velocity vectors that correspond to the quads current yaw
 // Set the PID's set points accordingly
-void QuadVelocityController::setTargetVelocity(geometry_msgs::Twist twist)
+void QuadVelocityController::setTargetVelocity(iarc7_msgs::MotionPointStamped motion_point)
 {
-    setpoint_ = twist;
+    setpoint_ = motion_point;
 }
 
 // Use a new thrust model
@@ -145,9 +150,9 @@ bool QuadVelocityController::update(const ros::Time& time,
         return false;
     }
 
-    // Get the current velocity of the quad.
-    tf2::Vector3 velocity;
-    bool success = odom_interpolator_.getInterpolatedMsgAtTime(velocity, time);
+    // Get the current odometry of the quad.
+    Eigen::VectorXd odometry;
+    bool success = odom_interpolator_.getInterpolatedMsgAtTime(odometry, time);
     if (!success) {
         ROS_ERROR("Failed to get current velocities in QuadVelocityController::update");
         return false;
@@ -207,11 +212,11 @@ bool QuadVelocityController::update(const ros::Time& time,
     double pitch_output;
     double roll_output;
 
-    // Update throttle PID loop
-    success = throttle_pid_.update(velocity.z(),
+    // Update throttle PID loop with position and velocity
+    success = throttle_pid_.update(odometry[5],
                                    time,
                                    vertical_accel_output,
-                                   accel.z());
+                                   odometry[2], true);
 
     if (!success) {
         ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
@@ -219,10 +224,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     }
 
     // Calculate local frame velocities
-    double local_x_velocity = std::cos(current_yaw) * velocity.x()
-                            + std::sin(current_yaw) * velocity.y();
-    double local_y_velocity = -std::sin(current_yaw) * velocity.x()
-                            +  std::cos(current_yaw) * velocity.y();
+    double local_x_velocity = std::cos(current_yaw) * odometry[0]
+                            + std::sin(current_yaw) * odometry[1];
+    double local_y_velocity = -std::sin(current_yaw) * odometry[0]
+                            +  std::cos(current_yaw) * odometry[1];
     // Calculate local frame accelerations
     double local_x_accel = std::cos(current_yaw) * accel.x()
                          + std::sin(current_yaw) * accel.y();
@@ -292,7 +297,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Yaw rate needs no correction because the input and output are both
     // velocities
-    uav_command.data.yaw = -setpoint_.angular.z;
+    uav_command.data.yaw = -setpoint_.motion_point.twist.angular.z;
 
     // Check that the PID loops did not return invalid values before returning
     if (!std::isfinite(uav_command.throttle)
@@ -306,9 +311,9 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     // Print the velocity and throttle information
     ROS_DEBUG("Vz: %f Vx: %f Vy: %f",
-             velocity.z(),
-             velocity.x(),
-             velocity.y());
+             odometry[2],
+             odometry[0],
+             odometry[1]);
     ROS_DEBUG("Throttle: %f Pitch: %f Roll: %f Yaw: %f",
              uav_command.throttle,
              uav_command.data.pitch,
@@ -372,14 +377,14 @@ bool QuadVelocityController::waitUntilReady()
 
 void QuadVelocityController::updatePidSetpoints(double current_yaw)
 {
-    throttle_pid_.setSetpoint(setpoint_.linear.z);
+    throttle_pid_.setSetpoint(setpoint_.motion_point.pose.position.z); //variable.position.z
 
     // Pitch and roll velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
-    double local_x_velocity = setpoint_.linear.x * std::cos(current_yaw)
-                            + setpoint_.linear.y * std::sin(current_yaw);
-    double local_y_velocity = setpoint_.linear.x * -std::sin(current_yaw)
-                            + setpoint_.linear.y *  std::cos(current_yaw);
+    double local_x_velocity = setpoint_.motion_point.twist.linear.x * std::cos(current_yaw)
+                            + setpoint_.motion_point.twist.linear.y * std::sin(current_yaw);
+    double local_y_velocity = setpoint_.motion_point.twist.linear.x * -std::sin(current_yaw)
+                            + setpoint_.motion_point.twist.linear.y *  std::cos(current_yaw);
 
     pitch_pid_.setSetpoint(local_x_velocity);
 

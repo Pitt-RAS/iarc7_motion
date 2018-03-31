@@ -93,7 +93,7 @@ bool PidController::update(double current_value,
         if (log_debug) {
             iarc7_msgs::Float64ArrayStamped debug_msg;
             debug_msg.header.stamp = time;
-            debug_msg.data = {p_term, i_accumulator_,d_term};
+            debug_msg.data = {p_term, i_accumulator_,-d_term};
             pid_value_publisher_.publish(debug_msg);
         }
     }

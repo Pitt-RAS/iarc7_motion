@@ -19,6 +19,19 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
 )
 
+## Find Eigen
+find_package(Eigen3)
+set(EIGEN_PACKAGE EIGEN3)
+if(NOT EIGEN3_FOUND)
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIR ${EIGEN_INCLUDE_DIRS})
+  set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
+  set(EIGEN_PACKAGE Eigen)
+endif()
+
+add_definitions(-DEIGEN_NO_DEBUG -DEIGEN_MPL2_ONLY)
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -123,6 +136,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   include ${catkin_INCLUDE_DIRS}
+          ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -145,6 +159,7 @@ add_dependencies(low_level_motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS}
 ## Specify libraries to link a library or executable target against
 target_link_libraries(low_level_motion_controller
   ${catkin_LIBRARIES}
+  ${EIGEN3_LIBRARIES}
 )
 
 #############

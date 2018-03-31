@@ -23,25 +23,14 @@ LandPlanner::LandPlanner(
       landing_detected_message_received_(false),
       transform_wrapper_(),
       state_(LandState::DONE),
-      requested_z_vel_(0.0),
-      descend_acceleration_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "descend_acceleration")),
+      requested_height_(0.0),
+      actual_descend_rate_(0.0),
       descend_rate_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "descend_rate")),
-      brace_impact_velocity_(ros_utils::ParamUtils::getParam<double>(
+      descend_acceleration_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "brace_impact_velocity")),
-      brace_impact_start_height_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "brace_impact_start_height")),
-      brace_impact_failure_height_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "brace_impact_failure_height")),
-      brace_impact_success_height_(ros_utils::ParamUtils::getParam<double>(
-              private_nh,
-              "brace_impact_success_height")),
+              "descend_acceleration")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -71,8 +60,23 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    requested_z_vel_ = 0;
-    state_ = LandState::ACCELERATE_TO_DESCENT_VELOCITY;
+    // Get the current transform (xyz) of the quad
+    geometry_msgs::TransformStamped transform;
+    bool success = transform_wrapper_.getTransformAtTime(transform,
+                                                         "map",
+                                                         "level_quad",
+                                                         time,
+                                                         update_timeout_);
+    if (!success) {
+        ROS_ERROR("Failed to get current transform in LandPlanner::prepareForTakeover");
+        return false;
+    }
+
+    requested_height_ = transform.transform.translation.z;
+
+    actual_descend_rate_ = 0.0;
+
+    state_ = LandState::DESCEND;
     // Mark the last update time as the current time since update may not have
     // Been called in a long time.
     last_update_time_ = time;
@@ -80,8 +84,8 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
 }
 
 // Main update
-bool LandPlanner::getTargetTwist(const ros::Time& time,
-                         geometry_msgs::TwistStamped& target_twist)
+bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
+                         iarc7_msgs::MotionPointStamped& motion_point)
 {
     if (time < last_update_time_) {
         ROS_ERROR("Tried to update LandPlanner with time before last update");
@@ -92,7 +96,7 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "level_quad",
                                                          time,
                                                          update_timeout_);
     if (!success) {
@@ -100,28 +104,18 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
         return false;
     }
 
-    if(state_ == LandState::ACCELERATE_TO_DESCENT_VELOCITY) {
-        requested_z_vel_ = std::max(requested_z_vel_ - ((time - last_update_time_).toSec() * descend_acceleration_), descend_rate_);
-        if(requested_z_vel_ <= descend_rate_) {
-            state_ = LandState::DESCEND;
-        }
-    }
-    else if(state_ == LandState::DESCEND)
+    if(state_ == LandState::DESCEND)
     {
-        requested_z_vel_ = descend_rate_;
-        // Continue to ascend when done return success and turn off
-        if(transform.transform.translation.z < brace_impact_start_height_)
-        {
-            state_ = LandState::BRACE_FOR_IMPACT;
-        }
-    }
-    else if(state_ == LandState::BRACE_FOR_IMPACT) {
-        requested_z_vel_ = brace_impact_velocity_;
-        if(transform.transform.translation.z > brace_impact_failure_height_) {
-            ROS_ERROR("Land sequence failed, quad started going up again");
-            return false;
-        }
-        else if(landing_detected_message_.data) {
+        actual_descend_rate_ = std::min(descend_rate_,
+                                        actual_descend_rate_
+                                        + (descend_acceleration_
+                                        * (time - last_update_time_).toSec()));
+
+        requested_height_ = std::max(0.0, requested_height_
+                                          + (actual_descend_rate_
+                                          * (time - last_update_time_).toSec()));
+
+        if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms
             iarc7_msgs::Arm srv;
             srv.request.data = false;
@@ -150,9 +144,9 @@ bool LandPlanner::getTargetTwist(const ros::Time& time,
     }
 
     // Fill in the uav_command's information
-    target_twist.header.stamp = time;
+    motion_point.header.stamp = time;
 
-    target_twist.twist.linear.z = requested_z_vel_;
+    motion_point.motion_point.pose.position.z = requested_height_;
 
     last_update_time_ = time;
     return true;
@@ -163,7 +157,7 @@ bool LandPlanner::waitUntilReady()
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "level_quad",
                                                          ros::Time(0),
                                                          startup_timeout_);
     if (!success)

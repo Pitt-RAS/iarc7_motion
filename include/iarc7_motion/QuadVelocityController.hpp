@@ -11,6 +11,16 @@
 #define QUAD_VELOCITY_CONTROLLER_H
 
 #include <ros/ros.h>
+
+//Bad Header
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#include <Eigen/Geometry>
+#pragma GCC diagnostic pop
+//End Bad Header
+
 #include "iarc7_motion/PidController.hpp"
 #include "iarc7_motion/ThrustModel.hpp"
 #include "ros_utils/LinearMsgInterpolator.hpp"
@@ -24,6 +34,7 @@
 #include "geometry_msgs/Vector3Stamped.h"
 #include "iarc7_msgs/Float64Stamped.h"
 #include "iarc7_msgs/OrientationThrottleStamped.h"
+#include "iarc7_msgs/MotionPointStamped.h"
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Float32.h"
 
@@ -51,7 +62,7 @@ public:
     QuadVelocityController& operator=(const QuadVelocityController& rhs) = delete;
 
     // Set a target velocity for the PID loops
-    void setTargetVelocity(geometry_msgs::Twist twist);
+    void setTargetVelocity(iarc7_msgs::MotionPointStamped motion_point);
 
     // Use a new thrust model
     void setThrustModel(const ThrustModel& thrust_model);
@@ -89,7 +100,7 @@ private:
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
     // The current setpoint
-    geometry_msgs::Twist setpoint_;
+    iarc7_msgs::MotionPointStamped setpoint_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
@@ -110,7 +121,7 @@ private:
             battery_interpolator_;
     ros_utils::LinearMsgInterpolator<
         nav_msgs::Odometry,
-        tf2::Vector3>
+        Eigen::VectorXd>
             odom_interpolator_;
 
     // Min allowed requested thrust in m/s^2

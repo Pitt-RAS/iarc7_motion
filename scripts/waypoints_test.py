@@ -8,9 +8,8 @@ import math
 from actionlib_msgs.msg import GoalStatus
 
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
-from iarc7_msgs.msg import TwistStampedArray
+from iarc7_msgs.msg import MotionPointStampedArray, MotionPointStamped
 from iarc7_msgs.srv import Arm
-from geometry_msgs.msg import TwistStamped
 from iarc7_safety.SafetyClient import SafetyClient
 
 def constrain(x, l, h):
@@ -22,7 +21,7 @@ if __name__ == '__main__':
     safety_client = SafetyClient('motion_command_coordinator')
     assert safety_client.form_bond()
 
-    velocity_pub = rospy.Publisher('movement_velocity_targets', TwistStampedArray, queue_size=0)
+    motion_point_pub = rospy.Publisher('motion_point_targets', MotionPointStampedArray, queue_size=0)
     tf_listener = tf.TransformListener()
 
     while not rospy.is_shutdown() and rospy.Time.now() == 0:
@@ -38,17 +37,22 @@ if __name__ == '__main__':
         except rospy.ServiceException as exc:
             print("Could not arm: " + str(exc))
 
-    # Target points in global (X, Y, Z) coordinates
+    # Target points in global (X, Y, Z, Yaw) coordinates
     waypoints = [
-            (0, 0, 3, 0 * math.pi),
-            (3, 0, 3, 1.75 * math.pi),
-            (-3, 1, 4, 0.25 * math.pi),
-            (-3, 1, 4, 1.5 * math.pi),
-            (0, 0, 5, 1 * math.pi),
-            (1, 2, 2, 1.25 * math.pi),
+            (0, 0, .3, 0 * math.pi),
+            (0, 0, .4, 0 * math.pi),
+            (0, 0, .5, 0 * math.pi),
+            (0, 0, .7, 1.75 * math.pi),
+            (0, 0, .9, 0.25 * math.pi),
+            (0, 0, .9, 1.5 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .5, 1 * math.pi),
+            (0, 0, .9, 1 * math.pi),
+            (0, 0, .5, 1 * math.pi),
             ]
     waypoints_iter = iter(waypoints)
-    target = next(waypoints_iter)
+    target = waypoints_iter.next()
 
     kP = 0.8
     gamma = 0.8
@@ -66,12 +70,12 @@ if __name__ == '__main__':
     goal = GroundInteractionGoal(interaction_type='takeoff')
     # Sends the goal to the action server.
     ground_interaction_client.send_goal(goal)
-
     # Waits for the server to finish performing the action.
     ground_interaction_client.wait_for_result()
     rospy.logwarn("Takeoff success: {}".format(ground_interaction_client.get_result()))
 
     rate = rospy.Rate(30)
+    time = rospy.Time.now().to_sec()
     while not rospy.is_shutdown():
         try:
             (trans, rot) = tf_listener.lookupTransform('/map',
@@ -90,53 +94,43 @@ if __name__ == '__main__':
         if safety_client.is_safety_active():
             target = (trans[0], trans[1], 0, 0)
 
-        velocity = TwistStamped()
-        velocity.header.frame_id = 'level_quad'
-        velocity.header.stamp = rospy.Time.now()
+        motion_point = MotionPointStamped()
+        motion_point.header.frame_id = 'level_quad'
+        motion_point.header.stamp = rospy.Time.now()
+
+        #Setting x,y velocities and z position
         if abs(target[0] - trans[0]) >= 0.02:
             error = target[0] - trans[0]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.x = constrain(target_v, -max_vel, max_vel)
+            motion_point.motion_point.twist.linear.x = constrain(target_v, -max_vel, max_vel)
+        
         if abs(target[1] - trans[1]) >= 0.02:
             error = target[1] - trans[1]
             target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.y = constrain(target_v, -max_vel, max_vel)
-        if abs(target[2] - trans[2]) >= 0.02:
-            error = target[2] - trans[2]
-            target_v = math.copysign(kP * abs(error)**gamma, error)
-            velocity.twist.linear.z = constrain(target_v, -max_vel, max_vel)
+            motion_point.motion_point.twist.linear.y = constrain(target_v, -max_vel, max_vel)
         
-        # Get the yaw (z axis) rotation from the quanternion
-        current_yaw = tf.transformations.euler_from_quaternion(rot, 'rzyx')[0]
-        
-        # Transform current yaw to be between 0 and 2pi because the points
-        # are encoded from 0 to 2pi
-        if current_yaw < 0:
-            current_yaw = (2.0 * math.pi) + current_yaw
+        motion_point.motion_point.pose.position.z = target[2]
 
-        # Calculate the difference
-        yaw_difference = target[3] - current_yaw
+        motion_point_msg = MotionPointStampedArray()
+        motion_point_msg.motion_points = [motion_point]
+        motion_point_pub.publish(motion_point_msg)
 
-        # Avoid taking the long way around
-        if(yaw_difference > math.pi):
-            yaw_difference = yaw_difference - 2.0 * math.pi
-
-        # Avoid taking the long way around
-        if(yaw_difference < -math.pi):
-            yaw_difference = yaw_difference + 2.0 * math.pi
-
-        # Finally set the desired twist velocity
-        if abs(yaw_difference) >= 0.02:
-            velocity.twist.angular.z = constrain(yaw_difference * kP_yaw,
-                                                 -max_yaw_vel,
-                                                 max_yaw_vel)
-
-        velocity_msg = TwistStampedArray()
-        velocity_msg.twists = [velocity]
-        velocity_pub.publish(velocity_msg)
-
-        if math.sqrt(sum((target[i] - trans[i])**2 for i in range(3))) < 0.1:
-            if abs(yaw_difference) < 0.15:
-                target = next(waypoints_iter, target)
+        #Sets next target after a set time has passed
+        if ((rospy.Time.now().to_sec() - time) > 1):
+            try:
+                target = waypoints_iter.next()
+            except StopIteration:
+                break
+            time = rospy.Time.now().to_sec()
+            rospy.logerr('Switching targets')
+            print(target)
 
         rate.sleep()
+
+    # Test land
+    goal = GroundInteractionGoal(interaction_type = "land")
+    # Sends the goal to the action server.
+    ground_interaction_client.send_goal(goal)
+    # Waits for the server to finish performing the action.
+    ground_interaction_client.wait_for_result()
+    rospy.logwarn("Land success: {}".format(ground_interaction_client.get_result()))
