@@ -270,7 +270,7 @@ class TaskCommandHandler:
         motion_point_stamped_array: MotionPointStampedArray
     """
     def _publish_motion_profile(self, motion_point_stamped_array, path):
-        self._last_twist = motion_point_stamped_array.motion_points[-1].twist
+        self._last_twist = motion_point_stamped_array.motion_points[-1].motion_point.twist
         self._local_plan_pub.publish(path)
         self._motion_point_pub.publish(motion_point_stamped_array)
 
