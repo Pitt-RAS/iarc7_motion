@@ -146,7 +146,7 @@ class LinearMotionProfileGenerator(object):
         vel_steps = np.floor(steady_velocity_time / self._PROFILE_TIMESTEP)
 
         # Initialize the velocities array with the starting velocity
-        velocities = [v_start]
+        velocities = []
 
         # Generate velocities corresponding to the acceleration period
         if accel_steps > 0:
