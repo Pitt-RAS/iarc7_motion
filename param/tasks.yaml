@@ -79,8 +79,8 @@ roomba_diameter: .33
 drone_landing_gear_width: .775
 
 # HEIGHT HOLDER
-# p-term for height holder helper for Z height
-p_term_height_hold_z: 2.0
+# maximum velocity allowed when activating the height hold planner
+max_height_hold_vel: 1.0
 # maximum z error for heigth holder
 max_z_error: 1.0
 # distance from setpoint that will allow deadzone mode to begin

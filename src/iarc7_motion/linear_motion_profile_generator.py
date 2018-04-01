@@ -75,6 +75,8 @@ def interpolate_motion_points(first, second, time):
 
 # Generates fully defined motion profiles
 class LinearMotionProfileGenerator(object):
+
+    linear_motion_point_generator = None
     def __init__(self, start_motion_point):
         self._last_motion_plan = None
         self._start_motion_point = start_motion_point
@@ -89,6 +91,11 @@ class LinearMotionProfileGenerator(object):
 
         self._last_stamp = rospy.Time.now()
 
+    def get_linear_motion_profile_generator():
+        if linear_motion_profile_generator is None:
+          linear_motion_profile_generator = LinearMotionProfileGenerator()
+        return linear_motion_profile_generator
+    
     # Reinitialize the start point to some desired value
     def reinitialize_start_point(self, start_motion_point):
         self._start_motion_point = start_motion_point
@@ -107,17 +114,21 @@ class LinearMotionProfileGenerator(object):
             return start_motion_point
 
         else:
-            # Make sure a starting point newer than the last sent time is sent
-            for i in range(1, len(self._last_motion_plan.motion_points)):
-                if self._last_motion_plan.motion_points[i].header.stamp > time:
-                    first_point = self._last_motion_plan.motion_points[i-1]
-                    second_point = self._last_motion_plan.motion_points[i]
-                    return interpolate_motion_points(first_point, second_point, time)
+            start_motion_point = self._interpolate_point_at_time(time)
+            return start_motion_point
 
-            # A point was not sent before the buffer ran out
-            # Use the oldest and reset the timestamp
-            self._last_motion_plan.motion_points[-1].header.stamp = rospy.Time.now()
-            return self._last_motion_plan.motion_points[-1]
+    def _interpolate_point_at_time(self, time):
+        # Make sure a starting point newer than the last sent time is sent
+        for i in range(1, len(self._last_motion_plan.motion_points)):
+            if self._last_motion_plan.motion_points[i].header.stamp > time:
+                first_point = self._last_motion_plan.motion_points[i-1]
+                second_point = self._last_motion_plan.motion_points[i]
+                return interpolate_motion_points(first_point, second_point, time)
+        # A point was not sent before the buffer ran out
+        # Use the oldest and reset the timestamp
+        self._last_motion_plan.motion_points[-1].header.stamp = rospy.Time.now()
+        return self._last_motion_plan.motion_points[-1]
+
 
     # Get a motion plan that attempts to achieve a given velocity target
     def get_velocity_plan(self, velocity_command):
