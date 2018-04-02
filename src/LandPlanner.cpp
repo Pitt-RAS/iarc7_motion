@@ -106,7 +106,7 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
 
     if(state_ == LandState::DESCEND)
     {
-        actual_descend_rate_ = std::min(descend_rate_,
+        actual_descend_rate_ = std::max(descend_rate_,
                                         actual_descend_rate_
                                         + (descend_acceleration_
                                         * (time - last_update_time_).toSec()));
@@ -147,6 +147,10 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
     motion_point.header.stamp = time;
 
     motion_point.motion_point.pose.position.z = requested_height_;
+
+    if(actual_descend_rate_ > descend_rate_) {
+        motion_point.motion_point.accel.linear.z = descend_acceleration_;
+    }
 
     last_update_time_ = time;
     return true;

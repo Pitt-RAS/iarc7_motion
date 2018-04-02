@@ -16,6 +16,6 @@ task_timeout_deceleration_time: 1.0
 # Resolution to generate linear motion profiles with
 linear_motion_profile_timestep: 0.020
 # Acceleration to use for linear motion profile generation
-linear_motion_profile_acceleration: 1.0
+linear_motion_profile_acceleration: 3.0
 # Length of time to generate a linear motion profile for
 linear_motion_profile_duration: 0.2

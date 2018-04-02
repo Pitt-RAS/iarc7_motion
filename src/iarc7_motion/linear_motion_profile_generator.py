@@ -150,9 +150,7 @@ class LinearMotionProfileGenerator(object):
 
         # Generate velocities corresponding to the acceleration period
         if accel_steps > 0:
-            accel_times = (np.linspace(0.0, accel_steps*self._PROFILE_TIMESTEP, accel_steps)
-                     * accel_steps
-                     * self._PROFILE_TIMESTEP)
+            accel_times = np.linspace(0.0, accel_steps*self._PROFILE_TIMESTEP, accel_steps+1)
             velocities.extend([a_target * accel_time + v_start for accel_time in accel_times])
 
         # Add the velocities for the steady velocity period
@@ -164,6 +162,15 @@ class LinearMotionProfileGenerator(object):
         # This results in an array one element shorter than
         # the velocities array
         accelerations = np.diff(velocities, axis=0) / self._PROFILE_TIMESTEP
+
+        for i in range(0, accelerations.shape[0]):
+          if np.linalg.norm(accelerations[i]) > 1.01 * self._TARGET_ACCEL:
+            rospy.logerr('Linear Motion Profile generator produced an acceleration greater than the maximum allowed')
+            rospy.logerr('i {} accel steps {} vel steps {}'.format(i, accel_steps, vel_steps))
+            rospy.logerr('accel step times {}'.format(accel_times))
+            rospy.logerr('v_d {} v_s {} a_t {}'.format(v_desired, v_start, a_target))
+            rospy.logerr('acceleration time {} v time {}'.format(acceleration_time, steady_velocity_time))
+            rospy.logerr('acceleration {} velocity {} {}'.format(accelerations[i], velocities[i], velocities[i+1]))
 
         # Integrate the velocities to get the position deltas
         # This results in an array the same length as the velocities array
