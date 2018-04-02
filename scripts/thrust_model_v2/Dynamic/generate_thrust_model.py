@@ -363,7 +363,6 @@ def plot_all_responses(ramps,
         start_thrust = ramps[i].get_start_thrust()
         end_thrust = ramps[i].get_end_thrust()
         ax1 = plt.subplot(n, m, i + 1)
-        ax2 = ax1.twinx()
 
         if filtered_getter is not None:
             (filtered_thrust_times, filtered_thrusts) = filtered_getter(
@@ -391,6 +390,7 @@ def plot_all_responses(ramps,
             ax3.axhline(y=ramps[i].start_voltage, linewidth=1, color='c')
             ax3.axhline(y=ramps[i].end_voltage, linewidth=1, color='c')
         else:
+            ax2 = ax1.twinx()
             ax2.plot(throttle_times, throttles, color='r')
 
 
@@ -668,7 +668,7 @@ if __name__ == "__main__":
     # plot_groups(ramps, group_plotter=plot_all_voltages)
 
     # plot_groups(ramps, group_plotter=plot_all_fft)
-    # plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
+    plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
 
     response_lag = calculate_response_lags(ramps)
     voltage_to_thrust_poly, thrust_to_voltage_poly = create_voltage_to_thrust(
