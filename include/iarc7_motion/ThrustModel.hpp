@@ -163,6 +163,7 @@ struct ThrustModel
                 top_thrusts.possible_thrusts[i].thrust); // End thrust top
 
             if(current_final_thrust >= desired_thrust) {
+
                 // Interpolate beteen voltages
                 // because the voltages for each index are the same
                 // in the top and bottom pair the bottom pair array is used
@@ -170,8 +171,20 @@ struct ThrustModel
                 voltage = linearInterpolate(desired_thrust,
                                              last_final_thrust,
                                              current_final_thrust,
-                                             bottom_thrusts.possible_thrusts[i].voltage,
-                                             bottom_thrusts.possible_thrusts[i+1].voltage);
+                                             bottom_thrusts.possible_thrusts[i-1].voltage,
+                                             bottom_thrusts.possible_thrusts[i].voltage);
+
+                ROS_DEBUG_STREAM("start_thrust " << start_thrust
+                                 << "\nbottom thrust start " << bottom_thrusts.start_thrust
+                                 << "\ntop_thrusts start " << top_thrusts.start_thrust
+                                 << "\nbottom thrusts possible " << bottom_thrusts.possible_thrusts[i].thrust
+                                 << "\ntop thrusts possible " << top_thrusts.possible_thrusts[i].thrust
+                                 << "\ndesired thrust " << desired_thrust
+                                 << "\nlast final thrust " << last_final_thrust
+                                 << "\ncurrent final thrust " << current_final_thrust
+                                 << "\nvoltage low " << bottom_thrusts.possible_thrusts[i].voltage
+                                 << "\nvoltage high " << bottom_thrusts.possible_thrusts[i+1].voltage);
+
                 break;
             }
             last_final_thrust = current_final_thrust;

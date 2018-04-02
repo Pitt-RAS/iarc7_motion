@@ -1,3 +1,5 @@
+# Generated on 2018-04-01 16:47:39.565546
+
 response_lag: 0.02997165074407926
 small_thrust_epsilon: 0.008
 thrust_to_voltage: [16.349891243165725, -29.722915017680208, 25.612765123529435, 0.05935972046598993]
@@ -428,3 +430,4 @@ voltage_to_jerk:
   timestep: 0.02
   voltage_max: 11.5
   voltage_min: 0.0
+
