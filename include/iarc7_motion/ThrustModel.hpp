@@ -183,8 +183,9 @@ struct ThrustModel
                                  << "\ndesired thrust " << desired_thrust
                                  << "\nlast final thrust " << last_final_thrust
                                  << "\ncurrent final thrust " << current_final_thrust
-                                 << "\nvoltage low " << bottom_thrusts.possible_thrusts[i].voltage
-                                 << "\nvoltage high " << bottom_thrusts.possible_thrusts[i+1].voltage);
+                                 << "\nvoltage low " << bottom_thrusts.possible_thrusts[i-1].voltage
+                                 << "\nvoltage high " << bottom_thrusts.possible_thrusts[i].voltage
+                                 << "\nvoltage final " << voltage);
 
                 break;
             }

@@ -292,6 +292,7 @@ bool QuadVelocityController::update(const ros::Time& time,
             4,
             col_height)
             / voltage;
+
     uav_command.data.pitch = pitch_output;
     uav_command.data.roll = roll_output;
 
