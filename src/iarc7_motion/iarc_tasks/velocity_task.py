@@ -88,6 +88,9 @@ class VelocityTask(AbstractTask):
                                     'base_footprint',
                                     rospy.Time(0),
                                     rospy.Duration(self._TRANSFORM_TIMEOUT))
+
+                    predicted_motion_point = self.topic_buffer.get_linear_motion_profile_generator().expected_point_at_time(rospy.Time.now() + rospy.Duration(.15))
+
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,
                         tf2_ros.ExtrapolationException) as ex:
@@ -96,6 +99,7 @@ class VelocityTask(AbstractTask):
                     return (TaskAborted(msg='Exception when looking up transform during velocity task'),)
 
                 current_height = transStamped.transform.translation.z
+                predicted_height = predicted_motion_point.motion_point.pose.position.z
 
                 if not self._current_height_set:
                     self._current_height_set = True
@@ -107,7 +111,7 @@ class VelocityTask(AbstractTask):
 
                 x_vel_target = self._HORIZ_X_VEL
                 y_vel_target = self._HORIZ_Y_VEL
-                z_vel_target = self._z_holder.get_height_hold_response(current_height)
+                z_vel_target = self._z_holder.get_height_hold_response(current_height, predicted_height)
 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)

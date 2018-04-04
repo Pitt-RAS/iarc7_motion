@@ -64,7 +64,7 @@ class TaskCommandHandler:
             task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
 
-        self._motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
+        self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
 
     # takes in new task from HLM Controller
     # transition is of type TransitionData 

@@ -76,7 +76,6 @@ def interpolate_motion_points(first, second, time):
 # Generates fully defined motion profiles
 class LinearMotionProfileGenerator(object):
 
-    linear_motion_point_generator = None
     def __init__(self, start_motion_point):
         self._last_motion_plan = None
         self._start_motion_point = start_motion_point
@@ -91,10 +90,13 @@ class LinearMotionProfileGenerator(object):
 
         self._last_stamp = rospy.Time.now()
 
+    linear_motion_profile_generator = None
+
+    @staticmethod
     def get_linear_motion_profile_generator():
-        if linear_motion_profile_generator is None:
-          linear_motion_profile_generator = LinearMotionProfileGenerator()
-        return linear_motion_profile_generator
+        if LinearMotionProfileGenerator.linear_motion_profile_generator is None:
+          LinearMotionProfileGenerator.linear_motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
+        return LinearMotionProfileGenerator.linear_motion_profile_generator
     
     # Reinitialize the start point to some desired value
     def reinitialize_start_point(self, start_motion_point):
@@ -114,10 +116,10 @@ class LinearMotionProfileGenerator(object):
             return start_motion_point
 
         else:
-            start_motion_point = self._interpolate_point_at_time(time)
+            start_motion_point = self.expected_point_at_time(time)
             return start_motion_point
 
-    def _interpolate_point_at_time(self, time):
+    def expected_point_at_time(self, time):
         # Make sure a starting point newer than the last sent time is sent
         for i in range(1, len(self._last_motion_plan.motion_points)):
             if self._last_motion_plan.motion_points[i].header.stamp > time:

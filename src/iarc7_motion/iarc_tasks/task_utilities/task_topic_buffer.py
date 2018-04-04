@@ -26,6 +26,7 @@ class TaskTopicBuffer(object):
 
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+        self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
 
     def _receive_roomba_status(self, data):
         self._roomba_array = data
@@ -56,3 +57,8 @@ class TaskTopicBuffer(object):
 
     def get_tf_buffer(self):
         return self._tf_buffer
+
+    def get_linear_motion_profile_generator(self):
+        return self._motion_profile_generator
+
+

@@ -37,8 +37,10 @@ class HeightHolder(object):
         self._height_plan_activated = True
 
     # determines whether to set a velocity to maintain height
-    def get_height_hold_response(self, measured_height, predicted_height):
+    def get_height_hold_response(self, time, measured_height, predicted_height):
         with self._lock:
+            
+            #Calculates the measured and predicted error
             if self._DESIRED_HEIGHT is None:
                 raise ValueError('No height to hold')
             self._measured_delta_z = self._DESIRED_HEIGHT - measured_height
