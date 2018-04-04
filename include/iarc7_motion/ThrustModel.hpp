@@ -122,6 +122,7 @@ struct ThrustModel
 
         if(std::abs(desired_thrust - start_thrust) < small_thrust_epsilon){
             start_thrust = desired_thrust;
+            ROS_ERROR_STREAM("static model");
             return get_voltage_for_thrust(desired_thrust);
         }
 
@@ -173,8 +174,8 @@ struct ThrustModel
                                              current_final_thrust,
                                              bottom_thrusts.possible_thrusts[i-1].voltage,
                                              bottom_thrusts.possible_thrusts[i].voltage);
-
-                ROS_DEBUG_STREAM("start_thrust " << start_thrust
+                ROS_ERROR_STREAM("Dynamic model");
+                ROS_ERROR_STREAM("start_thrust " << start_thrust
                                  << "\nbottom thrust start " << bottom_thrusts.start_thrust
                                  << "\ntop_thrusts start " << top_thrusts.start_thrust
                                  << "\nbottom thrusts possible " << bottom_thrusts.possible_thrusts[i].thrust
