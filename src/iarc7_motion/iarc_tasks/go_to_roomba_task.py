@@ -8,8 +8,6 @@ from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 
-from task_utilities.acceleration_limiter import AccelerationLimiter
-
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
                                     TaskDone,
@@ -36,7 +34,6 @@ class GoToRoombaTask(AbstractTask):
 
         self._roomba_odometry = None
         self._roomba_point = None
-        self._limiter = AccelerationLimiter()
 
         self._canceled = False;
         self._last_update_time = None
@@ -98,8 +95,7 @@ class GoToRoombaTask(AbstractTask):
                     return (TaskAborted(msg = 'Exception when looking up transform during go_to_roomba'),)
 
                 if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                    """ quarantine"""
-                    # check if the roomba is in range
+                    
                     if not self._check_roomba_in_sight():
                         return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
                     elif self._on_ground():

@@ -53,6 +53,10 @@ class TranslateStopPlanner():
 
     def reinitialize_translation_stop_planner(self, x=None, y=None, z=None):
         with self._lock:
+            if (x is None or y is None or z is None):
+                rospy.logerr('Exception: Undefined behavoir when retinitializing translate stop planner')
+                raise
+
             self._hold_x = x
             self._hold_y = y
             self._hold_z = z
