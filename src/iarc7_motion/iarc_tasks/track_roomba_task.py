@@ -40,8 +40,8 @@ class TrackRoombaTask(AbstractTask):
         self._x_overshoot = task_request.x_overshoot
         self._y_overshoot = task_request.y_overshoot
 
-        if self._roomba_id is None:
-            raise ValueError('A null roomba id was provided')
+        if self._roomba_id == '/base_link':
+            raise ValueError('An invalid roomba id was provided to TrackRoombaTask')
 
         # data about roombas
         self._roomba_odometry = None
