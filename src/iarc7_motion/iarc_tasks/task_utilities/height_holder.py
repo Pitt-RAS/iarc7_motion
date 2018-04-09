@@ -9,6 +9,7 @@ response that maintains a certain height above the ground
 import rospy
 import threading
 from iarc7_msgs.msg import Float64ArrayStamped
+import math
 
 class HeightHolder(object):
     def __init__(self, desired_height = None):
@@ -37,7 +38,7 @@ class HeightHolder(object):
         self._height_plan_activated = True
 
     # determines whether to set a velocity to maintain height
-    def get_height_hold_response(self, time, measured_height, predicted_height):
+    def get_height_hold_response(self, measured_height, predicted_height):
         with self._lock:
             
             #Calculates the measured and predicted error
@@ -53,11 +54,11 @@ class HeightHolder(object):
                 self._debug_pub.publish(msg)
 
             #Determines whether height plan should be activated, based on location in relation to the deadzone
-            if (_height_plan_activated == False):
+            if (self._height_plan_activated == False):
                 if(abs(self._measured_delta_z) > self._DEADZONE
                                               + self._DEADZONE_HYSTERESIS):
                     self._height_plan_activated = True
-            elif (_height_plan_activated == True):
+            elif (self._height_plan_activated == True):
                 if abs(self._predicted_delta_z) < self._DEADZONE:
                     self._height_plan_activated = False
 
@@ -65,7 +66,7 @@ class HeightHolder(object):
             if (self._height_plan_activated == False):
                 return 0.0
             else:
-                return self._MAX_VELOCITY
+                return math.copysign(self._MAX_VELOCITY, self._predicted_delta_z)
 
     def set_height(self, desired_height):
          if desired_height < self._MIN_MANEUVER_HEIGHT:

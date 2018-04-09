@@ -95,7 +95,7 @@ class LinearMotionProfileGenerator(object):
     @staticmethod
     def get_linear_motion_profile_generator():
         if LinearMotionProfileGenerator.linear_motion_profile_generator is None:
-          LinearMotionProfileGenerator.linear_motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
+            LinearMotionProfileGenerator.linear_motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
         return LinearMotionProfileGenerator.linear_motion_profile_generator
     
     # Reinitialize the start point to some desired value
@@ -121,6 +121,7 @@ class LinearMotionProfileGenerator(object):
 
     def expected_point_at_time(self, time):
         # Make sure a starting point newer than the last sent time is sent
+        print(self)
         for i in range(1, len(self._last_motion_plan.motion_points)):
             if self._last_motion_plan.motion_points[i].header.stamp > time:
                 first_point = self._last_motion_plan.motion_points[i-1]
@@ -225,5 +226,8 @@ class LinearMotionProfileGenerator(object):
             pose.pose = motion_point.motion_point.pose
             pose_only_plan.poses.append(pose)
 
+
         self._last_motion_plan = plan
+        print(self)
+        rospy.logerr(len(self._last_motion_plan.motion_points))
         return plan, pose_only_plan

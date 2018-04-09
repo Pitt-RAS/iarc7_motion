@@ -20,7 +20,7 @@ from iarc7_safety.iarc_safety_exception import IARCFatalSafetyException
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
-from linear_motion_profile_generator import LinearMotionProfileGenerator
+from iarc7_motion.linear_motion_profile_generator import LinearMotionProfileGenerator
 
 class TaskCommandHandler:
 

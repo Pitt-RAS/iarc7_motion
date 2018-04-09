@@ -2,6 +2,7 @@ from nav_msgs.msg import Odometry
 
 from iarc7_msgs.msg import BoolStamped
 from iarc7_msgs.msg import OdometryArray
+from iarc7_motion.linear_motion_profile_generator import LinearMotionProfileGenerator
 
 import rospy
 import tf2_ros
