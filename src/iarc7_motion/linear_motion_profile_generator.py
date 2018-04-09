@@ -100,7 +100,11 @@ class LinearMotionProfileGenerator(object):
         return LinearMotionProfileGenerator.linear_motion_profile_generator
 
     # Get a starting motion point for a given time
-    def _get_start_point(self, time, override_start_position):
+    def _get_start_point(self,
+                         time,
+                         override_start_position,
+                         override_start_velocity):
+
         start_motion_point = self.expected_point_at_time(time)
 
         if override_start_position.x is not None:
@@ -109,6 +113,13 @@ class LinearMotionProfileGenerator(object):
             start_motion_point.motion_point.pose.position.y = override_start_position.y
         if override_start_position.z is not None:
             start_motion_point.motion_point.pose.position.z = override_start_position.z
+
+        if override_start_position.x is not None:
+            start_motion_point.motion_point.twist.linear.x = override_start_velocity.x
+        if override_start_position.y is not None:
+            start_motion_point.motion_point.twist.linear.y = override_start_velocity.y
+        if override_start_position.z is not None:
+            start_motion_point.motion_point.twist.linear.z = override_start_velocity.z
 
         return start_motion_point
 
@@ -132,7 +143,8 @@ class LinearMotionProfileGenerator(object):
         # Get the stating motion point for the time that the velocity is desired
         start_point = self._get_start_point(
             velocity_command.target_twist.header.stamp,
-            velocity_command.start_position)
+            velocity_command.start_position,
+            velocity_command.start_velocity)
 
         self._last_stamp = velocity_command.target_twist.header.stamp
 

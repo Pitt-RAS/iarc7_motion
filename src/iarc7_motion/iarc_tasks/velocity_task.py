@@ -85,7 +85,7 @@ class VelocityTask(AbstractTask):
             if self._state == VelocityTaskState.moving:
 
                 predicted_motion_point = self._linear_motion_profile_generator.expected_point_at_time(
-                                           rospy.Time.now() + rospy.Duration(.15))
+                                           rospy.Time.now())
 
                 odometry = self.topic_buffer.get_odometry_message()
 
@@ -120,7 +120,7 @@ class VelocityTask(AbstractTask):
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
-                velocity.header.stamp = rospy.Time.now() + rospy.Duration(.15)
+                velocity.header.stamp = rospy.Time.now()
                 velocity.twist.linear.x = desired_vel[0]
                 velocity.twist.linear.y = desired_vel[1]
                 velocity.twist.linear.z = desired_vel[2]
@@ -129,7 +129,8 @@ class VelocityTask(AbstractTask):
 
                 if reset_z:
                     velocity_command = VelocityCommand(velocity,
-                                         start_position_z=odometry.pose.pose.position.z)
+                                         start_position_z=odometry.pose.pose.position.z,
+                                         start_velocity_z=odometry.twist.twist.linear.z)
                 else:
                     velocity_command = VelocityCommand(velocity)
 
