@@ -53,20 +53,22 @@ class HeightHolder(object):
                 msg.data = [self._DESIRED_HEIGHT, measured_height, self._measured_delta_z]
                 self._debug_pub.publish(msg)
 
-            #Determines whether height plan should be activated, based on location in relation to the deadzone
+            reset_z = False
+            # Determines whether height plan should be activated, based on location in relation to the deadzone
             if (self._height_plan_activated == False):
                 if(abs(self._measured_delta_z) > self._DEADZONE
                                               + self._DEADZONE_HYSTERESIS):
                     self._height_plan_activated = True
+                    reset_z = True
             elif (self._height_plan_activated == True):
                 if abs(self._predicted_delta_z) < self._DEADZONE:
                     self._height_plan_activated = False
 
-            #Response depending on the current state
+            # Response depending on the current state
             if (self._height_plan_activated == False):
-                return 0.0
+                return (0.0, False)
             else:
-                return math.copysign(self._MAX_VELOCITY, self._predicted_delta_z)
+                return (math.copysign(self._MAX_VELOCITY, self._predicted_delta_z), reset_z)
 
     def set_height(self, desired_height):
          if desired_height < self._MIN_MANEUVER_HEIGHT:

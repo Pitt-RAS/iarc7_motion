@@ -2,11 +2,20 @@
 
 import rospy
 
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, Vector3
 
 class VelocityCommand(object):
-    def __init__(self,  target_twist=None, start_position_x=None, start_position_y=None, start_position_z=None):
-        self.start_position_array = [start_position_x, start_position_y, start_position_z]
+    def __init__(self,
+                 target_twist=None,
+                 start_position_x=None,
+                 start_position_y=None,
+                 start_position_z=None):
+
+        self.start_position = Vector3()
+        self.start_position.x = start_position_x
+        self.start_position.y = start_position_y
+        self.start_position.z = start_position_z
+
         if target_twist is None:
             self.target_twist = TwistStamped()
             self.target_twist.header.stamp = rospy.Time.now()

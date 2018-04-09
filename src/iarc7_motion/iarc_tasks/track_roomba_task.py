@@ -173,7 +173,7 @@ class TrackRoombaTask(AbstractTask):
                 else: 
                     y_vel_target = roomba_y_velocity
                 
-                z_vel_target = self._z_holder.get_height_hold_response(
+                z_vel_target, z_reset = self._z_holder.get_height_hold_response(
                     self.topic_buffer.get_odometry_message().pose.pose.position.z)
 
                 # caps velocity
@@ -208,7 +208,13 @@ class TrackRoombaTask(AbstractTask):
 
                 self._current_velocity = desired_vel
                 
-                return (TaskRunning(), VelocityCommand(velocity)) 
+                if z_reset:
+                    velocity_command = VelocityCommand(velocity,
+                                        start_position_z=odometry.pose.pose.position.z)
+                else:
+                    velocity_command = VelocityCommand(velocity)
+
+                return (TaskRunning(), velocity_command) 
             
             return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
