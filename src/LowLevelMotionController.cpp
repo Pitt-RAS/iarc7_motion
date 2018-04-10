@@ -442,10 +442,10 @@ int main(int argc, char **argv)
                 ROS_ASSERT_MSG(false, "Low level motion does not know what state to be in");
             }
 
-            ROS_ERROR_STREAM("Pre limiter: " << uav_command);
+            //ROS_ERROR_STREAM("Pre limiter: " << uav_command);
             // Limit the uav command with the twist limiter before sending the uav command
             limitUavCommand(limiter, uav_command);
-            ROS_ERROR_STREAM("Post limiter: " << uav_command);
+            //ROS_ERROR_STREAM("Post limiter: " << uav_command);
 
             // Publish the current target velocity
             motion_point_target_.publish(target_motion_point);

@@ -123,7 +123,9 @@ struct ThrustModel
         if(std::abs(desired_thrust - start_thrust) < small_thrust_epsilon){
             start_thrust = desired_thrust;
             ROS_ERROR_STREAM("static model");
-            return get_voltage_for_thrust(desired_thrust);
+            double voltage = get_voltage_for_thrust(desired_thrust);
+            ROS_ERROR_STREAM("final voltage: " << voltage);
+            return voltage;
         }
 
         double start_thrust_index = start_thrust / start_thrust_increment;
@@ -143,6 +145,7 @@ struct ThrustModel
 
         if(zero_voltage_thrust >= desired_thrust) {
             start_thrust = desired_thrust;
+            ROS_ERROR("ZERO VOLTAGE THRUST");
             return 0.0f;
         }
 
