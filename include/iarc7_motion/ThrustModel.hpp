@@ -62,28 +62,28 @@ struct ThrustModel
 
     double start_thrust_increment;
 
-    ThrustModel(ros::NodeHandle& nh) {
+    ThrustModel(ros::NodeHandle& nh, std::string model_name) {
         // Retrieve thrust model parameters
         ROS_ASSERT(nh.getParam("model_mass", model_mass));
 
-        ROS_ASSERT(nh.getParam("thrust_model/response_lag",
+        ROS_ASSERT(nh.getParam(model_name + "/response_lag",
                                        response_lag));
-        ROS_ASSERT(nh.getParam("thrust_model/small_thrust_epsilon",
+        ROS_ASSERT(nh.getParam(model_name + "/small_thrust_epsilon",
                                        small_thrust_epsilon));
-        ROS_ASSERT(nh.getParam("thrust_model/thrust_to_voltage",
+        ROS_ASSERT(nh.getParam(model_name + "/thrust_to_voltage",
                                        thrust_to_voltage));
 
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/thrust_min",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/thrust_min",
                                        thrust_min));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/thrust_max",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/thrust_max",
                                        thrust_max));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/voltage_min",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/voltage_min",
                                        voltage_min));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/voltage_max",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/voltage_max",
                                        voltage_max));
 
         XmlRpc::XmlRpcValue param_voltage_to_jerk_mapping;
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/mapping",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/mapping",
                                param_voltage_to_jerk_mapping));
 
         for(int i = 0; i < param_voltage_to_jerk_mapping.size(); i++)

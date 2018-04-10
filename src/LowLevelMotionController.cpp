@@ -89,7 +89,8 @@ int main(int argc, char **argv)
     double throttle_pid[pid_param_array_size];
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
-    ThrustModel thrust_model(private_nh);
+    ThrustModel thrust_model(private_nh, "thrust_model");
+    ThrustModel thrust_model_side(private_nh, "thrust_model_side");
     double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
@@ -166,6 +167,7 @@ int main(int argc, char **argv)
                                           pitch_pid,
                                           roll_pid,
                                           thrust_model,
+                                          thrust_model_side,
                                           ros::Duration(battery_timeout),
                                           nh,
                                           private_nh);

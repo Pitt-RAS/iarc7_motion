@@ -15,6 +15,8 @@ max_thrust: 100.0
 
 battery_timeout: 0.5
 
+xy_mixer: "6dof"
+
 pitch_p: -0.3
 pitch_i: -0.5
 pitch_d: -0.0
@@ -28,6 +30,9 @@ roll_d: -0.0
 roll_accumulator_max: 2.0
 roll_accumulator_min: -2.0
 roll_accumulator_enable_threshold: 10.0
+
+min_side_thrust: 0.0
+max_side_thrust: 0.8
 
 throttle_max      : 1.0
 throttle_min      : 0.0
