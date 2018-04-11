@@ -119,12 +119,16 @@ struct ThrustModel
     double voltageFromThrust(double acceleration, int num_props, double /*height*/) {
         double desired_thrust =  model_mass * (acceleration / 9.81) / static_cast<double>(num_props);
 
+        if(std::abs(desired_thrust) < small_thrust_epsilon) {
+            start_thrust = desired_thrust;
+            return 0.0;
+        }
 
         if(std::abs(desired_thrust - start_thrust) < small_thrust_epsilon){
             start_thrust = desired_thrust;
-            ROS_ERROR_STREAM("static model");
+            //ROS_ERROR_STREAM("static model");
             double voltage = get_voltage_for_thrust(desired_thrust);
-            ROS_ERROR_STREAM("final voltage: " << voltage);
+            //ROS_ERROR_STREAM("final voltage: " << voltage);
             return voltage;
         }
 
@@ -145,7 +149,7 @@ struct ThrustModel
 
         if(zero_voltage_thrust >= desired_thrust) {
             start_thrust = desired_thrust;
-            ROS_ERROR("ZERO VOLTAGE THRUST");
+            //ROS_ERROR("ZERO VOLTAGE THRUST");
             return 0.0f;
         }
 
@@ -177,7 +181,7 @@ struct ThrustModel
                                              current_final_thrust,
                                              bottom_thrusts.possible_thrusts[i-1].voltage,
                                              bottom_thrusts.possible_thrusts[i].voltage);
-                ROS_ERROR_STREAM("Dynamic model");
+                /*ROS_ERROR_STREAM("Dynamic model");
                 ROS_ERROR_STREAM("start_thrust " << start_thrust
                                  << "\nbottom thrust start " << bottom_thrusts.start_thrust
                                  << "\ntop_thrusts start " << top_thrusts.start_thrust
@@ -188,7 +192,7 @@ struct ThrustModel
                                  << "\ncurrent final thrust " << current_final_thrust
                                  << "\nvoltage low " << bottom_thrusts.possible_thrusts[i-1].voltage
                                  << "\nvoltage high " << bottom_thrusts.possible_thrusts[i].voltage
-                                 << "\nvoltage final " << voltage);
+                                 << "\nvoltage final " << voltage);*/
 
                 break;
             }

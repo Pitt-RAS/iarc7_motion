@@ -302,8 +302,8 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Simple feedforward using a fixed hover_accel to avoid excessive
     // oscillations from the PID's I term compensating for there needing to be
     // an average throttle value at 0 velocity in the z axis.
-    ROS_ERROR("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
-    ROS_ERROR("Hover: %f, Tilt: %f, Vertical %f, Feedforward %f", hover_accel, tilt_accel, vertical_accel_output, setpoint_.motion_point.accel.linear.z);
+    ROS_DEBUG("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
+    ROS_DEBUG("Hover: %f, Tilt: %f, Vertical %f, Feedforward %f", hover_accel, tilt_accel, vertical_accel_output, setpoint_.motion_point.accel.linear.z);
     double thrust_request = hover_accel + tilt_accel + vertical_accel_output + setpoint_.motion_point.accel.linear.z;
     uav_command.throttle = thrust_model_.voltageFromThrust(
             std::min(std::max(thrust_request, min_thrust_), max_thrust_),
@@ -316,26 +316,33 @@ bool QuadVelocityController::update(const ros::Time& time,
         uav_command.data.roll = roll_output;
     }
     else if(xy_mixer_ == "6dof") {
+        double x_accel = pitch_output + setpoint_.motion_point.accel.linear.x;
+        double y_accel = roll_output + setpoint_.motion_point.accel.linear.y;
+
+        //ROS_ERROR_STREAM(x_accel << " " << y_accel);
+        //ROS_ERROR_STREAM(min_side_thrust_ << " " << max_side_thrust_);
+
         uav_command.planar.front_throttle = thrust_model_front_.voltageFromThrust(
-            std::min(std::max(pitch_output, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(-x_accel, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.back_throttle = thrust_model_back_.voltageFromThrust(
-          std::min(std::max(-pitch_output, min_side_thrust_), max_side_thrust_),
+          std::min(std::max(x_accel, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.left_throttle = thrust_model_left_.voltageFromThrust(
-            std::min(std::max(roll_output, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(-y_accel, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.right_throttle = thrust_model_right_.voltageFromThrust(
-            std::min(std::max(-roll_output, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(y_accel, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
+        //ROS_ERROR_STREAM(uav_command);
     }
     else {
       ROS_ERROR("Invalid XY Mixer type");
