@@ -277,10 +277,10 @@ bool QuadVelocityController::update(const ros::Time& time,
         }
 
         // Update roll PID loop
-        success = roll_pid_.update(-local_y_velocity,
+        success = roll_pid_.update(local_y_velocity,
                                    time,
                                    roll_output,
-                                   -local_y_accel);
+                                   local_y_accel);
         if (!success) {
             ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
             return false;
@@ -295,7 +295,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     if(xy_mixer_ == "4dof") {
         //based on roll and pitch angles we calculate additional throttle to match the level hover_accel
-        tilt_accel = hover_accel*(1-cos(roll_output)*cos(pitch_output));
+        tilt_accel = hover_accel*(1-cos(-roll_output)*cos(pitch_output));
     }
 
 
@@ -313,7 +313,7 @@ bool QuadVelocityController::update(const ros::Time& time,
 
     if(xy_mixer_ == "4dof") {
         uav_command.data.pitch = pitch_output;
-        uav_command.data.roll = roll_output;
+        uav_command.data.roll = -roll_output;
     }
     else if(xy_mixer_ == "6dof") {
         double x_accel = pitch_output + setpoint_.motion_point.accel.linear.x;
@@ -444,7 +444,7 @@ void QuadVelocityController::updatePidSetpoints(double current_yaw)
 
     // Note: Roll is inverted because a positive y velocity means a negative
     // roll by the right hand rule
-    roll_pid_.setSetpoint(-local_y_velocity);
+    roll_pid_.setSetpoint(local_y_velocity);
 }
 
 double QuadVelocityController::yawFromQuaternion(
