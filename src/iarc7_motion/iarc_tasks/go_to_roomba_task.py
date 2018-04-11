@@ -29,7 +29,7 @@ class GoToRoombaTask(AbstractTask):
 
         self._roomba_id = task_request.frame_id + '/base_link'
 
-        if self._roomba_id is None:
+        if self._roomba_id == '/base_link':
             raise ValueError('A null roomba id was provided')
 
         self._roomba_odometry = None
@@ -42,21 +42,19 @@ class GoToRoombaTask(AbstractTask):
 
         self._lock = threading.RLock()
 
-        self._x_position = task_request.x_position
-        self._y_position = task_request.y_position
+        self._x_position = None
+        self._y_position = None
 
 
         try:
-            self._TRANSLATION_XYZ_TOLERANCE = rospy.get_param('~translation_xyz_tolerance')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
-            self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
             self._z_position = rospy.get_param('~track_roomba_height')
         except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for xyztranslation task')
+            rospy.logerr('Could not lookup a parameter for go_to_roomba task')
             raise
 
         # Check that we aren't being requested to go below the minimum maneuver height
@@ -65,7 +63,6 @@ class GoToRoombaTask(AbstractTask):
         if self._z_position < self._MIN_MANEUVER_HEIGHT :
             raise ValueError('Requested z height was below the minimum maneuver height')
 
-        # fc status?
         self._path_holder = TranslateStopPlanner(self._x_position,
                                                     self._y_position,
                                                     self._z_position)
@@ -98,8 +95,6 @@ class GoToRoombaTask(AbstractTask):
                     
                     if not self._check_roomba_in_sight():
                         return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
-                    elif self._on_ground():
-                        return (TaskDone(),)
 
                     try:
                         roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
@@ -115,7 +110,7 @@ class GoToRoombaTask(AbstractTask):
                     except (tf2_ros.LookupException,
                             tf2_ros.ConnectivityException,
                             tf2_ros.ExtrapolationException) as ex:
-                        rospy.logerr('ObjectTrackTask: Exception when looking up transform')
+                        rospy.logerr('GoToRoombaTask: Exception when looking up transform')
                         rospy.logerr(ex.message)
                         return (TaskAborted(msg='Exception when looking up transform during go to roomba'),)
                         
@@ -146,7 +141,6 @@ class GoToRoombaTask(AbstractTask):
                                                                             self._z_position)
 
 
-                    """ quarantine end"""
                     hold_twist = self._path_holder.get_xyz_hold_response()
                     if self._check_max_roomba_range():
                         return (TaskDone(), VelocityCommand(hold_twist))
@@ -158,9 +152,8 @@ class GoToRoombaTask(AbstractTask):
                     return (TaskFailed(msg='Fell below minimum manuever height during translation'),)
 
 
-            return (TaskAborted(msg='Impossible state in takeoff task reached'))
+            return (TaskAborted(msg='Impossible state in go to roomba task reached'))
 
-    """ qurantine methods """
     def _check_roomba_in_sight(self):
         for odometry in self.topic_buffer.get_roomba_message().data:
             if odometry.child_frame_id == self._roomba_id:
@@ -172,10 +165,6 @@ class GoToRoombaTask(AbstractTask):
         _distance_to_roomba = math.sqrt(self._roomba_point_level_quad.point.x**2 +
                             self._roomba_point_level_quad.point.y**2)
         return (_distance_to_roomba <= self._MAX_TASK_DIST * 0.75)
-
-    def _on_ground(self):
-        return self.topic_buffer.get_landing_message().data
-    """ quarantive methods end """
 
     def cancel(self):
         rospy.loginfo('GoToRoombaTask canceled')
