@@ -97,11 +97,6 @@ class GoToRoombaTask(AbstractTask):
                         return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
 
                     try:
-                        roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                        'map',
-                                        self._roomba_id,
-                                        rospy.Time(0),
-                                        rospy.Duration(self._TRANSFORM_TIMEOUT))
                         roomba_check_pos = self.topic_buffer.get_tf_buffer().lookup_transform(
                                          'level_quad',
                                          self._roomba_id,
@@ -122,22 +117,11 @@ class GoToRoombaTask(AbstractTask):
                     stamped_point.point.y = 0
                     stamped_point.point.z = 0
 
-                    # returns point distances of roomba to center point of the map
-                    self._roomba_point_map = tf2_geometry_msgs.do_transform_point(
-                                                            stamped_point, roomba_transform)
-
                     self._roomba_point_level_quad = tf2_geometry_msgs.do_transform_point(
                                                             stamped_point, roomba_check_pos)
-
-
-                    roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
-                    roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
-
-                    x_vel_target = self._roomba_point_map.point.x + roomba_x_velocity
-                    y_vel_target = self._roomba_point_map.point.y + roomba_y_velocity
                     
-                    self._path_holder.reinitialize_translation_stop_planner(x_vel_target,
-                                                                            y_vel_target,
+                    self._path_holder.reinitialize_translation_stop_planner(self._roomba_odometry.pose.pose.position.x,
+                                                                            self._roomba_odometry.pose.pose.position.y,
                                                                             self._z_position)
 
 
