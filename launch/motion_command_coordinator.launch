@@ -7,6 +7,15 @@
         <rosparam command="load"
             file="$(find iarc7_motion)/param/tasks.yaml" />
     </node>
+
+    <node pkg="joy" type="joy_node" name="joy_node_motion">
+        <param name="dev" value="/dev/input/js1" />
+        <param name="deadzone" value="0.1" />
+        <param name="autorepeat_rate" value="50" />
+        <param name="coalesce_interval" value="0.02" />
+        <remap from="joy" to="motion_joy" />
+    </node>
+
     <param name="$(arg bond_id_namespace)/motion_command_coordinator/form_bond"
         value="true" />
 </launch>
