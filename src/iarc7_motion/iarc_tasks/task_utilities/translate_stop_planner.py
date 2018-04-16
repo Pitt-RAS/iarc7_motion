@@ -51,14 +51,14 @@ class TranslateStopPlanner():
                 response.header.frame_id = 'level_quad'
             return response
 
-    def reinitialize_translation_stop_planner(self, x=None, y=None, z=None):
+    def reinit_translation_stop_planner(self, x=None, y=None, z=None):
         with self._lock:
             if not x is None:
                 self._hold_x = x
             if not y is None:
                 self._hold_y = y
             if not z is None:
-                self._hold_z
+                self._hold_z = z
 
     def _current_velocity_callback(self, odometry):
         with self._lock:
