@@ -1,8 +1,8 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 13.0
+throttle_p: 5.0
 throttle_i: 0.15
-throttle_d: 2.9
+throttle_d: 2.5
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
@@ -17,21 +17,21 @@ battery_timeout: 1.0
 
 xy_mixer: "6dof"
 
-pitch_p: 0.0
-pitch_i: 0.0
+pitch_p: 1.0
+pitch_i: 0.5
 pitch_d: 0.0
-pitch_accumulator_max: 0.0
-pitch_accumulator_min: 0.0
-pitch_accumulator_enable_threshold: 0.0
+pitch_accumulator_max: 10.0
+pitch_accumulator_min: -10.0
+pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 0.0
-roll_i: 0.0
+roll_p: 1.0
+roll_i: 0.5
 roll_d: 0.0
-roll_accumulator_max: 0.0
-roll_accumulator_min: 0.0
-roll_accumulator_enable_threshold: 0.0
+roll_accumulator_max: 10.0
+roll_accumulator_min: -10.0
+roll_accumulator_enable_threshold: 10.0
 
-min_side_thrust: 0.0
+min_side_thrust: 0.1
 max_side_thrust: 10.0
 
 throttle_max      : 1.0
@@ -57,7 +57,7 @@ level_flight_required_height: 0.35
 level_flight_required_hysteresis: 0.10
 
 update_frequency: 60.0
-startup_timeout: 10.0
+startup_timeout: 15.0
 update_timeout: 0.2
 
 # Time to delay after arming

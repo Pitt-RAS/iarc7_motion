@@ -84,10 +84,10 @@ max_height_hold_vel: 0.3
 # maximum z error for heigth holder
 max_z_error: 1.0
 # distance from setpoint that will allow deadzone mode to begin
-deadzone_height_hold_z: 0.05
+deadzone_height_hold_z: 0.10
 # distance from deadzone threshold that will turn off
 # deadzone mode
-deadzone_hysteresis_height_hold_z: 0.20
+deadzone_hysteresis_height_hold_z: 0.40
 # Enable debugging topics for height hold
 debug_height_hold_z: True
 

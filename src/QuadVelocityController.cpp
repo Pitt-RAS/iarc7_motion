@@ -316,29 +316,29 @@ bool QuadVelocityController::update(const ros::Time& time,
         uav_command.data.roll = -roll_output;
     }
     else if(xy_mixer_ == "6dof") {
-        double x_accel = pitch_output + setpoint_.motion_point.accel.linear.x;
-        double y_accel = roll_output + setpoint_.motion_point.accel.linear.y;
+        double x_accel = pitch_output;// + setpoint_.motion_point.accel.linear.x;
+        double y_accel = roll_output;// + setpoint_.motion_point.accel.linear.y;
 
         //ROS_ERROR_STREAM(x_accel << " " << y_accel);
         //ROS_ERROR_STREAM(min_side_thrust_ << " " << max_side_thrust_);
 
         uav_command.planar.front_throttle = thrust_model_front_.voltageFromThrust(
-            std::min(std::max(-x_accel, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(-x_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.back_throttle = thrust_model_back_.voltageFromThrust(
-          std::min(std::max(x_accel, min_side_thrust_), max_side_thrust_),
+          std::min(std::max(x_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.left_throttle = thrust_model_left_.voltageFromThrust(
-            std::min(std::max(-y_accel, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(-y_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
         uav_command.planar.right_throttle = thrust_model_right_.voltageFromThrust(
-            std::min(std::max(y_accel, min_side_thrust_), max_side_thrust_),
+            std::min(std::max(y_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
             1,
             0.0)
             / voltage;
