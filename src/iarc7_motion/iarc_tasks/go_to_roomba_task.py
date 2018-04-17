@@ -51,8 +51,6 @@ class GoToRoombaTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
-            self._K_X = rospy.get_param('~k_term_tracking_x')
-            self._K_Y = rospy.get_param('~k_term_tracking_y')
             self._z_position = rospy.get_param('~track_roomba_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for go_to_roomba task')
