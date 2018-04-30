@@ -1,12 +1,7 @@
-import math
 import rospy
 import tf2_ros
 import tf2_geometry_msgs
 import threading
-
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import PointStamped
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -33,12 +28,11 @@ class GoToRoombaTask(AbstractTask):
         if self._roomba_id == '/base_link':
             raise ValueError('A null roomba id was provided')
 
+        ending_radius = task_request.ending_radius
+
         self._roomba_odometry = None
-        self._roomba_point = None
 
         self._canceled = False;
-        self._last_update_time = None
-        self._current_velocity = None
         self._transition = None
 
         self._lock = threading.RLock()
@@ -46,11 +40,9 @@ class GoToRoombaTask(AbstractTask):
         self._x_position = None
         self._y_position = None
 
-
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
-            self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._z_position = rospy.get_param('~track_roomba_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for go_to_roomba task')
@@ -64,10 +56,10 @@ class GoToRoombaTask(AbstractTask):
 
         self._path_holder = TranslateStopPlanner(self._x_position,
                                                     self._y_position,
-                                                    self._z_position)
+                                                    self._z_position,
+                                                    ending_radius)
 
         self._state = GoToRoombaState.init
-
 
     def get_desired_command(self):
         with self._lock:
@@ -101,13 +93,15 @@ class GoToRoombaTask(AbstractTask):
                     rospy.logerr(ex.message)
                     return (TaskAborted(msg = 'Exception when looking up transform during go_to_roomba'),)
 
-                if(transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
-                    
+                if (transStamped.transform.translation.z > self._MIN_MANEUVER_HEIGHT):
                     if not self._check_roomba_in_sight():
                         return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
-                    
-                    self._path_holder.reinit_translation_stop_planner(self._roomba_odometry.pose.pose.position.x,
-                                                                      self._roomba_odometry.pose.pose.position.y,
+
+                    roomba_x = self._roomba_odometry.pose.pose.position.x
+                    roomba_y = self._roomba_odometry.pose.pose.position.y
+
+                    self._path_holder.reinit_translation_stop_planner(roomba_x,
+                                                                      roomba_y,
                                                                       self._z_position)
 
                     hold_twist = self._path_holder.get_xyz_hold_response()
@@ -118,7 +112,6 @@ class GoToRoombaTask(AbstractTask):
                         return (TaskDone(), VelocityCommand(hold_twist))
                 else:
                     return (TaskFailed(msg='Fell below minimum manuever height during translation'),)
-
 
             return (TaskAborted(msg='Impossible state in go to roomba task reached'))
 

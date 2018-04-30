@@ -12,7 +12,7 @@ from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
 class TranslateStopPlanner():
-    def __init__(self, x=None, y=None, z=None):
+    def __init__(self, x=None, y=None, z=None, ending_radius = None):
         update_rate = rospy.get_param('~update_rate', False)
         self._update_period = 1.0/update_rate
         self._lock = threading.RLock()
@@ -24,7 +24,11 @@ class TranslateStopPlanner():
         self._max_acceleration = rospy.get_param('~max_translation_acceleration', 0.0)
         self._desired_acceleration = rospy.get_param('~desired_translation_acceleration', 0.0)
         self._max_speed = rospy.get_param('~max_translation_speed', 0.0)
-        self._position_tolerance = rospy.get_param('~translation_position_hold_tolerance', 0.0)
+        if ending_radius is None:
+            self._position_tolerance = rospy.get_param('~translation_position_hold_tolerance', 0.0)
+        else: 
+            self._position_tolerance = ending_radius
+
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
                                               self._current_velocity_callback)
@@ -216,7 +220,6 @@ class TranslateStopPlanner():
         self._last_target_acceleration = target_acceleration
 
         return target_twist
-
 
     def is_done(self):
         return self._done

@@ -11,10 +11,11 @@ float64 takeoff_height
 
 # track roomba task
 float64 time_to_track
-
-# track roomba task
 float64 x_overshoot
 float64 y_overshoot
+
+# go to roomba task
+float64 ending_radius
 
 # hold and XYZ tasks
 float64 x_position

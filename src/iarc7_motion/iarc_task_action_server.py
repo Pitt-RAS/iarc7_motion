@@ -59,7 +59,6 @@ class IarcTaskActionServer:
 
             task_request = goal.get_goal()
 
-
             try:
                 new_task_type = self._task_dict[task_request.movement_type]
             except KeyError as e:
@@ -167,7 +166,7 @@ class IarcTaskActionServer:
             self._current_goal, self._current_task = self._goal_tasks.pop(0)
             self._cancel_requested = False
 
-            rospy.logdebug("New task fed")
+            rospy.logdebug("New task accepted")
             self._current_goal.set_accepted()
 
             return self._current_task
