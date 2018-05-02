@@ -25,6 +25,8 @@
 
 #include "iarc7_safety/SafetyClient.hpp"
 
+#include "ros_utils/ParamUtils.hpp"
+
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
 
@@ -90,7 +92,14 @@ int main(int argc, char **argv)
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
     ThrustModel thrust_model(private_nh, "thrust_model");
-    ThrustModel thrust_model_side(private_nh, "thrust_model_side");
+    ThrustModel thrust_model_side;
+    if(ros_utils::ParamUtils::getParam<std::string>(
+              private_nh,
+              "xy_mixer")
+                    == "6dof") {
+        thrust_model_side.loadModel(private_nh, "thrust_model_side");
+    }
+
     double battery_timeout;
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;

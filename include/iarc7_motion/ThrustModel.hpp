@@ -62,7 +62,15 @@ struct ThrustModel
 
     double start_thrust_increment;
 
+    ThrustModel() {
+        
+    }
+
     ThrustModel(ros::NodeHandle& nh, std::string model_name) {
+        loadModel(nh, model_name);
+    }
+
+    void loadModel(ros::NodeHandle& nh, std::string model_name) {
         // Retrieve thrust model parameters
         ROS_ASSERT(nh.getParam("model_mass", model_mass));
 

@@ -31,6 +31,9 @@ roll_accumulator_max: 10.0
 roll_accumulator_min: -10.0
 roll_accumulator_enable_threshold: 10.0
 
+min_side_thrust: 0.0
+max_side_thrust: 0.0
+
 throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 200.0
