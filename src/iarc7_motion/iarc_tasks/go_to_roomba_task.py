@@ -28,8 +28,6 @@ class GoToRoombaTask(AbstractTask):
         if self._roomba_id == '/base_link':
             raise ValueError('A null roomba id was provided')
 
-        ending_radius = task_request.ending_radius
-
         self._roomba_odometry = None
 
         self._canceled = False;
@@ -44,6 +42,7 @@ class GoToRoombaTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._z_position = rospy.get_param('~track_roomba_height')
+            ending_radius = rospy.get_param('~go_to_roomba_tolerance')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for go_to_roomba task')
             raise

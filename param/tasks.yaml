@@ -43,6 +43,9 @@ k_term_tracking_x: .45
 # p-term for Y direction when tracking roombas 
 k_term_tracking_y: .45
 
+# GO TO ROOMBA
+go_to_roomba_tolerance: 0.3
+
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings: 
   x_terms:
