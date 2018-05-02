@@ -81,6 +81,9 @@ class TrackRoombaTask(AbstractTask):
 
         self._state = TrackRoombaTaskState.init
 
+        self._linear_motion_profile_generator = \
+                self.topic_buffer.get_linear_motion_profile_generator()
+
     def get_desired_command(self):
         with self._lock:
             if self._start_time is None:
@@ -172,9 +175,18 @@ class TrackRoombaTask(AbstractTask):
                     y_vel_target = -y_response + roomba_y_velocity
                 else: 
                     y_vel_target = roomba_y_velocity
-                
+
+                predicted_motion_point = \
+                    self._linear_motion_profile_generator.expected_point_at_time(
+                        rospy.Time.now())
+
+                odometry = self.topic_buffer.get_odometry_message()
+                current_height = odometry.pose.pose.position.z
+                predicted_height = \
+                    predicted_motion_point.motion_point.pose.position.z
+
                 z_vel_target, z_reset = self._z_holder.get_height_hold_response(
-                    self.topic_buffer.get_odometry_message().pose.pose.position.z)
+                    current_height, predicted_height)
 
                 # caps velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
@@ -182,7 +194,7 @@ class TrackRoombaTask(AbstractTask):
                 if vel_target > self._MAX_HORIZ_SPEED:
                     x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
                     y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-                
+
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target =  math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
