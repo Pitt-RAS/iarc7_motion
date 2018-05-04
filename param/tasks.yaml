@@ -37,10 +37,10 @@ translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
 
-# BLOCK AND HIT ROOMBA
-# p-term for X direction when tracking roombas 
+# BLOCK ROOMBA
+# p-term for X direction
 k_term_tracking_x: .45
-# p-term for Y direction when tracking roombas 
+# p-term for Y direction
 k_term_tracking_y: .45
 
 # GO TO ROOMBA
@@ -49,16 +49,33 @@ go_to_roomba_tolerance: 0.3
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings: 
   x_terms:
-    kp: .80
-    ki: 0.015
-    kd: 0.015
+    kp: .90
+    ki: 0.2
+    kd: 0.1
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .80
-    ki: 0.015
-    kd: 0.015
+    kp: .90
+    ki: 0.2
+    kd: 0.1
+    accumulator_max: 10.0
+    accumulator_min: -10.0
+    accumulator_enable_threshold: 10.0
+
+# HIT ROOMBA PID TERMS
+hit_roomba_pid_settings: 
+  x_terms:
+    kp: .90
+    ki: 0.2
+    kd: 0.1
+    accumulator_max: 10.0
+    accumulator_min: -10.0
+    accumulator_enable_threshold: 10.0
+  y_terms:
+    kp: .90
+    ki: 0.2
+    kd: 0.1
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
