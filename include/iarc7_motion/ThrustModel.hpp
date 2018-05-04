@@ -20,6 +20,8 @@ struct ThrustModel
     int num_thrust_points;
     int num_voltage_points;
 
+    bool initialized = false;
+
     std::vector<double> thrust_to_voltage;
 
     double start_thrust = 0.0f;
@@ -43,6 +45,7 @@ struct ThrustModel
     using VoltageThrustList = std::vector<VoltageThrust>;
 
     struct PossibleThrustFromThrust {
+
         double start_thrust;
         VoltageThrustList possible_thrusts;
 
@@ -109,6 +112,8 @@ struct ThrustModel
         num_thrust_points = voltage_to_jerk_mapping.size();
         num_voltage_points = voltage_to_jerk_mapping[0].possible_thrusts.size();
         start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_points-1);
+
+        initialized = true;
     }
 
     double linearInterpolate(double x,
@@ -116,6 +121,7 @@ struct ThrustModel
                              double x_f,
                              double y_i,
                              double y_f) {
+        ROS_ASSERT(initialized);
 
         double a = ((y_f - y_i)/(x_f - x_i));
         double b = y_i - a*x_i;
@@ -125,6 +131,8 @@ struct ThrustModel
     }
 
     double voltageFromThrust(double acceleration, int num_props, double /*height*/) {
+        ROS_ASSERT(initialized);
+
         double desired_thrust =  model_mass * (acceleration / 9.81) / static_cast<double>(num_props);
 
         if(std::abs(desired_thrust) < small_thrust_epsilon) {
@@ -213,6 +221,7 @@ struct ThrustModel
 
 
     double get_voltage_for_thrust(double thrust) {
+        ROS_ASSERT(initialized);
         double sum = 0;
         for(unsigned int i = 0; i < thrust_to_voltage.size(); i++) {
             double inc = thrust_to_voltage[i]*std::pow(thrust, thrust_to_voltage.size()-1-i);
