@@ -37,11 +37,11 @@ translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
 
-# BLOCK ROOMBA
-# p-term for X direction
-k_term_tracking_x: .45
-# p-term for Y direction
-k_term_tracking_y: .45
+# TRACK ROOMBA
+# height at which roomba tracking takes place
+track_roomba_height: 1.5
+# maximum radial distance from roomba
+max_roomba_dist: 2.0
 
 # GO TO ROOMBA
 go_to_roomba_tolerance: 0.3
@@ -50,53 +50,58 @@ go_to_roomba_tolerance: 0.3
 roomba_pid_settings: 
   x_terms:
     kp: .90
-    ki: 0.2
-    kd: 0.1
+    ki: 0.35
+    kd: 0.3
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
     kp: .90
-    ki: 0.2
-    kd: 0.1
+    ki: 0.35
+    kd: 0.3
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
+
+# HIT ROOMBA
+# max distance to roomba allowed for 
+# descent to occur
+max_roomba_descent_dist: .1
+# maximum radial distance from roomba
+hit_roomba_max_start_dist: 2.0
+# descent velocity when hitting/blocking a roomba 
+hit_descent_velocity: -0.4
 
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings: 
   x_terms:
     kp: .90
-    ki: 0.2
-    kd: 0.1
+    ki: 0.35
+    kd: 0.3
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
     kp: .90
-    ki: 0.2
-    kd: 0.1
+    ki: 0.35
+    kd: 0.3
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
 
-# TRACK ROOMBA
-# height at which roomba tracking takes place
-track_roomba_height: 1.5
-# maximum radial distance from roomba
-max_roomba_dist: 2.0
-
-# HIT AND BLOCK ROOMBA
-# maximum radial distance from roomba
-hit_roomba_max_start_dist: 2.0
-# descent velocity when hitting/blocking a roomba 
-hit_descent_velocity: -0.2
-
 # BLOCK ROOMBA
+# p-term for X direction
+k_term_tracking_x: .45
+# p-term for Y direction
+k_term_tracking_y: .45
 # roomba diameter in meters
 roomba_diameter: .33
 # drone landing gear width and length
 drone_landing_gear_width: .775
+# maximum radial distance from roomba
+block_roomba_max_start_dist: 2.0
+# descent velocity when hitting/blocking a roomba 
+block_descent_velocity: -0.2
 
 # HEIGHT HOLDER
 # maximum velocity allowed when activating the height hold planner

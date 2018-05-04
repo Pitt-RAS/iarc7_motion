@@ -30,7 +30,7 @@ class HitRoombaTask(AbstractTask):
     def __init__(self, task_request):
         super(HitRoombaTask, self).__init__()
 
-        # id of roomba to track
+        # id of roomba to hit
         self._roomba_id = task_request.frame_id  + '/base_link'
 
         if self._roomba_id == '/base_link':
@@ -39,6 +39,7 @@ class HitRoombaTask(AbstractTask):
         # data about roombas
         self._roomba_odometry = None
         self._roomba_point = None
+        self._distance_to_roomba = None
         # used to limit accelerations
         self._limiter = AccelerationLimiter()
         # task was canceled by MCC
@@ -56,6 +57,7 @@ class HitRoombaTask(AbstractTask):
             self._MAX_START_TASK_DIST = rospy.get_param('~hit_roomba_max_start_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._descent_velocity = rospy.get_param('~hit_descent_velocity')
+            self._max_roomba_descent_dist = rospy.get_param('~max_roomba_descent_dist')
             x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
             y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
         except KeyError as e:
@@ -104,7 +106,7 @@ class HitRoombaTask(AbstractTask):
                 except (tf2_ros.LookupException,
                         tf2_ros.ConnectivityException,
                         tf2_ros.ExtrapolationException) as ex:
-                    rospy.logerr('ObjectTrackTask: Exception when looking up transform')
+                    rospy.logerr('HitRoombaTask: Exception when looking up transform')
                     rospy.logerr(ex.message)
                     return (TaskAborted(msg='Exception when looking up transform during hit roomba'),)
 
@@ -144,9 +146,13 @@ class HitRoombaTask(AbstractTask):
                 else: 
                     y_vel_target = roomba_y_velocity
                 
-                z_vel_target = self._descent_velocity
+                # make sure we are close enough before we descend
+                if self._distance_to_roomba <= self._max_roomba_descent_dist: 
+                    z_vel_target = self._descent_velocity
+                else: 
+                    z_vel_target = 0.0
 
-                #caps velocity
+                # cap velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
                 if vel_target > self._MAX_HORIZ_SPEED:
@@ -192,10 +198,10 @@ class HitRoombaTask(AbstractTask):
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
     def _check_max_roomba_range(self):
-        _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
+        self._distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
                             self._roomba_point.point.y**2)
         
-        return (_distance_to_roomba <= self._MAX_START_TASK_DIST)
+        return (self._distance_to_roomba <= self._MAX_START_TASK_DIST)
 
     def cancel(self):
         rospy.loginfo('HitRoomba Task canceled')
