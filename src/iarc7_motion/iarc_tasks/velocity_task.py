@@ -62,6 +62,8 @@ class VelocityTask(AbstractTask):
 
         self._state = VelocityTaskState.init
 
+        self._linear_motion_profile_generator = self.topic_buffer.get_linear_motion_profile_generator()
+
     def get_desired_command(self):
         with self._lock:
 
@@ -82,20 +84,13 @@ class VelocityTask(AbstractTask):
 
             if self._state == VelocityTaskState.moving:
 
-                try:
-                    transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                    'map',
-                                    'base_footprint',
-                                    rospy.Time(0),
-                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
-                except (tf2_ros.LookupException,
-                        tf2_ros.ConnectivityException,
-                        tf2_ros.ExtrapolationException) as ex:
-                    rospy.logerr('ObjectTrackTask: Exception when looking up transform')
-                    rospy.logerr(ex.message)
-                    return (TaskAborted(msg='Exception when looking up transform during velocity task'),)
+                predicted_motion_point = self._linear_motion_profile_generator.expected_point_at_time(
+                                           rospy.Time.now())
 
-                current_height = transStamped.transform.translation.z
+                odometry = self.topic_buffer.get_odometry_message()
+
+                current_height = odometry.pose.pose.position.z
+                predicted_height = predicted_motion_point.motion_point.pose.position.z
 
                 if not self._current_height_set:
                     self._current_height_set = True
@@ -107,14 +102,13 @@ class VelocityTask(AbstractTask):
 
                 x_vel_target = self._HORIZ_X_VEL
                 y_vel_target = self._HORIZ_Y_VEL
-                z_vel_target = self._z_holder.get_height_hold_response(current_height)
+                (z_vel_target, reset_z) = self._z_holder.get_height_hold_response(current_height, predicted_height)
 
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                odometry = self.topic_buffer.get_odometry_message()
                 drone_vel_x = odometry.twist.twist.linear.x
                 drone_vel_y = odometry.twist.twist.linear.y
                 drone_vel_z = odometry.twist.twist.linear.z
@@ -133,7 +127,14 @@ class VelocityTask(AbstractTask):
 
                 self._current_velocity = desired_vel
 
-                return (TaskRunning(), VelocityCommand(velocity))
+                if reset_z:
+                    velocity_command = VelocityCommand(velocity,
+                                         start_position_z=odometry.pose.pose.position.z,
+                                         start_velocity_z=odometry.twist.twist.linear.z)
+                else:
+                    velocity_command = VelocityCommand(velocity)
+
+                return (TaskRunning(), velocity_command)
 
             return (TaskAborted(msg='Illegal state reached in Velocity test task'),)
 

@@ -51,6 +51,7 @@ public:
                            double pitch_pid[6],
                            double roll_pid[6],
                            const ThrustModel& thrust_model,
+                           const ThrustModel& thrust_model_side,
                            const ros::Duration& battery_timeout,
                            ros::NodeHandle& nh,
                            ros::NodeHandle& private_nh);
@@ -96,11 +97,18 @@ private:
     PidController roll_pid_;
 
     ThrustModel thrust_model_;
+    ThrustModel thrust_model_front_;
+    ThrustModel thrust_model_back_;
+    ThrustModel thrust_model_left_;
+    ThrustModel thrust_model_right_;
 
     ros_utils::SafeTransformWrapper transform_wrapper_;
 
     // The current setpoint
     iarc7_msgs::MotionPointStamped setpoint_;
+
+    // The XY plan mixer to use
+    std::string xy_mixer_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
@@ -129,6 +137,12 @@ private:
 
     // Max allowed requested thrust in m/s^2
     double max_thrust_;
+
+    // Min allowed side thrust in m/s^2
+    double min_side_thrust_;
+
+    // Max allowed side thrust m/s^2
+    double max_side_thrust_;
 
     // Height below which the drone is required to remain level
     const double level_flight_required_height_;

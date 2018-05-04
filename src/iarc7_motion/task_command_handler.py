@@ -20,7 +20,7 @@ from iarc7_safety.iarc_safety_exception import IARCFatalSafetyException
 from iarc7_msgs.msg import TwistStampedArray, OrientationThrottleStamped
 from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
-from linear_motion_profile_generator import LinearMotionProfileGenerator
+from iarc7_motion.linear_motion_profile_generator import LinearMotionProfileGenerator
 
 class TaskCommandHandler:
 
@@ -64,7 +64,7 @@ class TaskCommandHandler:
             task_commands.AngleThrottleCommand: self._handle_passthrough_command
             }
 
-        self._motion_profile_generator = LinearMotionProfileGenerator(MotionPointStamped())
+        self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
 
     # takes in new task from HLM Controller
     # transition is of type TransitionData 

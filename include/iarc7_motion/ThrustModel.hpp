@@ -9,16 +9,21 @@ namespace Iarc7Motion {
 
 struct ThrustModel
 {
+  public:
+    double response_lag = 0.0;
+
+  private:
     double small_thrust_epsilon;
     double model_mass;
 
-    double response_lag;
     double thrust_min;
     double thrust_max;
     double voltage_min;
     double voltage_max;
     int num_thrust_points;
     int num_voltage_points;
+
+    bool initialized = false;
 
     std::vector<double> thrust_to_voltage;
 
@@ -43,6 +48,7 @@ struct ThrustModel
     using VoltageThrustList = std::vector<VoltageThrust>;
 
     struct PossibleThrustFromThrust {
+
         double start_thrust;
         VoltageThrustList possible_thrusts;
 
@@ -62,28 +68,37 @@ struct ThrustModel
 
     double start_thrust_increment;
 
-    ThrustModel(ros::NodeHandle& nh) {
+  public:
+    ThrustModel() {
+        
+    }
+
+    ThrustModel(ros::NodeHandle& nh, std::string model_name) {
+        loadModel(nh, model_name);
+    }
+
+    void loadModel(ros::NodeHandle& nh, std::string model_name) {
         // Retrieve thrust model parameters
         ROS_ASSERT(nh.getParam("model_mass", model_mass));
 
-        ROS_ASSERT(nh.getParam("thrust_model/response_lag",
+        ROS_ASSERT(nh.getParam(model_name + "/response_lag",
                                        response_lag));
-        ROS_ASSERT(nh.getParam("thrust_model/small_thrust_epsilon",
+        ROS_ASSERT(nh.getParam(model_name + "/small_thrust_epsilon",
                                        small_thrust_epsilon));
-        ROS_ASSERT(nh.getParam("thrust_model/thrust_to_voltage",
+        ROS_ASSERT(nh.getParam(model_name + "/thrust_to_voltage",
                                        thrust_to_voltage));
 
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/thrust_min",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/thrust_min",
                                        thrust_min));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/thrust_max",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/thrust_max",
                                        thrust_max));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/voltage_min",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/voltage_min",
                                        voltage_min));
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/voltage_max",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/voltage_max",
                                        voltage_max));
 
         XmlRpc::XmlRpcValue param_voltage_to_jerk_mapping;
-        ROS_ASSERT(nh.getParam("thrust_model/voltage_to_jerk/mapping",
+        ROS_ASSERT(nh.getParam(model_name + "/voltage_to_jerk/mapping",
                                param_voltage_to_jerk_mapping));
 
         for(int i = 0; i < param_voltage_to_jerk_mapping.size(); i++)
@@ -101,6 +116,8 @@ struct ThrustModel
         num_thrust_points = voltage_to_jerk_mapping.size();
         num_voltage_points = voltage_to_jerk_mapping[0].possible_thrusts.size();
         start_thrust_increment = (thrust_max - thrust_min) / (num_thrust_points-1);
+
+        initialized = true;
     }
 
     double linearInterpolate(double x,
@@ -108,6 +125,7 @@ struct ThrustModel
                              double x_f,
                              double y_i,
                              double y_f) {
+        ROS_ASSERT(initialized);
 
         double a = ((y_f - y_i)/(x_f - x_i));
         double b = y_i - a*x_i;
@@ -117,12 +135,21 @@ struct ThrustModel
     }
 
     double voltageFromThrust(double acceleration, int num_props, double /*height*/) {
+        ROS_ASSERT(initialized);
+
         double desired_thrust =  model_mass * (acceleration / 9.81) / static_cast<double>(num_props);
 
+        if(std::abs(desired_thrust) < small_thrust_epsilon) {
+            start_thrust = desired_thrust;
+            return 0.0;
+        }
 
         if(std::abs(desired_thrust - start_thrust) < small_thrust_epsilon){
             start_thrust = desired_thrust;
-            return get_voltage_for_thrust(desired_thrust);
+            //ROS_ERROR_STREAM("static model");
+            double voltage = get_voltage_for_thrust(desired_thrust);
+            //ROS_ERROR_STREAM("final voltage: " << voltage);
+            return voltage;
         }
 
         double start_thrust_index = start_thrust / start_thrust_increment;
@@ -142,6 +169,7 @@ struct ThrustModel
 
         if(zero_voltage_thrust >= desired_thrust) {
             start_thrust = desired_thrust;
+            //ROS_ERROR("ZERO VOLTAGE THRUST");
             return 0.0f;
         }
 
@@ -173,8 +201,8 @@ struct ThrustModel
                                              current_final_thrust,
                                              bottom_thrusts.possible_thrusts[i-1].voltage,
                                              bottom_thrusts.possible_thrusts[i].voltage);
-
-                ROS_DEBUG_STREAM("start_thrust " << start_thrust
+                /*ROS_ERROR_STREAM("Dynamic model");
+                ROS_ERROR_STREAM("start_thrust " << start_thrust
                                  << "\nbottom thrust start " << bottom_thrusts.start_thrust
                                  << "\ntop_thrusts start " << top_thrusts.start_thrust
                                  << "\nbottom thrusts possible " << bottom_thrusts.possible_thrusts[i].thrust
@@ -182,8 +210,9 @@ struct ThrustModel
                                  << "\ndesired thrust " << desired_thrust
                                  << "\nlast final thrust " << last_final_thrust
                                  << "\ncurrent final thrust " << current_final_thrust
-                                 << "\nvoltage low " << bottom_thrusts.possible_thrusts[i].voltage
-                                 << "\nvoltage high " << bottom_thrusts.possible_thrusts[i+1].voltage);
+                                 << "\nvoltage low " << bottom_thrusts.possible_thrusts[i-1].voltage
+                                 << "\nvoltage high " << bottom_thrusts.possible_thrusts[i].voltage
+                                 << "\nvoltage final " << voltage);*/
 
                 break;
             }
@@ -196,6 +225,7 @@ struct ThrustModel
 
 
     double get_voltage_for_thrust(double thrust) {
+        ROS_ASSERT(initialized);
         double sum = 0;
         for(unsigned int i = 0; i < thrust_to_voltage.size(); i++) {
             double inc = thrust_to_voltage[i]*std::pow(thrust, thrust_to_voltage.size()-1-i);

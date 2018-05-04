@@ -35,6 +35,7 @@ QuadVelocityController::QuadVelocityController(
         double pitch_pid[6],
         double roll_pid[6],
         const ThrustModel& thrust_model,
+        const ThrustModel& thrust_model_side,
         const ros::Duration& battery_timeout,
         ros::NodeHandle& nh,
         ros::NodeHandle& private_nh)
@@ -63,8 +64,15 @@ QuadVelocityController::QuadVelocityController(
                 "roll_pid",
                 private_nh),
       thrust_model_(thrust_model),
+      thrust_model_front_(thrust_model_side),
+      thrust_model_back_(thrust_model_side),
+      thrust_model_left_(thrust_model_side),
+      thrust_model_right_(thrust_model_side),
       transform_wrapper_(),
       setpoint_(),
+      xy_mixer_(ros_utils::ParamUtils::getParam<std::string>(
+              private_nh,
+              "xy_mixer")),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
@@ -111,6 +119,12 @@ QuadVelocityController::QuadVelocityController(
       max_thrust_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "max_thrust")),
+      min_side_thrust_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "min_side_thrust")),
+      max_side_thrust_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "max_side_thrust")),
       level_flight_required_height_(
           ros_utils::ParamUtils::getParam<double>(
               private_nh,
@@ -263,10 +277,10 @@ bool QuadVelocityController::update(const ros::Time& time,
         }
 
         // Update roll PID loop
-        success = roll_pid_.update(-local_y_velocity,
+        success = roll_pid_.update(local_y_velocity,
                                    time,
                                    roll_output,
-                                   -local_y_accel);
+                                   local_y_accel);
         if (!success) {
             ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
             return false;
@@ -277,8 +291,12 @@ bool QuadVelocityController::update(const ros::Time& time,
     uav_command.header.stamp = time;
 
     double hover_accel = 9.8;
-    //based on roll and pitch angles we calculate additional throttle to match the level hover_accel
-    double tilt_accel = hover_accel*(1-cos(roll_output)*cos(pitch_output));
+    double tilt_accel = 0.0;
+
+    if(xy_mixer_ == "4dof") {
+        //based on roll and pitch angles we calculate additional throttle to match the level hover_accel
+        tilt_accel = hover_accel*(1-cos(-roll_output)*cos(pitch_output));
+    }
 
 
     // Simple feedforward using a fixed hover_accel to avoid excessive
@@ -292,8 +310,44 @@ bool QuadVelocityController::update(const ros::Time& time,
             4,
             col_height)
             / voltage;
-    uav_command.data.pitch = pitch_output;
-    uav_command.data.roll = roll_output;
+
+    if(xy_mixer_ == "4dof") {
+        uav_command.data.pitch = pitch_output;
+        uav_command.data.roll = -roll_output;
+    }
+    else if(xy_mixer_ == "6dof") {
+        double x_accel = pitch_output;// + setpoint_.motion_point.accel.linear.x;
+        double y_accel = roll_output;// + setpoint_.motion_point.accel.linear.y;
+
+        //ROS_ERROR_STREAM(x_accel << " " << y_accel);
+        //ROS_ERROR_STREAM(min_side_thrust_ << " " << max_side_thrust_);
+
+        uav_command.planar.front_throttle = thrust_model_front_.voltageFromThrust(
+            std::min(std::max(-x_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
+            1,
+            0.0)
+            / voltage;
+        uav_command.planar.back_throttle = thrust_model_back_.voltageFromThrust(
+          std::min(std::max(x_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
+            1,
+            0.0)
+            / voltage;
+        uav_command.planar.left_throttle = thrust_model_left_.voltageFromThrust(
+            std::min(std::max(-y_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
+            1,
+            0.0)
+            / voltage;
+        uav_command.planar.right_throttle = thrust_model_right_.voltageFromThrust(
+            std::min(std::max(y_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
+            1,
+            0.0)
+            / voltage;
+        //ROS_ERROR_STREAM(uav_command);
+    }
+    else {
+      ROS_ERROR("Invalid XY Mixer type");
+      return false;
+    }
 
     // Yaw rate needs no correction because the input and output are both
     // velocities
@@ -390,7 +444,7 @@ void QuadVelocityController::updatePidSetpoints(double current_yaw)
 
     // Note: Roll is inverted because a positive y velocity means a negative
     // roll by the right hand rule
-    roll_pid_.setSetpoint(-local_y_velocity);
+    roll_pid_.setSetpoint(local_y_velocity);
 }
 
 double QuadVelocityController::yawFromQuaternion(

@@ -9,16 +9,18 @@ response that maintains a certain height above the ground
 import rospy
 import threading
 from iarc7_msgs.msg import Float64ArrayStamped
+import math
 
 class HeightHolder(object):
     def __init__(self, desired_height = None):
         self._lock = threading.RLock()
-        self._delta_z = 0
+        self._measured_delta_z = 0
+        self._predicted_delta_z = 0
         self._DESIRED_HEIGHT = desired_height
         try:
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_Z_ERROR = rospy.get_param('~max_z_error')
-            self._K_Z = rospy.get_param('~p_term_height_hold_z')
+            self._MAX_VELOCITY = rospy.get_param('~max_height_hold_vel')
             self._DEADZONE = rospy.get_param('~deadzone_height_hold_z')
             self._DEADZONE_HYSTERESIS = rospy.get_param('~deadzone_hysteresis_height_hold_z')
             self._DEBUG = rospy.get_param('~debug_height_hold_z')
@@ -33,34 +35,40 @@ class HeightHolder(object):
 
         if self._DESIRED_HEIGHT is not None and self._DESIRED_HEIGHT < self._MIN_MANEUVER_HEIGHT:
             raise ValueError('Desired height was below the minimum maneuver height')
-        self._deadzone_activated = False
+        self._height_plan_activated = True
 
-    # uses a p-controller to return a velocity to maintain a height
-    def get_height_hold_response(self, height):
+    # determines whether to set a velocity to maintain height
+    def get_height_hold_response(self, measured_height, predicted_height):
         with self._lock:
+            
+            #Calculates the measured and predicted error
             if self._DESIRED_HEIGHT is None:
                 raise ValueError('No height to hold')
-            self._delta_z = self._DESIRED_HEIGHT - height
+            self._measured_delta_z = self._DESIRED_HEIGHT - measured_height
+            self._predicted_delta_z = self._DESIRED_HEIGHT - predicted_height
 
             if self._DEBUG:
                 msg = Float64ArrayStamped()
                 msg.header.stamp = rospy.Time.now()
-                msg.data = [self._DESIRED_HEIGHT, height, self._delta_z]
+                msg.data = [self._DESIRED_HEIGHT, measured_height, self._measured_delta_z]
                 self._debug_pub.publish(msg)
 
-            # If the drone is in the deadzone area a velocity of zero is commanded
-            # Essentially this is a tolerance region
-            if abs(self._delta_z) < self._DEADZONE:
-                self._deadzone_activated = True
-            elif (self._deadzone_activated == True 
-                     and abs(self._delta_z) > self._DEADZONE
+            reset_z = False
+            # Determines whether height plan should be activated, based on location in relation to the deadzone
+            if (self._height_plan_activated == False):
+                if(abs(self._measured_delta_z) > self._DEADZONE
                                               + self._DEADZONE_HYSTERESIS):
-                self._deadzone_activated = False
+                    self._height_plan_activated = True
+                    reset_z = True
+            elif (self._height_plan_activated == True):
+                if abs(self._predicted_delta_z) < self._DEADZONE:
+                    self._height_plan_activated = False
 
-            if self._deadzone_activated:
-                return 0.0
+            # Response depending on the current state
+            if (self._height_plan_activated == False):
+                return (0.0, False)
             else:
-                return self._K_Z * self._delta_z
+                return (math.copysign(self._MAX_VELOCITY, self._predicted_delta_z), reset_z)
 
     def set_height(self, desired_height):
          if desired_height < self._MIN_MANEUVER_HEIGHT:
@@ -69,4 +77,4 @@ class HeightHolder(object):
          self._DESIRED_HEIGHT = desired_height
 
     def check_z_error(self, current_height):
-        return (abs(self._delta_z) < self._MAX_Z_ERROR)
+        return (abs(self._measured_delta_z) < self._MAX_Z_ERROR)

@@ -1,13 +1,13 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 7.0
-throttle_i: 0.5
-throttle_d: 2.0
+throttle_p: 18.0
+throttle_i: 0.15
+throttle_d: 3.0
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 throttle_accumulator_enable_threshold: 10.0
 
-model_mass: 1.5
+model_mass: 2.0
 
 # Thrust levels are in m/s^2
 min_thrust: 0.1
@@ -15,26 +15,31 @@ max_thrust: 100.0
 
 battery_timeout: 0.5
 
-pitch_p: -0.3
-pitch_i: -0.5
-pitch_d: -0.0
+xy_mixer: "6dof"
+
+pitch_p: 7.5
+pitch_i: 0.1
+pitch_d: 0.0
 pitch_accumulator_max: 2.0
 pitch_accumulator_min: -2.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: -0.3
-roll_i: -0.5
-roll_d: -0.0
+roll_p: 7.5
+roll_i: 0.1
+roll_d: 0.0
 roll_accumulator_max: 2.0
 roll_accumulator_min: -2.0
 roll_accumulator_enable_threshold: 10.0
+
+min_side_thrust: 0.0
+max_side_thrust: 100.0
 
 throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 1000.0
 
-pitch_max         : 0.5
-pitch_min         : -0.5
+pitch_max         : 1000.0
+pitch_min         : -1000.0
 pitch_max_rate    : 1000.0
 
 roll_max          : 0.5
