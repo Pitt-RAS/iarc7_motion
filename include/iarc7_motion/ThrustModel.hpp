@@ -9,10 +9,13 @@ namespace Iarc7Motion {
 
 struct ThrustModel
 {
+  public:
+    double response_lag = 0.0;
+
+  private:
     double small_thrust_epsilon;
     double model_mass;
 
-    double response_lag;
     double thrust_min;
     double thrust_max;
     double voltage_min;
@@ -65,6 +68,7 @@ struct ThrustModel
 
     double start_thrust_increment;
 
+  public:
     ThrustModel() {
         
     }
