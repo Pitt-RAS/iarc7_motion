@@ -39,7 +39,7 @@ translation_xyz_tolerance : 0.3
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
-track_roomba_height: 1.5
+track_roomba_height: 1.0
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
 
@@ -49,16 +49,16 @@ go_to_roomba_tolerance: 0.3
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings: 
   x_terms:
-    kp: .90
-    ki: 0.35
-    kd: 0.3
+    kp: .75
+    ki: 0.2
+    kd: 0.35
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .90
-    ki: 0.35
-    kd: 0.3
+    kp: .75
+    ki: 0.2
+    kd: 0.35
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
@@ -75,16 +75,16 @@ hit_descent_velocity: -0.4
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings: 
   x_terms:
-    kp: .90
-    ki: 0.35
-    kd: 0.3
+    kp: .75
+    ki: 0.2
+    kd: 0.35
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .90
-    ki: 0.35
-    kd: 0.3
+    kp: .75
+    ki: 0.2
+    kd: 0.35
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
