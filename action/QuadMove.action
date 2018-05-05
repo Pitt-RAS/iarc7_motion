@@ -11,8 +11,6 @@ float64 takeoff_height
 
 # track roomba task
 float64 time_to_track
-
-# track roomba task
 float64 x_overshoot
 float64 y_overshoot
 

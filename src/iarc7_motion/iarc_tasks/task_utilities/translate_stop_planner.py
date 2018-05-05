@@ -12,7 +12,7 @@ from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 
 class TranslateStopPlanner():
-    def __init__(self, x=None, y=None, z=None):
+    def __init__(self, x=None, y=None, z=None, ending_radius = None):
         update_rate = rospy.get_param('~update_rate', False)
         self._update_period = 1.0/update_rate
         self._lock = threading.RLock()
@@ -24,7 +24,11 @@ class TranslateStopPlanner():
         self._max_acceleration = rospy.get_param('~max_translation_acceleration', 0.0)
         self._desired_acceleration = rospy.get_param('~desired_translation_acceleration', 0.0)
         self._max_speed = rospy.get_param('~max_translation_speed', 0.0)
-        self._position_tolerance = rospy.get_param('~translation_position_hold_tolerance', 0.0)
+        if ending_radius is None:
+            self._position_tolerance = rospy.get_param('~translation_position_hold_tolerance', 0.0)
+        else: 
+            self._position_tolerance = ending_radius
+
         self._current_velocity_sub = rospy.Subscriber('/odometry/filtered',
                                               Odometry,
                                               self._current_velocity_callback)
@@ -32,7 +36,6 @@ class TranslateStopPlanner():
         self._last_vel_y = None
         self._last_vel_z = None
         self._done = False
-        self._acceleration_went_negative = False
         self._last_actual_twist = None
         self._last_target_acceleration = 0.0
 
@@ -51,6 +54,15 @@ class TranslateStopPlanner():
                 response.header.stamp = rospy.Time.now()
                 response.header.frame_id = 'level_quad'
             return response
+
+    def reinit_translation_stop_planner(self, x=None, y=None, z=None):
+        with self._lock:
+            if not x is None:
+                self._hold_x = x
+            if not y is None:
+                self._hold_y = y
+            if not z is None:
+                self._hold_z = z
 
     def _current_velocity_callback(self, odometry):
         with self._lock:
@@ -77,7 +89,7 @@ class TranslateStopPlanner():
                                          x, y, z,
                                          distance,
                                          integrated_speed_towards_target):
-       
+
         # Compute a dot product to find our measured speed towards target
         measured_speed_towards_target = ((self._last_actual_twist.linear.x
                                         * x
@@ -106,14 +118,8 @@ class TranslateStopPlanner():
             # otherwise just keep accelerating
             if required_deceleration < self._desired_acceleration:
                 # If these two things are true we've been decelerating too fast
-                if (self._acceleration_went_negative and
-                   measured_speed_towards_target > 0):
-                    return 0.0
-                # Charge forward
-                else:
-                    return self._desired_acceleration
+                return self._desired_acceleration
             else:
-                self._acceleration_went_negative = True
                 return -required_deceleration
         else:
             rospy.logdebug('the acceleration better have worked')
@@ -145,7 +151,7 @@ class TranslateStopPlanner():
         # Calculate the desired speed from the acceleration
         # This is a future requested velocity
         desired_speed_towards_target = (integrated_speed_towards_target
-                                       + (target_acceleration 
+                                       + (target_acceleration
                                        * self._update_period))
 
         # Calculate the target vx vector

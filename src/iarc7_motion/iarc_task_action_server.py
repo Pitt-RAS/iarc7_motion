@@ -18,6 +18,7 @@ from iarc_tasks.hold_position_task import HoldPositionTask
 from iarc_tasks.height_recovery_task import HeightRecoveryTask
 from iarc_tasks.velocity_task import VelocityTask
 from iarc_tasks.joystick_velocity_task import JoystickVelocityTask
+from iarc_tasks.go_to_roomba_task import GoToRoombaTask
 
 class IarcTaskActionServer:
     def __init__(self):
@@ -48,7 +49,8 @@ class IarcTaskActionServer:
                            'velocity_test': VelocityTask,
                            'test_task': TestTask,
                            'test_planner': TestPlannerTask,
-                           'joystick_velocity_task': JoystickVelocityTask}
+                           'joystick_velocity_task': JoystickVelocityTask,
+                           'go_to_roomba': GoToRoombaTask}
 
     # Private method
     def _new_goal(self, goal):
