@@ -21,9 +21,10 @@
 //#include "apc_12_6_dynamic.h"
 //#include "apc_12_6_dynamic_r2.h"
 //#include "unknown_10_45_dynamic.h"
-#include "unknown_10_45_dynamic_r2.h"
+//#include "unknown_10_45_dynamic_r2.h"
 //#include "6x4.5x2_dynamic_r2.h"
 //#include "6x4.5x3_dynamic.h"
+#include "6x4.5x2_dynamic_prop_back_r1.h"
 
 float get_voltage_for_thrust(float thrust);
 

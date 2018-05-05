@@ -33,6 +33,7 @@ const unsigned long total_ramp_duration = 100 * ramp_speed + ramp_pause_at_full_
 unsigned long ramp_start_time = 0;
 
 const unsigned long throttle_change_delay = 2500000; //1500000; //3000000; //1500000;
+const int min_throttle = 10;
 const int max_throttle = 100; //70;
 
 void setup() {
@@ -109,6 +110,7 @@ void loop() {
         Serial.println("START");
         ramp = true;
         ramp_start_time = micros();
+        throttle = min_throttle;
       }
     }
   }
@@ -116,8 +118,8 @@ void loop() {
   if(micros() - last_esc_update > esc_update_rate) {
     last_esc_update = micros();
 
-    static int start_throttle = 0;
-    static int end_throttle = 0;
+    static int start_throttle = min_throttle;
+    static int end_throttle = min_throttle;
     static unsigned long last_throttle_change = 0;
     if(ramp) {
       if(last_throttle_change == 0) {
@@ -132,16 +134,20 @@ void loop() {
           end_throttle += 10;
           if(end_throttle > max_throttle) {
             start_throttle += 10;
+            throttle = start_throttle;
             end_throttle = start_throttle + 10;
             // If run is over
             if(start_throttle >= max_throttle) {
-              start_throttle = 0;
-              end_throttle = 0;
+              start_throttle = min_throttle;
+              end_throttle = min_throttle;
+              throttle = 0;
               ramp = false;
               Serial.println("STOP");
             }
           }
-          throttle = start_throttle;
+          else {
+            throttle = start_throttle;
+          }
         }
         else if(throttle == start_throttle) {
           throttle = end_throttle;
@@ -165,8 +171,8 @@ void loop() {
       }
     }
     else{
-      start_throttle = 0;
-      end_throttle = 0;
+      start_throttle = min_throttle;
+      end_throttle = min_throttle;
       last_throttle_change = 0;
       esc.writeMicroseconds(minPulse);
       last_esc_write = micros();
