@@ -56,11 +56,11 @@ class BlockRoombaTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
-            self._MAX_START_TASK_DIST = rospy.get_param('~hit_roomba_max_start_dist')
+            self._MAX_START_TASK_DIST = rospy.get_param('~block_roomba_max_start_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._K_X = rospy.get_param('~k_term_tracking_x')
             self._K_Y = rospy.get_param('~k_term_tracking_y')
-            self._descent_velocity = rospy.get_param('~hit_descent_velocity')
+            self._descent_velocity = rospy.get_param('~block_descent_velocity')
             _roomba_diameter = rospy.get_param('~roomba_diameter')
             _drone_width = rospy.get_param('~drone_landing_gear_width') 
         except KeyError as e:
