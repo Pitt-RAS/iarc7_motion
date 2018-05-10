@@ -87,7 +87,7 @@ public:
 private:
     /// Looks at setpoint_ and sets our pid controller setpoints accordinly
     /// based on our current yaw
-    void updatePidSetpoints(double current_yaw);
+    void updatePidSetpoints(double current_yaw, Eigen::VectorXd& odometry);
 
     double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
@@ -109,6 +109,9 @@ private:
 
     // The XY plan mixer to use
     std::string xy_mixer_;
+
+    // P term for the position control
+    double height_p_;
 
     // Last time an update was successful
     ros::Time last_update_time_;

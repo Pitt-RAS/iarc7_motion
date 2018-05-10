@@ -73,6 +73,9 @@ QuadVelocityController::QuadVelocityController(
       xy_mixer_(ros_utils::ParamUtils::getParam<std::string>(
               private_nh,
               "xy_mixer")),
+      height_p_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "height_p")),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
@@ -217,7 +220,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     double current_yaw = yawFromQuaternion(transform.transform.rotation);
 
     // Update setpoints on PID controllers
-    updatePidSetpoints(current_yaw);
+    updatePidSetpoints(current_yaw, odometry);
 
     // Update all the PID loops
 
@@ -227,10 +230,10 @@ bool QuadVelocityController::update(const ros::Time& time,
     double roll_output;
 
     // Update throttle PID loop with position and velocity
-    success = throttle_pid_.update(odometry[5],
+    success = throttle_pid_.update(odometry[2],
                                    time,
                                    vertical_accel_output,
-                                   odometry[2], true);
+                                   accel.z(), true);
 
     if (!success) {
         ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
@@ -429,9 +432,14 @@ bool QuadVelocityController::waitUntilReady()
     return true;
 }
 
-void QuadVelocityController::updatePidSetpoints(double current_yaw)
+void QuadVelocityController::updatePidSetpoints(double current_yaw, Eigen::VectorXd& odometry)
 {
-    throttle_pid_.setSetpoint(setpoint_.motion_point.pose.position.z); //variable.position.z
+    double position_velocity_request = height_p_ * 
+      (setpoint_.motion_point.pose.position.z - odometry[5]);
+
+    double velocity_request = position_velocity_request + setpoint_.motion_point.twist.linear.z;
+
+    throttle_pid_.setSetpoint(velocity_request);
 
     // Pitch and roll velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
