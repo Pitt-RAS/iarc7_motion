@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     ros::Rate limit_check_for_simulated_time = ros::Rate(30);
     // Wait for a valid time in case we are using simulated time (not wall time)
     // Also wait for dynamic reconfigure to be called once
-    while (ros::ok() && ros::Time::now() == ros::Time(0) && !dynamic_reconfigure_called) {
+    while ((ros::ok() && ros::Time::now() == ros::Time(0)) || !dynamic_reconfigure_called) {
         // wait
         ros::spinOnce();
         limit_check_for_simulated_time.sleep();

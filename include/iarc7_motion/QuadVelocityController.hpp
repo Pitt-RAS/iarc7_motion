@@ -112,7 +112,7 @@ private:
     std::string xy_mixer_;
 
     // P term for the position control
-    double height_p_;
+    double& height_p_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
