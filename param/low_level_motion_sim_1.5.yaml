@@ -1,9 +1,9 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
 height_p: 0.0
-throttle_p: 18.0
-throttle_i: 0.15
-throttle_d: 3.0
+throttle_p: 7.0
+throttle_i: 0.5
+throttle_d: 2.0
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 throttle_accumulator_enable_threshold: 10.0
