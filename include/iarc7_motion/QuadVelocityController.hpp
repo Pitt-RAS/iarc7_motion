@@ -47,9 +47,10 @@ public:
     QuadVelocityController() = delete;
 
     // Require that PID parameters are passed in upon class creation
-    QuadVelocityController(double thrust_pid[6],
-                           double pitch_pid[6],
-                           double roll_pid[6],
+    QuadVelocityController(double throttle_pid_settings[6],
+                           double pitch_pid_settings[6],
+                           double roll_pid_settings[6],
+                           double& height_p,
                            const ThrustModel& thrust_model,
                            const ThrustModel& thrust_model_side,
                            const ros::Duration& battery_timeout,

@@ -15,9 +15,11 @@
 #include <ros/ros.h>
 
 #include "actionlib/server/simple_action_server.h"
+#include "dynamic_reconfigure/server.h"
 
 #include "iarc7_motion/MotionPointInterpolator.hpp"
 #include "iarc7_motion/LandPlanner.hpp"
+#include "iarc7_motion/LowLevelMotionConfig.h"
 #include "iarc7_motion/QuadVelocityController.hpp"
 #include "iarc7_motion/QuadTwistRequestLimiter.hpp"
 #include "iarc7_motion/TakeoffController.hpp"
@@ -91,6 +93,8 @@ int main(int argc, char **argv)
     double throttle_pid[pid_param_array_size];
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
+    double height_p = 0.0;
+
     ThrustModel thrust_model(private_nh, "thrust_model");
     ThrustModel thrust_model_side;
     if(ros_utils::ParamUtils::getParam<std::string>(
@@ -104,29 +108,39 @@ int main(int argc, char **argv)
     Twist min_velocity, max_velocity, max_velocity_slew_rate;
     double update_frequency;
 
-    // Throttle PID settings retrieve
-    private_nh.param("throttle_p", throttle_pid[0], 0.0);
-    private_nh.param("throttle_i", throttle_pid[1], 0.0);
-    private_nh.param("throttle_d", throttle_pid[2], 0.0);
-    private_nh.param("throttle_accumulator_max", throttle_pid[3], 0.0);
-    private_nh.param("throttle_accumulator_min", throttle_pid[4], 0.0);
-    private_nh.param("throttle_accumulator_enable_threshold", throttle_pid[5], 0.0);
+    // Set up dynamic reconfigure
+    bool dynamic_reconfigure_called = false;
+    dynamic_reconfigure::Server<iarc7_motion::LowLevelMotionConfig> dynamic_reconfigure_server;
+    boost::function<void(iarc7_motion::LowLevelMotionConfig &config,
+                         uint32_t level)> dynamic_reconfigure_settings_callback =
+        [&](iarc7_motion::LowLevelMotionConfig &config, uint32_t) {
 
-    // Pitch PID settings retrieve
-    private_nh.param("pitch_p", pitch_pid[0], 0.0);
-    private_nh.param("pitch_i", pitch_pid[1], 0.0);
-    private_nh.param("pitch_d", pitch_pid[2], 0.0);
-    private_nh.param("pitch_accumulator_max", pitch_pid[3], 0.0);
-    private_nh.param("pitch_accumulator_min", pitch_pid[4], 0.0);
-    private_nh.param("pitch_accumulator_enable_threshold", pitch_pid[5], 0.0);
+            throttle_pid[0] = config.throttle_p;
+            throttle_pid[1] = config.throttle_i;
+            throttle_pid[2] = config.throttle_d;
+            throttle_pid[3] = config.throttle_accumulator_max;
+            throttle_pid[4] = config.throttle_accumulator_min;
+            throttle_pid[5] = config.throttle_accumulator_enable_threshold;
 
-    // Roll PID settings retrieve
-    private_nh.param("roll_p", roll_pid[0], 0.0);
-    private_nh.param("roll_i", roll_pid[1], 0.0);
-    private_nh.param("roll_d", roll_pid[2], 0.0);
-    private_nh.param("roll_accumulator_max", roll_pid[3], 0.0);
-    private_nh.param("roll_accumulator_min", roll_pid[4], 0.0);
-    private_nh.param("roll_accumulator_enable_threshold", roll_pid[5], 0.0);
+            pitch_pid[0] = config.pitch_p;
+            pitch_pid[1] = config.pitch_i;
+            pitch_pid[2] = config.pitch_d;
+            pitch_pid[3] = config.pitch_accumulator_max;
+            pitch_pid[4] = config.pitch_accumulator_min;
+            pitch_pid[5] = config.pitch_accumulator_enable_threshold;
+
+            roll_pid[0] = config.roll_p;
+            roll_pid[1] = config.roll_i;
+            roll_pid[2] = config.roll_d;
+            roll_pid[3] = config.roll_accumulator_max;
+            roll_pid[4] = config.roll_accumulator_min;
+            roll_pid[5] = config.roll_accumulator_enable_threshold;
+
+            height_p = config.height_p;
+
+            dynamic_reconfigure_called = true;
+        };
+    dynamic_reconfigure_server.setCallback(dynamic_reconfigure_settings_callback);
 
     // Battery timeout setting
     ROS_ASSERT(private_nh.getParam("battery_timeout", battery_timeout));
@@ -156,7 +170,8 @@ int main(int argc, char **argv)
 
     ros::Rate limit_check_for_simulated_time = ros::Rate(30);
     // Wait for a valid time in case we are using simulated time (not wall time)
-    while (ros::ok() && ros::Time::now() == ros::Time(0)) {
+    // Also wait for dynamic reconfigure to be called once
+    while (ros::ok() && ros::Time::now() == ros::Time(0) && !dynamic_reconfigure_called) {
         // wait
         ros::spinOnce();
         limit_check_for_simulated_time.sleep();
@@ -175,6 +190,7 @@ int main(int argc, char **argv)
     QuadVelocityController quadController(throttle_pid,
                                           pitch_pid,
                                           roll_pid,
+                                          height_p,
                                           thrust_model,
                                           thrust_model_side,
                                           ros::Duration(battery_timeout),
