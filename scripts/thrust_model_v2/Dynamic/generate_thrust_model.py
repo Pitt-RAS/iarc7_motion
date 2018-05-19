@@ -668,7 +668,7 @@ if __name__ == "__main__":
     # plot_groups(ramps, group_plotter=plot_all_voltages)
 
     # plot_groups(ramps, group_plotter=plot_all_fft)
-    plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
+    #plot_groups(ramps, group_plotter=plot_all_voltages_filtered)
 
     response_lag = calculate_response_lags(ramps)
     voltage_to_thrust_poly, thrust_to_voltage_poly = create_voltage_to_thrust(
