@@ -39,7 +39,8 @@ translation_xyz_tolerance : 0.3
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
-track_roomba_height: 1.0
+# also used for GO TO ROOMBA
+track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
 
