@@ -108,14 +108,14 @@ bool TakeoffController::update(const ros::Time& time,
         ROS_ERROR("Tried to update TakeoffHandler with time before last update");
         return false;
     }
-
+    bool success = true;
     // Get the current transform (xyz) of the quad
-    geometry_msgs::TransformStamped transform;
-    bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                         "map",
-                                                         "base_footprint",
-                                                         time,
-                                                         update_timeout_);
+    //geometry_msgs::TransformStamped transform;
+    //bool success = transform_wrapper_.getTransformAtTime(transform,
+    //                                                     "map",
+    //                                                     "base_footprint",
+    //                                                     time,
+    //                                                     update_timeout_);
     if (!success) {
         ROS_ERROR("Failed to get current transform in TakeoffController::update");
         return false;
