@@ -62,7 +62,7 @@ startup_timeout: 15.0
 update_timeout: 0.2
 
 # Time to delay after arming
-post_arm_delay: 0.5
+post_arm_delay: 0.2
 
 # Time to take to ramp the throttle to hover throttle
 takeoff_throttle_ramp_duration: 1.0
