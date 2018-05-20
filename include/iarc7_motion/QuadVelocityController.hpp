@@ -75,9 +75,9 @@ public:
     bool __attribute__((warn_unused_result)) update(
         const ros::Time& time,
         iarc7_msgs::OrientationThrottleStamped& uav_command,
-        bool z_only=false,
-        double pitch=0,
-        double roll=0);
+        bool xy_passthrough_mode=false,
+        double a_x=0,
+        double a_y=0);
 
     /// Waits until this object is ready to begin normal operation
     bool __attribute__((warn_unused_result)) waitUntilReady();
@@ -92,10 +92,17 @@ private:
 
     double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
+    static void commandForAccel(const Eigen::Vector3d& accel,
+                                          double& pitch,
+                                          double& roll,
+                                          double& thrust);
+
+    static constexpr double g_ = 9.8;
+
     // The three PID controllers
-    PidController throttle_pid_;
-    PidController pitch_pid_;
-    PidController roll_pid_;
+    PidController vz_pid_;
+    PidController vx_pid_;
+    PidController vy_pid_;
 
     ThrustModel thrust_model_;
     ThrustModel thrust_model_front_;

@@ -445,6 +445,7 @@ int main(int argc, char **argv)
             {
                 ROS_DEBUG("Low level motion is grounded");
             } else if (motion_state == MotionState::PASSTHROUGH) {
+                ROS_ERROR("PASSTHROUGH MODE CALLED");
                 if (last_msg != nullptr && last_msg->header.stamp >= passthrough_start_time) {
                     geometry_msgs::Twist twist;
                     twist.linear.z = last_msg->throttle;
