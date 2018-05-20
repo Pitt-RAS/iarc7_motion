@@ -231,6 +231,12 @@ bool QuadVelocityController::update(const ros::Time& time,
     double local_y_accel = -std::sin(current_yaw) * accel.x()
                          +  std::cos(current_yaw) * accel.y();
 
+    const auto& setpoint_accel = setpoint_.motion_point.accel.linear;
+    double local_x_setpoint_accel = std::cos(current_yaw) * setpoint_accel.x
+                                  + std::sin(current_yaw) * setpoint_accel.y;
+    double local_y_setpoint_accel = -std::sin(current_yaw) * setpoint_accel.x
+                                  +  std::cos(current_yaw) * setpoint_accel.y;
+
     if (level_flight_active_ && col_height 
                                   > level_flight_required_height_
                                     + level_flight_required_hysteresis_) {
@@ -254,7 +260,7 @@ bool QuadVelocityController::update(const ros::Time& time,
         success = vx_pid_.update(local_x_velocity,
                                  time,
                                  x_accel_output,
-                                 local_x_accel);
+                                 local_x_accel - local_x_setpoint_accel);
         if (!success) {
             ROS_ERROR("Vx PID update failed in QuadVelocityController::update");
             return false;
@@ -264,7 +270,7 @@ bool QuadVelocityController::update(const ros::Time& time,
         success = vy_pid_.update(local_y_velocity,
                                  time,
                                  y_accel_output,
-                                 local_y_accel);
+                                 local_y_accel - local_y_setpoint_accel);
         if (!success) {
             ROS_ERROR("Vy PID update failed in QuadVelocityController::update");
             return false;
@@ -277,7 +283,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     // TODO add accel setpoints from plan here
     double x_accel = x_accel_output;
     double y_accel = y_accel_output;
-    double z_accel = g_ + z_accel_output;
+    double z_accel = g_ + z_accel_output + setpoint_accel.z;
 
     double thrust_request;
     if(xy_mixer_ == "4dof") {
