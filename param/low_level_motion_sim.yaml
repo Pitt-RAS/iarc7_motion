@@ -21,16 +21,16 @@ xy_mixer: "4dof"
 pitch_p: 2.94
 pitch_i: 4.9
 pitch_d: 0.0
-pitch_accumulator_max: 19.6
-pitch_accumulator_min: -19.6
-pitch_accumulator_enable_threshold: 98.0
+pitch_accumulator_max: 5.0
+pitch_accumulator_min: -5.0
+pitch_accumulator_enable_threshold: 10.0
 
 roll_p: 2.94
 roll_i: 4.9
 roll_d: 0.0
-roll_accumulator_max: 19.6
-roll_accumulator_min: -19.6
-roll_accumulator_enable_threshold: 98.0
+roll_accumulator_max: 5.0
+roll_accumulator_min: -5.0
+roll_accumulator_enable_threshold: 10.0
 
 min_side_thrust: 0.0
 max_side_thrust: 0.0
