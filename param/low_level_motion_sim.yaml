@@ -39,12 +39,12 @@ throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 1000.0
 
-pitch_max         : 0.5
-pitch_min         : -0.5
+pitch_max         : 0.175
+pitch_min         : -0.175
 pitch_max_rate    : 1000.0
 
-roll_max          : 0.5
-roll_min          : -0.5
+roll_max          : 0.175
+roll_min          : -0.175
 roll_max_rate     : 1000.0
 
 yaw_max           : 3.5
