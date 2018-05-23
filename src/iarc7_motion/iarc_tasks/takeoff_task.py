@@ -115,7 +115,7 @@ class TakeoffTask(AbstractTask):
                 velocity.header.frame_id = 'level_quad'
                 velocity.header.stamp = rospy.Time.now()
                 velocity.twist.linear.z = 0
-                return (TaskRunning(), VelocityCommand(velocity))
+                return (TaskRunning(), VelocityCommand(velocity, start_position_z=self._TAKEOFF_COMPLETE_HEIGHT))
             else:
                 self._state = TakeoffTaskState.done
 

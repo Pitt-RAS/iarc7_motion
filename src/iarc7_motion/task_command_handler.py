@@ -116,6 +116,8 @@ class TaskCommandHandler:
                 self._command_implementations[type(task_command)](task_command)
             except (KeyError, TypeError) as e:
                 rospy.logerr("Task requested unimplemented command, noping: %s", type(task_command))
+                rospy.logerr(str(e))
+                rospy.logerr(traceback.format_exc())
                 self._handle_nop_command(None)
 
         self._last_task_commands = task_commands

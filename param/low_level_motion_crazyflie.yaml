@@ -8,7 +8,7 @@ throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
 
-model_mass: 0.028
+model_mass: 0.023
 
 # Thrust levels are in m/s^2
 min_thrust: 6.0
@@ -65,7 +65,7 @@ update_timeout: 1.0
 post_arm_delay: 0.2
 
 # Time to take to ramp the throttle to hover throttle
-takeoff_throttle_ramp_duration: 1.0
+takeoff_throttle_ramp_duration: 0.5
 
 # Rate at which to descent
 # must be negative

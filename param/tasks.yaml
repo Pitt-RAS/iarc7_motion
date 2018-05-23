@@ -4,7 +4,7 @@
 # Delay between arming and taking off
 delay_before_takeoff    : 2.0
 # Velocity with which to take off with
-takeoff_velocity        : 0.3
+takeoff_velocity        : 0.5
 # Acceleration to ramp the takeoff velocity with
 takeoff_acceleration    : 0.3
 # Height at which to consider takeoff finished in meters
@@ -13,7 +13,7 @@ takeoff_complete_height: 0.8
 # Deviance from takeoff height from which to enter stabilize mode
 takeoff_complete_height_tolerance: 0.15
 # Length of time to stabilize after takeoff
-takeoff_stabilize_delay: 1.5
+takeoff_stabilize_delay: 0.5
 # Altitude when we transition from acro to angle mode
 takeoff_angle_mode_height: 0.2
 

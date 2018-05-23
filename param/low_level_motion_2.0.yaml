@@ -65,7 +65,7 @@ update_timeout: 0.2
 post_arm_delay: 0.2
 
 # Time to take to ramp the throttle to hover throttle
-takeoff_throttle_ramp_duration: 1.0
+takeoff_throttle_ramp_duration: 0.5
 
 # Rate at which to descent
 # must be negative

@@ -114,11 +114,11 @@ class LinearMotionProfileGenerator(object):
         if override_start_position.z is not None:
             start_motion_point.motion_point.pose.position.z = override_start_position.z
 
-        if override_start_position.x is not None:
+        if override_start_velocity.x is not None:
             start_motion_point.motion_point.twist.linear.x = override_start_velocity.x
-        if override_start_position.y is not None:
+        if override_start_velocity.y is not None:
             start_motion_point.motion_point.twist.linear.y = override_start_velocity.y
-        if override_start_position.z is not None:
+        if override_start_velocity.z is not None:
             start_motion_point.motion_point.twist.linear.z = override_start_velocity.z
 
         return start_motion_point
