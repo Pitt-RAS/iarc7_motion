@@ -33,14 +33,14 @@ class TrackRoombaTask(AbstractTask):
         super(TrackRoombaTask, self).__init__()
 
         # id of the roomba we are tracking
-        self._roomba_id = task_request.frame_id  + '/base_link'
+        self._roomba_id = task_request.frame_id
         # how long to track the roomba
         self._time_to_track = task_request.time_to_track
         # overshoot from the center of the roomba
         self._x_overshoot = task_request.x_overshoot
         self._y_overshoot = task_request.y_overshoot
 
-        if self._roomba_id == '/base_link':
+        if self._roomba_id == '':
             raise ValueError('An invalid roomba id was provided to TrackRoombaTask')
 
         # data about roombas
@@ -146,9 +146,8 @@ class TrackRoombaTask(AbstractTask):
                 if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not found or not close enough to the quad'),)
 
-                roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
-                roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
-                roomba_velocity = math.sqrt(roomba_x_velocity**2 + roomba_y_velocity**2)
+                roomba_x_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.x
+                roomba_y_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.y
 
                 # The overshoot is taking in the x velocity normalizing it and applying overshoot
                 overshoot = math.sqrt(self._x_overshoot**2 + self._y_overshoot**2)
@@ -232,7 +231,9 @@ class TrackRoombaTask(AbstractTask):
 
     # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):
+        rospy.logerr('Check roomba in sight')
         for odometry in self.topic_buffer.get_roomba_message().data:
+            rospy.logerr('Child: {} looking for: {}'.format(odometry.child_frame_id, self._roomba_id))
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
                 return True
