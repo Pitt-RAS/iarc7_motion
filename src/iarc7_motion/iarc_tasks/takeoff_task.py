@@ -17,7 +17,8 @@ from iarc_tasks.task_states import (TaskRunning,
 from iarc_tasks.task_commands import (VelocityCommand,
                                       NopCommand,
                                       GroundInteractionCommand,
-                                      AngleThrottleCommand)
+                                      AngleThrottleCommand,
+                                      ResetLinearProfileCommand)
 
 class TakeoffTaskState(object):
     init = 0
@@ -70,9 +71,15 @@ class TakeoffTask(AbstractTask):
         # Transition from init to takeoff phase
         if self._state == TakeoffTaskState.init:
             self._state = TakeoffTaskState.takeoff
-            return (TaskRunning(), GroundInteractionCommand(
-                                       'takeoff',
-                                       self.takeoff_callback))
+            return (TaskRunning(),
+                    GroundInteractionCommand(
+                        'takeoff',
+                        self.takeoff_callback),
+                    ResetLinearProfileCommand(
+                        start_position_z = 0.0,
+                        start_velocity_x = 0.0,
+                        start_velocity_y = 0.0,
+                        start_velocity_z = 0.0))
 
         # Enter the takeoff phase
         if self._state == TakeoffTaskState.takeoff:

@@ -39,6 +39,8 @@ public:
 
     void resetAccumulator();
 
+    void reset();
+
 private:
     double& p_gain_;
     double& i_gain_;

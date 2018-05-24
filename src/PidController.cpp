@@ -115,5 +115,14 @@ void PidController::setSetpoint(double setpoint)
 
 void PidController::resetAccumulator()
 {
-    i_accumulator_ = 0;
+    i_accumulator_ = 0.0;
+}
+
+void PidController::reset()
+{
+    resetAccumulator();
+    initialized_ = false;
+    last_current_value_ = 0.0;
+    last_time_ = ros::Time(0.0);
+    setpoint_ = 0.0;
 }

@@ -478,8 +478,8 @@ void QuadVelocityController::commandForAccel(
 
 bool QuadVelocityController::prepareForTakeover()
 {
-    vz_pid_.resetAccumulator();
-    vx_pid_.resetAccumulator();
-    vy_pid_.resetAccumulator();
+    vz_pid_.reset();
+    vx_pid_.reset();
+    vy_pid_.reset();
     return true;
 }

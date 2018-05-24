@@ -61,7 +61,8 @@ class TaskCommandHandler:
             task_commands.NopCommand: self._handle_nop_command,
             task_commands.GroundInteractionCommand: self._handle_ground_interaction_command,
             task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
-            task_commands.AngleThrottleCommand: self._handle_passthrough_command
+            task_commands.AngleThrottleCommand: self._handle_passthrough_command,
+            task_commands.ResetLinearProfileCommand: self._handle_reset_linear_profile_command
             }
 
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
@@ -196,6 +197,9 @@ class TaskCommandHandler:
     def _handle_velocity_command(self, velocity_command):
         plan, pose_only_plan = self._motion_profile_generator.get_velocity_plan(velocity_command)
         self._publish_motion_profile(plan, pose_only_plan)
+
+    def _handle_reset_linear_profile_command(self, reset_command):
+        self._motion_profile_generator.set_start_point(reset_command)
 
     def _handle_passthrough_mode_command(self, passthrough_mode_command):
         if passthrough_mode_command.enable:
