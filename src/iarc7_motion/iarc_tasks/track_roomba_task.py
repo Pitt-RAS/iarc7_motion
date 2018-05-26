@@ -231,9 +231,7 @@ class TrackRoombaTask(AbstractTask):
 
     # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):
-        rospy.logerr('Check roomba in sight')
         for odometry in self.topic_buffer.get_roomba_message().data:
-            rospy.logerr('Child: {} looking for: {}'.format(odometry.child_frame_id, self._roomba_id))
             if odometry.child_frame_id == self._roomba_id:
                 self._roomba_odometry = odometry
                 return True
