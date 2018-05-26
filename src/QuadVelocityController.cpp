@@ -426,7 +426,7 @@ bool QuadVelocityController::waitUntilReady()
     return true;
 }
 
-void QuadVelocityController::updatePidSetpoints(double current_yaw, Eigen::VectorXd& odometry)
+void QuadVelocityController::updatePidSetpoints(double current_yaw, const Eigen::VectorXd& odometry)
 {
     double position_velocity_request = height_p_ * 
       (setpoint_.motion_point.pose.position.z - odometry[5]);
