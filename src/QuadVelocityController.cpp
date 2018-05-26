@@ -280,7 +280,6 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
 
-    // TODO add accel setpoints from plan here
     double x_accel = x_accel_output + local_x_setpoint_accel;
     double y_accel = y_accel_output + local_y_setpoint_accel;
     double z_accel = g_ + z_accel_output + setpoint_accel.z;
