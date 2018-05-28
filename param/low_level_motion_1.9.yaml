@@ -1,8 +1,11 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 5.0
-throttle_i: 0.15
-throttle_d: 3.0
+height_p: 2.0
+
+throttle_p: 3.5
+throttle_i: 0.5
+throttle_d: 0.2
+
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
@@ -61,7 +64,7 @@ startup_timeout: 15.0
 update_timeout: 0.2
 
 # Time to delay after arming
-post_arm_delay: 0.2
+post_arm_delay: 2.5
 
 # Time to take to ramp the throttle to hover throttle
 takeoff_throttle_ramp_duration: 1.0

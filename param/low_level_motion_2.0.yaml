@@ -1,13 +1,14 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 3.5
-throttle_i: 1.5
-throttle_d: 0.25
+height_p: 1.5
+throttle_p: 2.5
+throttle_i: 0.2
+throttle_d: 0.4
 throttle_accumulator_enable_threshold: 10.0
 throttle_accumulator_max: 5.0
 throttle_accumulator_min: -5.0
 
-model_mass: 3.7
+model_mass: 4.1
 
 # Thrust levels are in m/s^2
 min_thrust: 5.0
@@ -17,18 +18,18 @@ battery_timeout: 1.0
 
 xy_mixer: "4dof"
 
-pitch_p: 0.1
-pitch_i: 0.05
+pitch_p: 3.0
+pitch_i: 0.75
 pitch_d: 0.0
-pitch_accumulator_max: 10.0
-pitch_accumulator_min: -10.0
+pitch_accumulator_max: 5.0
+pitch_accumulator_min: -5.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 0.1
-roll_i: 0.05
+roll_p: 3.0
+roll_i: 0.75
 roll_d: 0.0
-roll_accumulator_max: 10.0
-roll_accumulator_min: -10.0
+roll_accumulator_max: 5.0
+roll_accumulator_min: -5.0
 roll_accumulator_enable_threshold: 10.0
 
 min_side_thrust: 0.1
@@ -64,11 +65,11 @@ update_timeout: 0.2
 post_arm_delay: 0.2
 
 # Time to take to ramp the throttle to hover throttle
-takeoff_throttle_ramp_duration: 1.0
+takeoff_throttle_ramp_duration: 0.5
 
 # Rate at which to descent
 # must be negative
-descend_rate: -0.3
+descend_rate: -0.7
 
 # Rate at which to accelerate to descent velocity
 # must be negative

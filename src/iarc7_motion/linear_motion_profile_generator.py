@@ -90,6 +90,9 @@ class LinearMotionProfileGenerator(object):
 
         self._last_stamp = rospy.Time.now()
 
+        self._override_start_position = None
+        self._override_start_velocity = None
+
     linear_motion_profile_generator = None
 
     @staticmethod
@@ -107,6 +110,26 @@ class LinearMotionProfileGenerator(object):
 
         start_motion_point = self.expected_point_at_time(time)
 
+        # Apply a saved off overridden start point first
+        if self._override_start_position is not None:
+            if self._override_start_position.x is not None:
+                start_motion_point.motion_point.pose.position.x = self._override_start_position.x
+            if self._override_start_position.y is not None:
+                start_motion_point.motion_point.pose.position.y = self._override_start_position.y
+            if self._override_start_position.z is not None:
+                start_motion_point.motion_point.pose.position.z = self._override_start_position.z
+            self._override_start_position = None
+
+        if self._override_start_velocity is not None:
+            if self._override_start_velocity.x is not None:
+                start_motion_point.motion_point.twist.linear.x = self._override_start_velocity.x
+            if self._override_start_velocity.y is not None:
+                start_motion_point.motion_point.twist.linear.y = self._override_start_velocity.y
+            if self._override_start_velocity.z is not None:
+                start_motion_point.motion_point.twist.linear.z = self._override_start_velocity.z
+            self._override_start_velocity = None
+
+        # Apply the passed in overriden start point second
         if override_start_position.x is not None:
             start_motion_point.motion_point.pose.position.x = override_start_position.x
         if override_start_position.y is not None:
@@ -114,14 +137,18 @@ class LinearMotionProfileGenerator(object):
         if override_start_position.z is not None:
             start_motion_point.motion_point.pose.position.z = override_start_position.z
 
-        if override_start_position.x is not None:
+        if override_start_velocity.x is not None:
             start_motion_point.motion_point.twist.linear.x = override_start_velocity.x
-        if override_start_position.y is not None:
+        if override_start_velocity.y is not None:
             start_motion_point.motion_point.twist.linear.y = override_start_velocity.y
-        if override_start_position.z is not None:
+        if override_start_velocity.z is not None:
             start_motion_point.motion_point.twist.linear.z = override_start_velocity.z
 
         return start_motion_point
+
+    def set_start_point(self, start_point_command):
+        self._override_start_position = start_point_command.start_position
+        self._override_start_velocity = start_point_command.start_velocity
 
     def expected_point_at_time(self, time):
         # Make sure a starting point newer than the last sent time is sent

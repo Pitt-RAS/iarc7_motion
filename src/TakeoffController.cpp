@@ -109,18 +109,6 @@ bool TakeoffController::update(const ros::Time& time,
         return false;
     }
 
-    // Get the current transform (xyz) of the quad
-    geometry_msgs::TransformStamped transform;
-    bool success = transform_wrapper_.getTransformAtTime(transform,
-                                                         "map",
-                                                         "base_footprint",
-                                                         time,
-                                                         update_timeout_);
-    if (!success) {
-        ROS_ERROR("Failed to get current transform in TakeoffController::update");
-        return false;
-    }
-
     if(state_ == TakeoffState::ARM) {
         // Sending arm request to fc_comms
         iarc7_msgs::Arm srv;
@@ -221,12 +209,12 @@ bool TakeoffController::waitUntilReady()
     geometry_msgs::TransformStamped transform;
     bool success = transform_wrapper_.getTransformAtTime(transform,
                                                          "map",
-                                                         "base_footprint",
+                                                         "center_of_lift",
                                                          ros::Time(0),
                                                          startup_timeout_);
     if (!success)
     {
-        ROS_ERROR("Failed to fetch transform");
+        ROS_ERROR("Failed to fetch transform for map to center of lift");
         return false;
     }
 

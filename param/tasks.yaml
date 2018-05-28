@@ -4,7 +4,7 @@
 # Delay between arming and taking off
 delay_before_takeoff    : 2.0
 # Velocity with which to take off with
-takeoff_velocity        : 0.3
+takeoff_velocity        : 0.5
 # Acceleration to ramp the takeoff velocity with
 takeoff_acceleration    : 0.3
 # Height at which to consider takeoff finished in meters
@@ -13,7 +13,7 @@ takeoff_complete_height: 0.8
 # Deviance from takeoff height from which to enter stabilize mode
 takeoff_complete_height_tolerance: 0.15
 # Length of time to stabilize after takeoff
-takeoff_stabilize_delay: 1.5
+takeoff_stabilize_delay: 0.5
 # Altitude when we transition from acro to angle mode
 takeoff_angle_mode_height: 0.2
 
@@ -29,7 +29,7 @@ max_translation_acceleration: 3.0
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
-max_translation_speed: 3.0
+max_translation_speed: 1.0
 # maximum z velocity 
 max_z_velocity: .3
 # Tolerance for a position hold in meters
@@ -39,7 +39,8 @@ translation_xyz_tolerance : 0.3
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
-track_roomba_height: 1.0
+# also used for GO TO ROOMBA
+track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
 
@@ -49,16 +50,16 @@ go_to_roomba_tolerance: 0.3
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings: 
   x_terms:
-    kp: .75
-    ki: 0.2
-    kd: 0.35
+    kp: 0.6
+    ki: 0.1
+    kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .75
-    ki: 0.2
-    kd: 0.35
+    kp: 0.6
+    ki: 0.1
+    kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0

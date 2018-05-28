@@ -15,22 +15,20 @@
 
 using namespace Iarc7Motion;
 
-PidController::PidController(double p_gain, double i_gain, double d_gain,
-                             double i_accumulator_max, double i_accumulator_min,
-                             double i_accumulator_enable_threshold,
+PidController::PidController(double settings[6],
                              std::string debug_pid_name,
                              ros::NodeHandle& nh)
-    : p_gain_(p_gain),
-      i_gain_(i_gain),
-      d_gain_(d_gain),
+    : p_gain_(settings[0]),
+      i_gain_(settings[1]),
+      d_gain_(settings[2]),
       initialized_(false),
       i_accumulator_(0.0),
       last_current_value_(0.0),
       last_time_(0.0),
       setpoint_(0.0),
-      i_accumulator_max_(i_accumulator_max),
-      i_accumulator_min_(i_accumulator_min),
-      i_accumulator_enable_threshold_(i_accumulator_enable_threshold)
+      i_accumulator_max_(settings[3]),
+      i_accumulator_min_(settings[4]),
+      i_accumulator_enable_threshold_(settings[5])
 {
     pid_value_publisher_ = nh.advertise<iarc7_msgs::Float64ArrayStamped>(debug_pid_name, 1000);
 }
@@ -117,5 +115,14 @@ void PidController::setSetpoint(double setpoint)
 
 void PidController::resetAccumulator()
 {
-    i_accumulator_ = 0;
+    i_accumulator_ = 0.0;
+}
+
+void PidController::reset()
+{
+    resetAccumulator();
+    initialized_ = false;
+    last_current_value_ = 0.0;
+    last_time_ = ros::Time(0.0);
+    setpoint_ = 0.0;
 }

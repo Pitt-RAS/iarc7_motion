@@ -47,9 +47,10 @@ public:
     QuadVelocityController() = delete;
 
     // Require that PID parameters are passed in upon class creation
-    QuadVelocityController(double thrust_pid[6],
-                           double pitch_pid[6],
-                           double roll_pid[6],
+    QuadVelocityController(double throttle_pid_settings[6],
+                           double pitch_pid_settings[6],
+                           double roll_pid_settings[6],
+                           double& height_p,
                            const ThrustModel& thrust_model,
                            const ThrustModel& thrust_model_side,
                            const ros::Duration& battery_timeout,
@@ -74,9 +75,9 @@ public:
     bool __attribute__((warn_unused_result)) update(
         const ros::Time& time,
         iarc7_msgs::OrientationThrottleStamped& uav_command,
-        bool z_only=false,
-        double pitch=0,
-        double roll=0);
+        bool xy_passthrough_mode=false,
+        double a_x=0,
+        double a_y=0);
 
     /// Waits until this object is ready to begin normal operation
     bool __attribute__((warn_unused_result)) waitUntilReady();
@@ -87,14 +88,21 @@ public:
 private:
     /// Looks at setpoint_ and sets our pid controller setpoints accordinly
     /// based on our current yaw
-    void updatePidSetpoints(double current_yaw);
+    void updatePidSetpoints(double current_yaw, const Eigen::VectorXd& odometry);
 
     double yawFromQuaternion(const geometry_msgs::Quaternion& rotation);
 
+    static void commandForAccel(const Eigen::Vector3d& accel,
+                                          double& pitch,
+                                          double& roll,
+                                          double& thrust);
+
+    static constexpr double g_ = 9.8;
+
     // The three PID controllers
-    PidController throttle_pid_;
-    PidController pitch_pid_;
-    PidController roll_pid_;
+    PidController vz_pid_;
+    PidController vx_pid_;
+    PidController vy_pid_;
 
     ThrustModel thrust_model_;
     ThrustModel thrust_model_front_;
@@ -109,6 +117,9 @@ private:
 
     // The XY plan mixer to use
     std::string xy_mixer_;
+
+    // P term for the position control
+    double& height_p_;
 
     // Last time an update was successful
     ros::Time last_update_time_;

@@ -1,8 +1,9 @@
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-throttle_p: 7.0
+height_p: 2.0
+throttle_p: 5.0
 throttle_i: 0.5
-throttle_d: 1.3
+throttle_d: 0.5
 throttle_accumulator_max: 0.5
 throttle_accumulator_min: -0.5
 throttle_accumulator_enable_threshold: 10.0
@@ -17,18 +18,18 @@ battery_timeout: 0.5
 
 xy_mixer: "4dof"
 
-pitch_p: -0.3
-pitch_i: -0.5
-pitch_d: -0.0
-pitch_accumulator_max: 2.0
-pitch_accumulator_min: -2.0
+pitch_p: 2.94
+pitch_i: 4.9
+pitch_d: 0.0
+pitch_accumulator_max: 5.0
+pitch_accumulator_min: -5.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: -0.3
-roll_i: -0.5
-roll_d: -0.0
-roll_accumulator_max: 2.0
-roll_accumulator_min: -2.0
+roll_p: 2.94
+roll_i: 4.9
+roll_d: 0.0
+roll_accumulator_max: 5.0
+roll_accumulator_min: -5.0
 roll_accumulator_enable_threshold: 10.0
 
 min_side_thrust: 0.0
@@ -38,12 +39,12 @@ throttle_max      : 1.0
 throttle_min      : 0.0
 throttle_max_rate : 1000.0
 
-pitch_max         : 0.5
-pitch_min         : -0.5
+pitch_max         : 0.175
+pitch_min         : -0.175
 pitch_max_rate    : 1000.0
 
-roll_max          : 0.5
-roll_min          : -0.5
+roll_max          : 0.175
+roll_min          : -0.175
 roll_max_rate     : 1000.0
 
 yaw_max           : 3.5
@@ -64,11 +65,11 @@ update_timeout: 2.0
 post_arm_delay: 0.2
 
 # Time to take to ramp the throttle to hover throttle
-takeoff_throttle_ramp_duration: 1.0
+takeoff_throttle_ramp_duration: 0.5
 
 # Rate at which to descent
 # must be negative
-descend_rate: -0.3
+descend_rate: -0.7
 
 # Rate at which to accelerate to descent velocity
 # must be negative

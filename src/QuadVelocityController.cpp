@@ -31,38 +31,24 @@
 using namespace Iarc7Motion;
 
 QuadVelocityController::QuadVelocityController(
-        double thrust_pid[6],
-        double pitch_pid[6],
-        double roll_pid[6],
+        double vz_pid_settings[6],
+        double vx_pid_settings[6],
+        double vy_pid_settings[6],
+        double& height_p,
         const ThrustModel& thrust_model,
         const ThrustModel& thrust_model_side,
         const ros::Duration& battery_timeout,
         ros::NodeHandle& nh,
         ros::NodeHandle& private_nh)
-    : throttle_pid_(thrust_pid[0],
-                    thrust_pid[1],
-                    thrust_pid[2],
-                    thrust_pid[3],
-                    thrust_pid[4],
-                    thrust_pid[5],
-                    "throttle_pid",
-                    private_nh),
-      pitch_pid_(pitch_pid[0],
-                 pitch_pid[1],
-                 pitch_pid[2],
-                 pitch_pid[3],
-                 pitch_pid[4],
-                 pitch_pid[5],
-                 "pitch_pid",
-                 private_nh),
-      roll_pid_(roll_pid[0],
-                roll_pid[1],
-                roll_pid[2],
-                roll_pid[3],
-                roll_pid[4],
-                roll_pid[5],
-                "roll_pid",
-                private_nh),
+    : vz_pid_(vz_pid_settings,
+              "vz_pid",
+              private_nh),
+      vx_pid_(vx_pid_settings,
+              "vx_pid",
+              private_nh),
+      vy_pid_(vy_pid_settings,
+              "vy_pid",
+              private_nh),
       thrust_model_(thrust_model),
       thrust_model_front_(thrust_model_side),
       thrust_model_back_(thrust_model_side),
@@ -73,6 +59,7 @@ QuadVelocityController::QuadVelocityController(
       xy_mixer_(ros_utils::ParamUtils::getParam<std::string>(
               private_nh,
               "xy_mixer")),
+      height_p_(height_p),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
@@ -155,9 +142,9 @@ void QuadVelocityController::setThrustModel(const ThrustModel& thrust_model)
 // Needs to be called at regular intervals in order to keep catching the latest velocities.
 bool QuadVelocityController::update(const ros::Time& time,
                                     iarc7_msgs::OrientationThrottleStamped& uav_command,
-                                    bool z_only,
-                                    double pitch,
-                                    double roll)
+                                    bool xy_passthrough_mode,
+                                    double a_x,
+                                    double a_y)
 {
     if (time < last_update_time_) {
         ROS_ERROR("Tried to update QuadVelocityController with time before last update");
@@ -217,23 +204,19 @@ bool QuadVelocityController::update(const ros::Time& time,
     double current_yaw = yawFromQuaternion(transform.transform.rotation);
 
     // Update setpoints on PID controllers
-    updatePidSetpoints(current_yaw);
+    updatePidSetpoints(current_yaw, odometry);
 
-    // Update all the PID loops
-
-    // Used to temporarily store throttle and angle outputs from PID loops
-    double vertical_accel_output;
-    double pitch_output;
-    double roll_output;
-
-    // Update throttle PID loop with position and velocity
-    success = throttle_pid_.update(odometry[5],
-                                   time,
-                                   vertical_accel_output,
-                                   odometry[2], true);
+    // Update Vz PID loop with position and velocity
+    double x_accel_output = 0;
+    double y_accel_output = 0;
+    double z_accel_output = 0;
+    success = vz_pid_.update(odometry[2],
+                             time,
+                             z_accel_output,
+                             accel.z() - setpoint_.motion_point.accel.linear.z, true);
 
     if (!success) {
-        ROS_ERROR("Throttle PID update failed in QuadVelocityController::update");
+        ROS_ERROR("Vz PID update failed in QuadVelocityController::update");
         return false;
     }
 
@@ -248,41 +231,48 @@ bool QuadVelocityController::update(const ros::Time& time,
     double local_y_accel = -std::sin(current_yaw) * accel.x()
                          +  std::cos(current_yaw) * accel.y();
 
+    const auto& setpoint_accel = setpoint_.motion_point.accel.linear;
+    double local_x_setpoint_accel = std::cos(current_yaw) * setpoint_accel.x
+                                  + std::sin(current_yaw) * setpoint_accel.y;
+    double local_y_setpoint_accel = -std::sin(current_yaw) * setpoint_accel.x
+                                  +  std::cos(current_yaw) * setpoint_accel.y;
+
     if (level_flight_active_ && col_height 
                                   > level_flight_required_height_
                                     + level_flight_required_hysteresis_) {
         level_flight_active_ = false;
-        pitch_pid_.resetAccumulator();
-        roll_pid_.resetAccumulator();
+        vx_pid_.resetAccumulator();
+        vy_pid_.resetAccumulator();
     }
 
-    if (z_only) {
-        pitch_output = pitch;
-        roll_output = roll;
+    // Final output variables
+    if (xy_passthrough_mode) {
+        x_accel_output = a_x;
+        y_accel_output = a_y;
     }
     else if (col_height < level_flight_required_height_ || level_flight_active_) {
-        pitch_output = 0.0f;
-        roll_output = 0.0f;
+        x_accel_output = 0;
+        y_accel_output = 0;
         level_flight_active_ = true;
     }
     else {
-        // Update pitch PID loop
-        success = pitch_pid_.update(local_x_velocity,
-                                    time,
-                                    pitch_output,
-                                    local_x_accel);
+        // Update vx PID loop
+        success = vx_pid_.update(local_x_velocity,
+                                 time,
+                                 x_accel_output,
+                                 local_x_accel - local_x_setpoint_accel);
         if (!success) {
-            ROS_ERROR("Pitch PID update failed in QuadVelocityController::update");
+            ROS_ERROR("Vx PID update failed in QuadVelocityController::update");
             return false;
         }
 
-        // Update roll PID loop
-        success = roll_pid_.update(local_y_velocity,
-                                   time,
-                                   roll_output,
-                                   local_y_accel);
+        // Update vy PID loop
+        success = vy_pid_.update(local_y_velocity,
+                                 time,
+                                 y_accel_output,
+                                 local_y_accel - local_y_setpoint_accel);
         if (!success) {
-            ROS_ERROR("Roll PID update failed in QuadVelocityController::update");
+            ROS_ERROR("Vy PID update failed in QuadVelocityController::update");
             return false;
         }
     }
@@ -290,37 +280,37 @@ bool QuadVelocityController::update(const ros::Time& time,
     // Fill in the uav_command's information
     uav_command.header.stamp = time;
 
-    double hover_accel = 9.8;
-    double tilt_accel = 0.0;
+    double x_accel = x_accel_output + local_x_setpoint_accel;
+    double y_accel = y_accel_output + local_y_setpoint_accel;
+    double z_accel = g_ + z_accel_output + setpoint_accel.z;
 
+    double thrust_request;
     if(xy_mixer_ == "4dof") {
-        //based on roll and pitch angles we calculate additional throttle to match the level hover_accel
-        tilt_accel = hover_accel*(1-cos(-roll_output)*cos(pitch_output));
-    }
+        double pitch_request, roll_request;
+        {
+            Eigen::Vector3d accel;
+            accel(0) = x_accel;
+            accel(1) = y_accel;
+            accel(2) = z_accel;
+            commandForAccel(accel, pitch_request, roll_request, thrust_request);
+        }
 
+        uav_command.data.pitch = pitch_request;
+        uav_command.data.roll = roll_request;
 
-    // Simple feedforward using a fixed hover_accel to avoid excessive
-    // oscillations from the PID's I term compensating for there needing to be
-    // an average throttle value at 0 velocity in the z axis.
-    ROS_DEBUG("Thrust: %f, Voltage: %f, height: %f", hover_accel + tilt_accel + vertical_accel_output, voltage, col_height);
-    ROS_DEBUG("Hover: %f, Tilt: %f, Vertical %f, Feedforward %f", hover_accel, tilt_accel, vertical_accel_output, setpoint_.motion_point.accel.linear.z);
-    double thrust_request = hover_accel + tilt_accel + vertical_accel_output + setpoint_.motion_point.accel.linear.z;
-    uav_command.throttle = thrust_model_.voltageFromThrust(
-            std::min(std::max(thrust_request, min_thrust_), max_thrust_),
-            4,
-            col_height)
-            / voltage;
-
-    if(xy_mixer_ == "4dof") {
-        uav_command.data.pitch = pitch_output;
-        uav_command.data.roll = -roll_output;
+        uav_command.planar.front_throttle = 0;
+        uav_command.planar.back_throttle = 0;
+        uav_command.planar.left_throttle = 0;
+        uav_command.planar.right_throttle = 0;
     }
     else if(xy_mixer_ == "6dof") {
-        double x_accel = pitch_output;// + setpoint_.motion_point.accel.linear.x;
-        double y_accel = roll_output;// + setpoint_.motion_point.accel.linear.y;
-
         //ROS_ERROR_STREAM(x_accel << " " << y_accel);
         //ROS_ERROR_STREAM(min_side_thrust_ << " " << max_side_thrust_);
+
+        thrust_request = z_accel;
+
+        uav_command.data.pitch = 0;
+        uav_command.data.roll = 0;
 
         uav_command.planar.front_throttle = thrust_model_front_.voltageFromThrust(
             std::min(std::max(-x_accel + min_side_thrust_, min_side_thrust_), max_side_thrust_),
@@ -348,6 +338,13 @@ bool QuadVelocityController::update(const ros::Time& time,
       ROS_ERROR("Invalid XY Mixer type");
       return false;
     }
+
+    ROS_DEBUG("Thrust: %f, Voltage: %f, height: %f", thrust_request, voltage, col_height);
+    uav_command.throttle = thrust_model_.voltageFromThrust(
+            std::min(std::max(thrust_request, min_thrust_), max_thrust_),
+            4,
+            col_height)
+            / voltage;
 
     // Yaw rate needs no correction because the input and output are both
     // velocities
@@ -429,22 +426,24 @@ bool QuadVelocityController::waitUntilReady()
     return true;
 }
 
-void QuadVelocityController::updatePidSetpoints(double current_yaw)
+void QuadVelocityController::updatePidSetpoints(double current_yaw, const Eigen::VectorXd& odometry)
 {
-    throttle_pid_.setSetpoint(setpoint_.motion_point.pose.position.z); //variable.position.z
+    double position_velocity_request = height_p_ * 
+      (setpoint_.motion_point.pose.position.z - odometry[5]);
 
-    // Pitch and roll velocities are transformed according to the last yaw
+    double velocity_request = position_velocity_request + setpoint_.motion_point.twist.linear.z;
+
+    vz_pid_.setSetpoint(velocity_request);
+
+    // x and y velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
     double local_x_velocity = setpoint_.motion_point.twist.linear.x * std::cos(current_yaw)
                             + setpoint_.motion_point.twist.linear.y * std::sin(current_yaw);
     double local_y_velocity = setpoint_.motion_point.twist.linear.x * -std::sin(current_yaw)
                             + setpoint_.motion_point.twist.linear.y *  std::cos(current_yaw);
 
-    pitch_pid_.setSetpoint(local_x_velocity);
-
-    // Note: Roll is inverted because a positive y velocity means a negative
-    // roll by the right hand rule
-    roll_pid_.setSetpoint(local_y_velocity);
+    vx_pid_.setSetpoint(local_x_velocity);
+    vy_pid_.setSetpoint(local_y_velocity);
 }
 
 double QuadVelocityController::yawFromQuaternion(
@@ -462,10 +461,24 @@ double QuadVelocityController::yawFromQuaternion(
     return y;
 }
 
+void QuadVelocityController::commandForAccel(
+        const Eigen::Vector3d& accel,
+        double& pitch,
+        double& roll,
+        double& thrust)
+{
+    const auto a_hat = accel.normalized();
+    roll = -std::asin(a_hat(1));
+    const auto a_no_roll = a_hat - a_hat(1) * Eigen::Vector3d::UnitY();
+    const auto a_hat_no_roll = a_no_roll.normalized();
+    pitch = std::asin(a_hat_no_roll(0));
+    thrust = accel.norm();
+}
+
 bool QuadVelocityController::prepareForTakeover()
 {
-    throttle_pid_.resetAccumulator();
-    pitch_pid_.resetAccumulator();
-    roll_pid_.resetAccumulator();
+    vz_pid_.reset();
+    vx_pid_.reset();
+    vy_pid_.reset();
     return true;
 }

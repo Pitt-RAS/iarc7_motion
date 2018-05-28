@@ -16,9 +16,7 @@ class PidController
 {
 public:
 
-    PidController(double p_gain, double i_gain, double d_gain,
-                  double i_accumulator_max, double i_accumulator_min,
-                  double i_accumulator_enable_threshold,
+    PidController(double settings[6],
                   std::string debug_pid_name,
                   ros::NodeHandle& nh);
 
@@ -41,10 +39,12 @@ public:
 
     void resetAccumulator();
 
+    void reset();
+
 private:
-    const double p_gain_;
-    const double i_gain_;
-    const double d_gain_;
+    double& p_gain_;
+    double& i_gain_;
+    double& d_gain_;
 
     double initialized_;
     double i_accumulator_;
@@ -52,9 +52,9 @@ private:
     ros::Time last_time_;
     double setpoint_;
 
-    const double i_accumulator_max_;
-    const double i_accumulator_min_;
-    const double i_accumulator_enable_threshold_;
+    double& i_accumulator_max_;
+    double& i_accumulator_min_;
+    double& i_accumulator_enable_threshold_;
 
     //Establishing the publisher for debuggin PID values
     ros::Publisher pid_value_publisher_;

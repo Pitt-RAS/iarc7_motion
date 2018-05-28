@@ -147,6 +147,7 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
     motion_point.header.stamp = time;
 
     motion_point.motion_point.pose.position.z = requested_height_;
+    motion_point.motion_point.twist.linear.z = actual_descend_rate_;
 
     if(actual_descend_rate_ > descend_rate_) {
         motion_point.motion_point.accel.linear.z = descend_acceleration_;
