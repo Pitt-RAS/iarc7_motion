@@ -36,9 +36,7 @@ class BlockRoombaTask(AbstractTask):
 
         self._roomba_id = task_request.frame_id
 
-        self._roomba_id = self._roomba_id  + '/base_link'
-
-        if self._roomba_id == '/base_link':
+        if self._roomba_id == '':
             raise ValueError('An invalid roomba id was provided to BlockRoombaTask')
 
         self._roomba_odometry = None

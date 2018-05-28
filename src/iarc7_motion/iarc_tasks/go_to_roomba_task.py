@@ -23,10 +23,11 @@ class GoToRoombaTask(AbstractTask):
     def __init__(self, task_request):
         super(GoToRoombaTask, self).__init__()
 
-        self._roomba_id = task_request.frame_id + '/base_link'
+        # id of roomba to go to
+        self._roomba_id = task_request.frame_id
 
-        if self._roomba_id == '/base_link':
-            raise ValueError('A null roomba id was provided')
+        if self._roomba_id == '':
+            raise ValueError('An invalid roomba id was provided to GoToRoombaTask')
 
         self._roomba_odometry = None
 

@@ -31,9 +31,9 @@ class HitRoombaTask(AbstractTask):
         super(HitRoombaTask, self).__init__()
 
         # id of roomba to hit
-        self._roomba_id = task_request.frame_id  + '/base_link'
+        self._roomba_id = task_request.frame_id
 
-        if self._roomba_id == '/base_link':
+        if self._roomba_id == '':
             raise ValueError('An invalid roomba id was provided to HitRoombaTask')
 
         # data about roombas
