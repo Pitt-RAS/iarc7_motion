@@ -210,6 +210,10 @@ class StateMonitor:
                and not rospy.is_shutdown()):
             rospy.sleep(0.005)
         if rospy.Time.now() >= start_time + startup_timeout:
+            rospy.logerr('Drone odometry:', self._drone_odometry)
+            rospy.logerr('Roombas:', self._roombas)
+            rospy.logerr('Obstacles:', self._obstacles)
+            rospy.logerr('Arm status:', self._arm_status)
             raise IARCFatalSafetyException('SafetyMonitor timed out on startup')
         if rospy.is_shutdown():
             raise rospy.ROSInterruptException()
