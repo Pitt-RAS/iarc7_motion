@@ -283,3 +283,9 @@ class TaskCommandHandler:
     # public wrapper for HLM Controller to send timeouts
     def send_timeout(self, twist):
         self._handle_velocity_command(task_commands.VelocityCommand(twist))
+
+    def wait_until_ready(self, startup_timeout):
+        if not self._ground_interaction_client.wait_for_server(
+                startup_timeout):
+            raise IARCFatalSafetyException(
+                    'TaskCommandHandler could not initialize action client')
