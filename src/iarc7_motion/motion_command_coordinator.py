@@ -90,13 +90,9 @@ class MotionCommandCoordinator:
         self._state_monitor.wait_until_ready(self._startup_timeout
                                            - (rospy.Time.now() - start_time))
 
-        rospy.logwarn('trying to form bond')
-
         # forming bond with safety client
         if not self._safety_client.form_bond():
             raise IARCFatalSafetyException('Motion Coordinator could not form bond with safety client')
-
-        rospy.logwarn('done forming bond')
 
         while not rospy.is_shutdown():
             with self._lock:
