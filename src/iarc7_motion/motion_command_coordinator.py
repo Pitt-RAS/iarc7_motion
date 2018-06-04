@@ -68,7 +68,8 @@ class MotionCommandCoordinator:
             self._update_rate = rospy.get_param('~update_rate')
             # task timeout values
             self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
-
+            # startup timeout
+            self._startup_timeout = rospy.Duration(rospy.get_param('~startup_timeout'))
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for motion coordinator')
             raise
@@ -77,16 +78,23 @@ class MotionCommandCoordinator:
         # rate limiting of updates of motion coordinator
         rate = rospy.Rate(self._update_rate)
 
-        # waiting for action server to be ready
-        self._action_client.wait_for_server()
-
-        rospy.logwarn('trying to form bond')
+        # waiting for dependencies to be ready
+        while rospy.Time.now() == rospy.Time(0) and not rospy.is_shutdown():
+            rospy.sleep(0.005)
+        if rospy.is_shutdown():
+            raise rospy.ROSInterruptException()
+        start_time = rospy.Time.now()
+        if not self._action_client.wait_for_server(self._startup_timeout):
+            raise IARCFatalSafetyException(
+                    'Motion Coordinator could not initialize action client')
+        self._state_monitor.wait_until_ready(self._startup_timeout
+                                           - (rospy.Time.now() - start_time))
+        self._task_command_handler.wait_until_ready(
+                self._startup_timeout - (rospy.Time.now() - start_time))
 
         # forming bond with safety client
         if not self._safety_client.form_bond():
             raise IARCFatalSafetyException('Motion Coordinator could not form bond with safety client')
-
-        rospy.logwarn('done forming bond')
 
         while not rospy.is_shutdown():
             with self._lock:

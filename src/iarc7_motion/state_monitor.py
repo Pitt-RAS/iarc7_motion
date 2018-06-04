@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import actionlib
+from enum import Enum
 import rospy
 import sys
 import threading
@@ -30,7 +31,7 @@ from iarc_tasks.height_recovery_task import HeightRecoveryTask
 from iarc_tasks.velocity_task import VelocityTask
 from iarc_tasks.test_planner_task import TestPlannerTask
 
-class RobotStates: 
+class RobotStates(Enum):
     WAITING_ON_TAKEOFF = 1
     TAKEOFF_FAILED = 2
     LANDING_FAILED = 3
@@ -174,11 +175,6 @@ class StateMonitor:
 
     # fills out the rest of Intermediary State for the task
     def fill_out_transition(self, state):
-        while ((self._drone_odometry is None or self._roombas is None 
-                or self._arm_status is None) and not rospy.is_shutdown()):
-            rospy.loginfo('StateMonitor waiting on topics to be published')
-            rospy.sleep(0.005)
-            pass
         with self._lock:
             state.drone_odometry = self._drone_odometry
             state.roombas = self._roombas
@@ -196,6 +192,31 @@ class StateMonitor:
     def signal_safety_active(self):
         with self._lock:
             self._state = RobotStates.SAFETY_ACTIVE
+
+    def wait_until_ready(self, startup_timeout):
+        while (rospy.Time.now() == rospy.Time(0) and not rospy.is_shutdown()):
+            # Wait for time to be initialized
+            rospy.sleep(0.005)
+        if rospy.is_shutdown():
+            raise rospy.ROSInterruptException()
+
+        start_time = rospy.Time.now()
+
+        while ((self._drone_odometry is None
+                or self._roombas is None
+                or self._obstacles is None
+                or self._arm_status is None)
+               and rospy.Time.now() < start_time + startup_timeout
+               and not rospy.is_shutdown()):
+            rospy.sleep(0.005)
+        if rospy.Time.now() >= start_time + startup_timeout:
+            rospy.logerr('Drone odometry: %s', self._drone_odometry is not None)
+            rospy.logerr('Roombas: %s', self._roombas is not None)
+            rospy.logerr('Obstacles: %s', self._obstacles is not None)
+            rospy.logerr('Arm status: %s', self._arm_status is not None)
+            raise IARCFatalSafetyException('SafetyMonitor timed out on startup')
+        if rospy.is_shutdown():
+            raise rospy.ROSInterruptException()
 
     """
     Callbacks for publishers
