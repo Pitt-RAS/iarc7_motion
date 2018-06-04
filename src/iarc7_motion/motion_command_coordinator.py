@@ -89,6 +89,8 @@ class MotionCommandCoordinator:
                     'Motion Coordinator could not initialize action client')
         self._state_monitor.wait_until_ready(self._startup_timeout
                                            - (rospy.Time.now() - start_time))
+        self._task_command_handler.wait_until_ready(
+                self._startup_timeout - (rospy.Time.now() - start_time))
 
         # forming bond with safety client
         if not self._safety_client.form_bond():
