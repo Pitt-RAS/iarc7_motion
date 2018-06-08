@@ -24,20 +24,28 @@ LandPlanner::LandPlanner(
       transform_wrapper_(),
       state_(LandState::DONE),
       requested_height_(0.0),
+      cushion_height_(0.0),
+      actual_height_(0.0),
       actual_descend_rate_(0.0),
       descend_rate_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "descend_rate")),
+      cushion_rate_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "cushion_rate")),
       descend_acceleration_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "descend_acceleration")),
+      cushion_acceleration_(ros_utils::ParamUtils::getParam<double>(
+              private_nh,
+              "cushion_acceleration")),
       last_update_time_(),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
       update_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "update_timeout")),
+              "update_timeout")),                    
       uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
     landing_detected_subscriber_ = nh.subscribe("landing_detected",
@@ -73,7 +81,8 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
     }
 
     requested_height_ = transform.transform.translation.z;
-
+    // height determined by the ratio of landing accelerations
+    cushion_height_ = std::min(0.5 * (std::pow(descend_rate_,2)/cushion_acceleration_), requested_height_ * ( 1 - ( 1 / ( 1 - descend_acceleration_/cushion_acceleration_))));
     actual_descend_rate_ = 0.0;
 
     state_ = LandState::DESCEND;
@@ -104,16 +113,31 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
         return false;
     }
 
+    actual_height_ = transform.transform.translation.z;
+
     if(state_ == LandState::DESCEND)
     {
-        actual_descend_rate_ = std::max(descend_rate_,
-                                        actual_descend_rate_
-                                        + (descend_acceleration_
-                                        * (time - last_update_time_).toSec()));
+      // determines whether to speed up or slow down, depending on height
+        if (actual_height_ > cushion_height_) {
+            actual_descend_rate_ = std::max(descend_rate_,
+                                            actual_descend_rate_
+                                            + (descend_acceleration_
+                                            * (time - last_update_time_).toSec()));
 
-        requested_height_ = std::max(0.0, requested_height_
-                                          + (actual_descend_rate_
-                                          * (time - last_update_time_).toSec()));
+            requested_height_ = std::max(0.0, requested_height_
+                                              + (actual_descend_rate_
+                                              * (time - last_update_time_).toSec()));
+        }
+        else{
+            actual_descend_rate_ = std::min(cushion_rate_,
+                                            actual_descend_rate_
+                                            + (cushion_acceleration_
+                                            * (time - last_update_time_).toSec()));
+
+            requested_height_ = std::max(0.0, requested_height_
+                                              + (actual_descend_rate_
+                                              * (time - last_update_time_).toSec()));
+        }
 
         if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms
@@ -149,8 +173,15 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
     motion_point.motion_point.pose.position.z = requested_height_;
     motion_point.motion_point.twist.linear.z = actual_descend_rate_;
 
-    if(actual_descend_rate_ > descend_rate_) {
-        motion_point.motion_point.accel.linear.z = descend_acceleration_;
+    if (actual_height_ > cushion_height_) {
+        if(actual_descend_rate_ > descend_rate_) {
+            motion_point.motion_point.accel.linear.z = descend_acceleration_;
+        }
+    }
+    else {
+        if (actual_descend_rate_ < cushion_rate_) {
+            motion_point.motion_point.accel.linear.z = cushion_acceleration_;
+        }
     }
 
     last_update_time_ = time;
