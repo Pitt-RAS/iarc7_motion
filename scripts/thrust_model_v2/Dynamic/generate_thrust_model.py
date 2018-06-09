@@ -618,7 +618,7 @@ def generate_model_map(voltage_to_thrust, time_constant_function, settings):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    surf = ax.scatter(thrust_points_mesh, T, voltage_points_mesh, alpha=1.0)
+    surf = ax.scatter(thrust_points_mesh, T, voltage_points_mesh, alpha=1.0, color='r')
 
     a = np.array(zip(voltage_points_mesh, T)).reshape(
         thrust_points_count, voltage_points_count, 2).tolist()
@@ -636,18 +636,33 @@ def generate_model_map(voltage_to_thrust, time_constant_function, settings):
         'mapping': voltage_to_jerk_mapping
     }
 
-    ax.scatter(
-        thrust_points_mesh, thrust_points_mesh, voltage_points_mesh, alpha=0.3)
+    #ax.scatter(
+    #    thrust_points_mesh, thrust_points_mesh, voltage_points_mesh, alpha=0.3, color='b')
 
-    ax.plot_trisurf(
-        thrust_points_mesh,
-        voltage_to_thrust(voltage_points_mesh),
-        voltage_points_mesh,
-        alpha=0.3)
+    #ax.plot_trisurf(
+    #    thrust_points_mesh,
+    #    voltage_to_thrust(voltage_points_mesh),
+    #    voltage_points_mesh,
+    #    alpha=0.3)
 
     ax.set_xlabel('Current Thrust (kg)')
     ax.set_ylabel('Next Thrust (kg)')
     ax.set_zlabel('Applied Voltage (V)')
+
+    fig2 = plt.figure()
+    #ax2 = fig2.add_subplot(111)
+    plt.scatter(thrust_points_mesh, T, c=voltage_points_mesh, cmap=plt.get_cmap('jet'), label='Thrust Model Points')
+    plt.plot(thrust_points_mesh, thrust_points_mesh, label='Starting Thrust Equal to Ending Thrust', color='r')
+
+    plt.legend(loc=2)
+
+    plt.xlabel('Starting Thrust (kg)')
+    plt.ylabel('Ending Thrust after One 20ms Controller Timestep (kg)')
+    cbar = plt.colorbar()
+    cbar.set_label('Applied Voltage (V)')
+    plt.ylim(min(T)-0.1, max(T)+0.1)
+    plt.xlim(min(thrust_points_mesh)-0.1, max(thrust_points_mesh)+0.1)
+    plt.grid()
 
     return voltage_to_jerk_model
 
