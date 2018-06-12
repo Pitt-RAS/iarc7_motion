@@ -72,7 +72,6 @@ private:
     double requested_height_;
     double cushion_height_;
 
-    double actual_height_;
     double actual_descend_rate_;
 
     // Rate at whicch to descent

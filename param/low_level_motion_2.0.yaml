@@ -67,13 +67,19 @@ post_arm_delay: 0.2
 # Time to take to ramp the throttle to hover throttle
 takeoff_throttle_ramp_duration: 0.5
 
-# Rate at which to descent
+# Rate at which to descend during first phase
 # must be negative
 descend_rate: -0.7
+# Rate at which to descend during last phase
+# must be negative
+cushion_rate: -0.25
 
 # Rate at which to accelerate to descent velocity
 # must be negative
 descend_acceleration: -1.0
+# Rate at which to accelerate to the final cushioned velocity
+# must be positive
+cushion_acceleration: 0.7
 
 #height at which the contact switches must be unpressed
 takeoff_max_height_switch_pressed: 0.25
