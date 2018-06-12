@@ -24,6 +24,12 @@ class HitRoombaTaskState(object):
     init = 0
     waiting = 1
     descent = 2
+    ascent = 3
+
+class HitDetectionState(object):
+    disarmed = 0
+    armed = 1
+    hit_detected = 2
 
 class HitRoombaTask(AbstractTask):
 
@@ -57,7 +63,12 @@ class HitRoombaTask(AbstractTask):
             self._MAX_START_TASK_DIST = rospy.get_param('~hit_roomba_max_start_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
             self._descent_velocity = rospy.get_param('~hit_descent_velocity')
+            self._ascent_velocity = rospy.get_param('~hit_ascent_velocity')
+            self._ascent_acceleration = rospy.get_param('~hit_ascent_acceleration')
             self._max_roomba_descent_dist = rospy.get_param('~max_roomba_descent_dist')
+            self._roomba_hit_arm_threshold = rospy.get_param('~roomba_hit_arm_threshold')
+            self._roomba_hit_detected_threshold = rospy.get_param('~roomba_hit_detected_threshold')
+            self._recovery_height = rospy.get_param('~track_roomba_height')
             x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
             y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
         except KeyError as e:
@@ -67,6 +78,9 @@ class HitRoombaTask(AbstractTask):
         self._x_pid = PidController(x_pid_settings)
         self._y_pid = PidController(y_pid_settings)
 
+        self._begin_ascension_deceleration_height = None
+
+        self._hit_detection_state = HitDetectionState.disarmed
         self._state = HitRoombaTaskState.init
 
     def get_desired_command(self):
@@ -88,14 +102,25 @@ class HitRoombaTask(AbstractTask):
                  or not self.topic_buffer.has_landing_message()):
                     return (TaskRunning(), NopCommand())
                 else:
+                    self._hit_detection_state = HitDetectionState.disarmed
                     self._state = HitRoombaTaskState.descent
 
             if (self._state == HitRoombaTaskState.descent):
                 if not self._check_roomba_in_sight():
                     return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
 
-                elif self._on_ground():
-                    return (TaskDone(),)
+                odometry = self.topic_buffer.get_odometry_message()
+
+                if self._on_ground():
+                    self._transition_to_ascension()
+
+                if self._hit_detection_state == HitDetectionState.disarmed:
+                    if odometry.twist.twist.linear.z < self._roomba_hit_arm_threshold:
+                        self._hit_detection_state = HitDetectionState.armed
+                elif self._hit_detection_state == HitDetectionState.armed:
+                    if odometry.twist.twist.linear.z > self._roomba_hit_detected_threshold:
+                        self._hit_detection_state == HitDetectionState.hit_detected
+                        self._transition_to_ascension()
 
                 try:
                     roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
@@ -123,7 +148,7 @@ class HitRoombaTask(AbstractTask):
                 # uses _roomba_point to determine if quad too far from roomba
                 if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not close enough to the quad'),)
-                
+
                 roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
                 roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
 
@@ -133,23 +158,23 @@ class HitRoombaTask(AbstractTask):
                 x_success, x_response = self._x_pid.update(x_diff, rospy.Time.now(), False)
                 y_success, y_response = self._y_pid.update(y_diff, rospy.Time.now(), False)
 
-                # PID controller does setpoint - current; 
-                # the difference from do_transform_point is from the drone to the roomba, 
+                # PID controller does setpoint - current;
+                # the difference from do_transform_point is from the drone to the roomba,
                 # which is the equivalent of current-setpoint, so take the negative response
-                if x_success: 
+                if x_success:
                     x_vel_target = -x_response + roomba_x_velocity
-                else: 
+                else:
                     x_vel_target = roomba_x_velocity
 
-                if y_success: 
+                if y_success:
                     y_vel_target = -y_response + roomba_y_velocity
-                else: 
+                else:
                     y_vel_target = roomba_y_velocity
-                
+
                 # make sure we are close enough before we descend
-                if self._distance_to_roomba <= self._max_roomba_descent_dist: 
+                if self._distance_to_roomba <= self._max_roomba_descent_dist:
                     z_vel_target = self._descent_velocity
-                else: 
+                else:
                     z_vel_target = 0.0
 
                 # cap velocity
@@ -158,13 +183,12 @@ class HitRoombaTask(AbstractTask):
                 if vel_target > self._MAX_HORIZ_SPEED:
                     x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
                     y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-                
+
                 if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
                     z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
                 desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                odometry = self.topic_buffer.get_odometry_message()
                 drone_vel_x = odometry.twist.twist.linear.x
                 drone_vel_y = odometry.twist.twist.linear.y
                 drone_vel_z = odometry.twist.twist.linear.z
@@ -182,10 +206,42 @@ class HitRoombaTask(AbstractTask):
                 velocity.twist.linear.z = desired_vel[2]
 
                 self._current_velocity = desired_vel
-                
+
                 return (TaskRunning(), VelocityCommand(velocity))
 
+            if (self._state == HitRoombaTaskState.ascent):
+                odometry = self.topic_buffer.get_odometry_message()
+
+                if odometry.pose.pose.position.z > self._begin_ascension_deceleration_height:
+                    return (TaskDone(), VelocityCommand())
+                else:
+                    velocity = TwistStamped()
+                    velocity.header.frame_id = 'level_quad'
+                    velocity.header.stamp = rospy.Time.now()
+                    velocity.twist.linear.z = self._ascent_velocity
+                    return (TaskRunning(), VelocityCommand(velocity,
+                                                           acceleration=self._ascent_acceleration))
+
             return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
+
+    def _transition_to_ascension(self):
+        odometry = self.topic_buffer.get_odometry_message()
+
+        self._begin_ascension_deceleration_height \
+            = (self._recovery_height - odometry.pose.pose.position.z) / 2.0
+
+        velocity = TwistStamped()
+        velocity.header.frame_id = 'level_quad'
+        velocity.header.stamp = rospy.Time.now()
+        velocity.twist.linear.z = self._ascent_velocity
+
+        self._state = HitRoombaTaskState.ascent
+        return (TaskRunning(), VelocityCommand(velocity,
+                                               start_position_z
+                                                   = odometry.pose.pose.position.z,
+                                               start_velocity_z
+                                                   = odometry.twist.twist.linear.z,
+                                               acceleration=self._ascent_acceleration))
 
     # checks to see if passed in roomba id is in sight of quad
     def _check_roomba_in_sight(self):
@@ -198,9 +254,9 @@ class HitRoombaTask(AbstractTask):
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
     def _check_max_roomba_range(self):
-        self._distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
+        self._distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 +
                             self._roomba_point.point.y**2)
-        
+
         return (self._distance_to_roomba <= self._MAX_START_TASK_DIST)
 
     def cancel(self):

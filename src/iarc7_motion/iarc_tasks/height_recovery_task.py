@@ -37,7 +37,6 @@ class HeightRecoveryTask(AbstractTask):
             self._TAKEOFF_VELOCITY = rospy.get_param('~takeoff_velocity')
             self._MIN_MAN_HEIGHT = rospy.get_param('~min_maneuver_height')
             HEIGHT_OFFSET = rospy.get_param('~recover_height_offset')
-            self._DELAY_BEFORE_TAKEOFF = rospy.get_param('~delay_before_takeoff')
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for HeightRecoveryTask')
@@ -97,7 +96,7 @@ class HeightRecoveryTask(AbstractTask):
             rospy.loginfo('HeightRecoveryTask cancellation accepted')
             self._canceled = True
             return True
-        else: 
+        else:
             rospy.loginfo('HeightRecoveryTask cancellation rejected')
             return False
 

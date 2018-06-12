@@ -12,7 +12,8 @@ class VelocityCommand(object):
                  start_position_z=None,
                  start_velocity_x=None,
                  start_velocity_y=None,
-                 start_velocity_z=None):
+                 start_velocity_z=None,
+                 acceleration=None):
 
         self.start_position = Vector3()
         self.start_position.x = start_position_x
@@ -23,6 +24,8 @@ class VelocityCommand(object):
         self.start_velocity.x = start_velocity_x
         self.start_velocity.y = start_velocity_y
         self.start_velocity.z = start_velocity_z
+
+        self.acceleration = acceleration
 
         if target_twist is None:
             self.target_twist = TwistStamped()

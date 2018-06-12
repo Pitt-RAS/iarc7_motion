@@ -49,7 +49,7 @@ class StateMonitor:
         self._obstacles = None
         self._drone_odometry = None
         self._arm_status = None
-        
+
         # current state of the drone
         self._state = RobotStates.WAITING_ON_TAKEOFF
         self._BELOW_MIN_MAN_HEIGHT = True
@@ -60,14 +60,14 @@ class StateMonitor:
 
         # to keep things thread safe
         self._lock = threading.RLock()
-        
+
         # info needed to do sanity checking and state monitoring
         self._roomba_status_sub = rospy.Subscriber(
-            'roombas', OdometryArray, 
+            'roombas', OdometryArray,
             self._receive_roomba_status)
 
         self._obstacle_sub = rospy.Subscriber(
-            '/obstacles', ObstacleArray, 
+            '/obstacles', ObstacleArray,
             self._receive_obstacle_status)
 
         self._current_velocity_sub = rospy.Subscriber(
@@ -75,7 +75,7 @@ class StateMonitor:
             self._receive_drone_odometry)
 
         self._drone_arm_status = rospy.Subscriber(
-            '/fc_status', FlightControllerStatus, 
+            '/fc_status', FlightControllerStatus,
             self._receive_arm_status)
 
         try:
@@ -91,17 +91,17 @@ class StateMonitor:
 
     # checks task transitions before executing it
     def check_transition(self, task):
-        with self._lock: 
-            passed = True 
+        with self._lock:
+            passed = True
             if self._state == RobotStates.SAFETY_ACTIVE:
-                if not isinstance(task, LandTask): 
+                if not isinstance(task, LandTask):
                     raise IARCFatalSafetyException(
                         'StateMonitor has been told we are safety active and landing was not requested')
             elif self._state == RobotStates.WAITING_ON_TAKEOFF:
                 if not isinstance(task, TakeoffTask):
                     passed = False
             elif (self._state == RobotStates.TAKEOFF_FAILED or
-                self._state == RobotStates.LANDING_FAILED 
+                self._state == RobotStates.LANDING_FAILED
                 or self._state == RobotStates.RECOVERY_FAILED):
                 raise IARCSafetyException('A critical task failed')
             elif self._state == RobotStates.WAITING_ON_RECOVERY:
@@ -114,7 +114,7 @@ class StateMonitor:
             else:
                 raise IARCFatalSafetyException('StateMonitor is in an invalid state')
 
-            if passed: 
+            if passed:
                 self._last_task = task
 
             return passed
@@ -122,28 +122,27 @@ class StateMonitor:
     # public function to receive last task's ending state
     # and transitions the state of the robot
     def set_last_task_end_state(self, state):
-        with self._lock: 
+        with self._lock:
             self._last_task_end_state = state
-            
+
             if self._state == RobotStates.SAFETY_ACTIVE:
                 pass
             elif isinstance(state, task_states.TaskDone):
-                if isinstance(self._last_task, LandTask): 
+                if isinstance(self._last_task, LandTask):
                     self._state = RobotStates.WAITING_ON_TAKEOFF
-                elif (isinstance(self._last_task, BlockRoombaTask)
-                    or isinstance(self._last_task, HitRoombaTask)):
+                elif (isinstance(self._last_task, BlockRoombaTask)):
                     self._state = RobotStates.WAITING_ON_RECOVERY
-                else: 
+                else:
                     self._state = RobotStates.NORMAL
             elif isinstance(state, task_states.TaskCanceled):
                 # LLM will finish a land, no matter what request we get
-                if isinstance(self._last_task, LandTask): 
+                if isinstance(self._last_task, LandTask):
                     self._state = RobotStates.WAITING_ON_TAKEOFF
                 # the takeoff task is supposed to complete no matter the request
                 elif isinstance(self._last_task, TakeoffTask):
                     if not self._BELOW_MIN_MAN_HEIGHT:
                         self._state = RobotStates.NORMAL
-                    else: 
+                    else:
                         rospy.logerr('Takeoff did not finish when it was canceled')
                         self._state = RobotStates.FATAL
                 # the height recovery task is the most appropriate
@@ -151,26 +150,26 @@ class StateMonitor:
                 elif (isinstance(self._last_task, BlockRoombaTask)
                     or isinstance(self._last_task, HitRoombaTask)):
                     self._state = RobotStates.WAITING_ON_RECOVERY
-                else: 
+                else:
                     self._state = RobotStates.NORMAL
-            elif (isinstance(state, task_states.TaskAborted) 
+            elif (isinstance(state, task_states.TaskAborted)
                 or isinstance(state, task_states.TaskFailed)):
                 if isinstance(self._last_task, TakeoffTask):
                     self._state = RobotStates.TAKEOFF_FAILED
-                elif isinstance(self._last_task, LandTask): 
+                elif isinstance(self._last_task, LandTask):
                     self._state = RobotStates.LANDING_FAILED
                 elif isinstance(self._last_task, HeightRecoveryTask):
                     self._state = RobotStates.RECOVERY_FAILED
                 elif (isinstance(self._last_task, BlockRoombaTask)
                     or isinstance(self._last_task, HitRoombaTask)):
                     self._state = RobotStates.WAITING_ON_RECOVERY
-            else: 
+            else:
                 rospy.logerr('Invalid ending task state provided in StateMonitor')
                 self._state = RobotStates.FATAL
 
             rospy.loginfo('RobotState: ' + str(self._state))
 
-            if self._state == RobotStates.FATAL: 
+            if self._state == RobotStates.FATAL:
                 raise IARCFatalSafetyException('StateMonitor determined robot is in a fatal state')
 
     # fills out the rest of Intermediary State for the task
@@ -181,7 +180,7 @@ class StateMonitor:
             state.obstacles = self._obstacles
             state.arm_status = self._arm_status
             return state
-    
+
     # Handles no task running timeouts
     def get_timeout_twist(self):
         twist = TwistStamped()
@@ -220,8 +219,8 @@ class StateMonitor:
 
     """
     Callbacks for publishers
-    
-    Types: 
+
+    Types:
         drone odometry: odometry (position, velocity, etc.) of drone
         roomba status: odometry (position, velocity, etc.) of
             all roombas in sight of drone
@@ -229,7 +228,7 @@ class StateMonitor:
     def _receive_drone_odometry(self, data):
         with self._lock:
             self._drone_odometry = data
-            self._BELOW_MIN_MAN_HEIGHT = (data.pose.pose.position.z 
+            self._BELOW_MIN_MAN_HEIGHT = (data.pose.pose.position.z
                             < self._MIN_MANEUVER_HEIGHT)
 
     def _receive_roomba_status(self, data):
