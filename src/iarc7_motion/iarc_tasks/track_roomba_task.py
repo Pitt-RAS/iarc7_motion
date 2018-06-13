@@ -46,6 +46,7 @@ class TrackRoombaTask(AbstractTask):
         # data about roombas
         self._roomba_odometry = None
         self._roomba_point = None
+        self._distance_to_roomba = None
         # used for acceleration limiting
         self._current_velocity = None
         # keeping track of total track time
@@ -62,6 +63,7 @@ class TrackRoombaTask(AbstractTask):
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_TASK_DIST = rospy.get_param('~max_roomba_dist')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
+            self._max_roomba_descent_dist = rospy.get_param('~max_roomba_descent_dist')
             x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
             y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
             TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
@@ -88,8 +90,8 @@ class TrackRoombaTask(AbstractTask):
         with self._lock:
             if self._start_time is None:
                 self._start_time = rospy.Time.now()
-            
-            if self._time_to_track != 0 and (rospy.Time.now() 
+
+            if self._time_to_track != 0 and (rospy.Time.now()
                 - self._start_time >= rospy.Duration(self._time_to_track)):
                 rospy.loginfo('TrackRoombaTask has tracked the roomba for the specified duration')
                 return (TaskDone(),)
@@ -146,6 +148,12 @@ class TrackRoombaTask(AbstractTask):
                 if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not found or not close enough to the quad'),)
 
+                # make sure we are close enough before we descend
+                if self._time_to_track == 0.0 \
+                   and self._distance_to_roomba <= self._max_roomba_descent_dist:
+                    rospy.loginfo('TrackRoombaTask has tracked the roomba within the target distance')
+                    return (TaskDone(),)
+
                 roomba_x_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.x
                 roomba_y_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.y
 
@@ -162,17 +170,17 @@ class TrackRoombaTask(AbstractTask):
                 x_success, x_response = self._x_pid.update(x_diff, rospy.Time.now(), False)
                 y_success, y_response = self._y_pid.update(y_diff, rospy.Time.now(), False)
 
-                # PID controller does setpoint - current; 
-                # the difference from do_transform_point is from the drone to the roomba, 
+                # PID controller does setpoint - current;
+                # the difference from do_transform_point is from the drone to the roomba,
                 # which is the equivalent of current-setpoint, so take the negative response
-                if x_success: 
+                if x_success:
                     x_vel_target = -x_response + roomba_x_velocity
-                else: 
+                else:
                     x_vel_target = roomba_x_velocity
 
-                if y_success: 
+                if y_success:
                     y_vel_target = -y_response + roomba_y_velocity
-                else: 
+                else:
                     y_vel_target = roomba_y_velocity
 
                 predicted_motion_point = \
@@ -218,15 +226,15 @@ class TrackRoombaTask(AbstractTask):
                 velocity.twist.linear.z = desired_vel[2]
 
                 self._current_velocity = desired_vel
-                
+
                 if z_reset:
                     velocity_command = VelocityCommand(velocity,
                                         start_position_z=odometry.pose.pose.position.z)
                 else:
                     velocity_command = VelocityCommand(velocity)
 
-                return (TaskRunning(), velocity_command) 
-            
+                return (TaskRunning(), velocity_command)
+
             return (TaskAborted(msg='Illegal state reached in Track Roomba task'),)
 
     # checks to see if passed in roomba id is in sight of quad
@@ -240,14 +248,14 @@ class TrackRoombaTask(AbstractTask):
     # that the drone and roomba are both within a specified distance
     # in order to start/continue the task
     def _check_max_roomba_range(self):
-        _distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 + 
+        self._distance_to_roomba = math.sqrt(self._roomba_point.point.x**2 +
                             self._roomba_point.point.y**2)
-        return (_distance_to_roomba <= self._MAX_TASK_DIST)
+        return (self._distance_to_roomba <= self._MAX_TASK_DIST)
 
     def cancel(self):
         rospy.loginfo('TrackRoomba Task canceled')
         self._canceled = True
         return True
-    
+
     def set_incoming_transition(self, transition):
         self._transition = transition

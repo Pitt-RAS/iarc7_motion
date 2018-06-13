@@ -106,6 +106,7 @@ class HitRoombaTask(AbstractTask):
                     self._state = HitRoombaTaskState.descent
 
             if (self._state == HitRoombaTaskState.descent):
+                rospy.logwarn('Descending')
                 if not self._check_roomba_in_sight():
                     return (TaskAborted(msg='The provided roomba is not in sight of quad'),)
 
@@ -176,6 +177,7 @@ class HitRoombaTask(AbstractTask):
                     z_vel_target = self._descent_velocity
                 else:
                     z_vel_target = 0.0
+                    rospy.logwarn('hit roomba task not close enough to roomba to descend')
 
                 # cap velocity
                 vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
