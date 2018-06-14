@@ -14,11 +14,11 @@ class TaskTopicBuffer(object):
         self._drone_odometry = None
 
         self._landing_message_sub = rospy.Subscriber(
-            'landing_detected', BoolStamped, 
+            'landing_detected', BoolStamped,
             self._receive_landing_status)
 
         self._roomba_status_sub = rospy.Subscriber(
-            'roombas', OdometryArray, 
+            'roombas', OdometryArray,
             self._receive_roomba_status)
 
         self._current_velocity_sub = rospy.Subscriber(
@@ -28,6 +28,10 @@ class TaskTopicBuffer(object):
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
+
+        self._roomba_tracking_pub = rospy.Publisher(
+            'roomba_tracking_status', Odometry,
+            queue_size=10)
 
     def _receive_roomba_status(self, data):
         self._roomba_array = data
@@ -62,4 +66,5 @@ class TaskTopicBuffer(object):
     def get_linear_motion_profile_generator(self):
         return self._motion_profile_generator
 
-
+    def publish_roomba_tracking_status(self, pose):
+        self._roomba_tracking_pub.publish(pose)

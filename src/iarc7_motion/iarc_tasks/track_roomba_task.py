@@ -6,6 +6,7 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TwistStamped, PointStamped
 
 from .abstract_task import AbstractTask
@@ -160,6 +161,16 @@ class TrackRoombaTask(AbstractTask):
                 x_diff = odometry.twist.twist.linear.x - roomba_x_velocity
                 y_diff = odometry.twist.twist.linear.y - roomba_y_velocity
                 diff_mag = (x_diff**2 + y_diff**2)**0.5
+
+                roomba_track_msg = Odometry()
+                roomba_track_msg.header.stamp = rospy.Time.now()
+                roomba_track_msg.pose.pose.position.x = self._roomba_point.point.x
+                roomba_track_msg.pose.pose.position.y = self._roomba_point.point.y
+                roomba_track_msg.pose.pose.position.z = self._distance_to_roomba
+                roomba_track_msg.twist.twist.linear.x = x_diff
+                roomba_track_msg.twist.twist.linear.y = y_diff
+                roomba_track_msg.twist.twist.linear.z = diff_mag
+                self.topic_buffer.publish_roomba_tracking_status(roomba_track_msg)
 
                 # make sure we are close enough before we descend
                 if self._time_to_track == 0.0 \

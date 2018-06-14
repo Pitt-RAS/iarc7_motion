@@ -6,6 +6,7 @@ import tf2_ros
 import tf2_geometry_msgs
 import threading
 
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TwistStamped, PointStamped
 
 from .abstract_task import AbstractTask
@@ -173,11 +174,24 @@ class HitRoombaTask(AbstractTask):
                 #else:
                 #    y_vel_target = roomba_y_velocity
 
+                x_v_diff = odometry.twist.twist.linear.x - roomba_x_velocity
+                y_v_diff = odometry.twist.twist.linear.y - roomba_y_velocity
+                diff_mag = (x_v_diff**2 + y_v_diff**2)**0.5
+
+                roomba_track_msg = Odometry()
+                roomba_track_msg.header.stamp = rospy.Time.now()
+                roomba_track_msg.pose.pose.position.x = x_diff
+                roomba_track_msg.pose.pose.position.y = y_diff
+                roomba_track_msg.pose.pose.position.x = (x_diff**2 + y_diff**2)**0.5
+                roomba_track_msg.twist.twist.linear.x = x_v_diff
+                roomba_track_msg.twist.twist.linear.y = y_v_diff
+                roomba_track_msg.twist.twist.linear.z = diff_mag
+                self.topic_buffer.publish_roomba_tracking_status(roomba_track_msg)
+
                 # make sure we are close enough before we descend
                 if self._distance_to_roomba <= self._max_roomba_descent_dist:
                     z_vel_target = self._descent_velocity
                     desired_vel = [roomba_x_velocity, roomba_y_velocity, z_vel_target]
-
                     velocity = TwistStamped()
                     velocity.header.frame_id = 'level_quad'
                     velocity.header.stamp = rospy.Time.now()
