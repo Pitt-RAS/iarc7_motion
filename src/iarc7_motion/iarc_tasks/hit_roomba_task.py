@@ -176,40 +176,41 @@ class HitRoombaTask(AbstractTask):
                 if self._distance_to_roomba <= self._max_roomba_descent_dist:
                     z_vel_target = self._descent_velocity
                     desired_vel = [roomba_x_velocity, roomba_y_velocity, z_vel_target]
+
+                    velocity = TwistStamped()
+                    velocity.header.frame_id = 'level_quad'
+                    velocity.header.stamp = rospy.Time.now()
+                    velocity.twist.linear.x = desired_vel[0]
+                    velocity.twist.linear.y = desired_vel[1]
+                    velocity.twist.linear.z = desired_vel[2]
+
+                    self._current_velocity = desired_vel
+
+                    return (TaskRunning(), VelocityCommand(velocity))
+
                 else:
-                    z_vel_target = 0.0
+                    self._state = HitRoombaTaskState.failure
                     rospy.logwarn('hit roomba task not close enough to roomba to descend')
                     # cap velocity
-                    vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
+                    # vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
-                    if vel_target > self._MAX_HORIZ_SPEED:
-                        x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-                        y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
+                    # if vel_target > self._MAX_HORIZ_SPEED:
+                    #     x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
+                    #     y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
 
-                    if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                        z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
+                    # if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
+                    #     z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
-                    desired_vel = [x_vel_target, y_vel_target, z_vel_target]
+                    # desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                    drone_vel_x = odometry.twist.twist.linear.x
-                    drone_vel_y = odometry.twist.twist.linear.y
-                    drone_vel_z = odometry.twist.twist.linear.z
+                    # drone_vel_x = odometry.twist.twist.linear.x
+                    # drone_vel_y = odometry.twist.twist.linear.y
+                    # drone_vel_z = odometry.twist.twist.linear.z
 
-                    if self._current_velocity is None:
-                        self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
+                    # if self._current_velocity is None:
+                    #     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                    desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
-
-                velocity = TwistStamped()
-                velocity.header.frame_id = 'level_quad'
-                velocity.header.stamp = rospy.Time.now()
-                velocity.twist.linear.x = desired_vel[0]
-                velocity.twist.linear.y = desired_vel[1]
-                velocity.twist.linear.z = desired_vel[2]
-
-                self._current_velocity = desired_vel
-
-                return (TaskRunning(), VelocityCommand(velocity))
+                    # desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
             if (self._state == HitRoombaTaskState.ascent):
                 odometry = self.topic_buffer.get_odometry_message()
@@ -223,6 +224,16 @@ class HitRoombaTask(AbstractTask):
                     velocity.twist.linear.z = self._ascent_velocity
                     return (TaskRunning(), VelocityCommand(velocity,
                                                            acceleration=self._ascent_acceleration))
+
+            if (self._state == HitRoombaTaskState.failure):
+                if odometry.pose.pose.position.z > self._recovery_height:
+                    return (TaskDone(), VelocityCommand())
+                else:
+                    velocity = TwistStamped()
+                    velocity.header.frame_id = 'level_quad'
+                    velocity.header.stamp = rospy.Time.now()
+                    velocity.twist.linear.z = self._ascent_velocity/2.0
+                    return (TaskRunning(), VelocityCommand(velocity))
 
             return (TaskAborted(msg='Illegal state reached in Hit Roomba Task' ),)
 
