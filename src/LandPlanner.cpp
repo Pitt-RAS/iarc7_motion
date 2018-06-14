@@ -51,10 +51,10 @@ LandPlanner::LandPlanner(
                                  100,
                                  &LandPlanner::processLandingDetectedMessage,
                                  this);
-    ROS_ASSERT_MSG((descend_rate_ <= 0) && 
-                   (cushion_rate_ <= 0) && 
-                   (cushion_acceleration_ > 0) && 
-                   (descend_acceleration_ < 0), "Parameter loaded in with wrong sign!");
+    ROS_ASSERT_MSG(descend_rate_ <= 0, "descend_rate_ loaded in with wrong sign!");
+    ROS_ASSERT_MSG(cushion_rate_ <= 0, "cushion_rate_ loaded in with wrong sign!");
+    ROS_ASSERT_MSG(cushion_acceleration_ > 0,"cushion_acceleration_ loaded in with wrong sign!");
+    ROS_ASSERT_MSG(descend_acceleration_ < 0, "descend_acceleration_ loaded in with wrong sign!");
 }
 
 // Used to prepare and check initial conditions for landing
@@ -126,21 +126,17 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
                                             actual_descend_rate_
                                             + (descend_acceleration_
                                             * (time - last_update_time_).toSec()));
-
-            requested_height_ = std::max(0.0, requested_height_
-                                              + (actual_descend_rate_
-                                              * (time - last_update_time_).toSec()));
         }
         else{
             actual_descend_rate_ = std::min(cushion_rate_,
                                             actual_descend_rate_
                                             + (cushion_acceleration_
                                             * (time - last_update_time_).toSec()));
-
-            requested_height_ = std::max(0.0, requested_height_
-                                              + (actual_descend_rate_
-                                              * (time - last_update_time_).toSec()));
         }
+        
+        requested_height_ = std::max(0.0, requested_height_
+                                          + (actual_descend_rate_
+                                          * (time - last_update_time_).toSec()));
 
         if(landing_detected_message_.data) {
             // Sending disarm request to fc_comms

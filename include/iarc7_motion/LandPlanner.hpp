@@ -68,7 +68,6 @@ private:
 
     LandState state_;
 
-
     double requested_height_;
     double cushion_height_;
 
