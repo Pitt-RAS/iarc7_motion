@@ -25,6 +25,7 @@ class HitRoombaTaskState(object):
     waiting = 1
     descent = 2
     ascent = 3
+    failure = 4
 
 class HitDetectionState(object):
     disarmed = 0
@@ -226,6 +227,8 @@ class HitRoombaTask(AbstractTask):
                                                            acceleration=self._ascent_acceleration))
 
             if (self._state == HitRoombaTaskState.failure):
+                odometry = self.topic_buffer.get_odometry_message()
+
                 if odometry.pose.pose.position.z > self._recovery_height:
                     return (TaskDone(), VelocityCommand())
                 else:

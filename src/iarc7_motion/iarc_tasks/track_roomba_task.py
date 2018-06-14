@@ -68,7 +68,7 @@ class TrackRoombaTask(AbstractTask):
             self._max_roomba_descent_dist = rospy.get_param('~max_roomba_descent_dist')
             x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
             y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
-            self._track_completed_distance = rospy.get_param('~_track_completed_distance')
+            self._track_completed_distance = rospy.get_param('~track_completed_distance')
             self._track_completed_vel_diff = rospy.get_param('~track_completed_vel_diff')
             self._track_completed_time = rospy.get_param('~track_completed_time')
             TRACK_HEIGHT = rospy.get_param('~track_roomba_height')
@@ -166,12 +166,10 @@ class TrackRoombaTask(AbstractTask):
                    and self._distance_to_roomba <= self._track_completed_distance \
                    and diff_mag <= self._track_completed_vel_diff:
                     if self._time_started_tracking is not None:
-                        rospy.logerr(rospy.Time.now() - self._time_started_tracking)
-                        if rospy.Time.now() - self._time_started_tracking > rospy.Durations(self._track_completed_time):
+                        if rospy.Time.now() - self._time_started_tracking > rospy.Duration(self._track_completed_time):
                             rospy.loginfo('TrackRoombaTask has tracked the roomba within the target distance')
                             return (TaskDone(),)
                     else:
-                        rospy.logerr('Resetting tracking time')
                         self._time_started_tracking = rospy.Time.now()
                 else:
                     self._time_started_tracking = None
