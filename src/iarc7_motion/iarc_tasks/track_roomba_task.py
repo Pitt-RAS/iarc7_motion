@@ -58,6 +58,8 @@ class TrackRoombaTask(AbstractTask):
         # thread safe
         self._lock = threading.RLock()
 
+        self._time_started_tracking = None
+
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_HORIZ_SPEED = rospy.get_param('~max_translation_speed')
@@ -148,14 +150,28 @@ class TrackRoombaTask(AbstractTask):
                 if not self._check_max_roomba_range():
                     return (TaskAborted(msg='The provided roomba is not found or not close enough to the quad'),)
 
+                odometry = self.topic_buffer.get_odometry_message()
+                roomba_x_velocity = self._roomba_odometry.twist.twist.linear.x
+                roomba_y_velocity = self._roomba_odometry.twist.twist.linear.y
+
+                x_diff = odometry.twist.twist.linear.x - roomba_x_velocity
+                y_diff = odometry.twist.twist.linear.y - roomba_y_velocity
+                diff_mag = (x_diff**2 + y_diff**2)**0.5
+
                 # make sure we are close enough before we descend
                 if self._time_to_track == 0.0 \
-                   and self._distance_to_roomba <= self._max_roomba_descent_dist:
-                    rospy.loginfo('TrackRoombaTask has tracked the roomba within the target distance')
-                    return (TaskDone(),)
-
-                roomba_x_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.x
-                roomba_y_velocity = 0.0 #self._roomba_odometry.twist.twist.linear.y
+                   and self._distance_to_roomba <= 0.01 \
+                   and diff_mag <= 0.05:
+                    if self._time_started_tracking is not None:
+                        rospy.logerr(rospy.Time.now() - self._time_started_tracking)
+                        if rospy.Time.now() - self._time_started_tracking > rospy.Duration(2.0):
+                            rospy.loginfo('TrackRoombaTask has tracked the roomba within the target distance')
+                            return (TaskDone(),)
+                    else:
+                        rospy.logerr('Resetting tracking time')
+                        self._time_started_tracking = rospy.Time.now()
+                else:
+                    self._time_started_tracking = None
 
                 # The overshoot is taking in the x velocity normalizing it and applying overshoot
                 overshoot = math.sqrt(self._x_overshoot**2 + self._y_overshoot**2)

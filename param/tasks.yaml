@@ -31,7 +31,7 @@ desired_translation_acceleration: 1.0
 # Max translation speed in the xy plane in m/s
 max_translation_speed: 1.0
 # maximum z velocity
-max_z_velocity: .3
+max_z_velocity: 1.5
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
@@ -67,11 +67,11 @@ roomba_pid_settings:
 # HIT ROOMBA
 # max distance to roomba allowed for
 # descent to occur
-max_roomba_descent_dist: .1
+max_roomba_descent_dist: .3
 # maximum radial distance from roomba
 hit_roomba_max_start_dist: 2.0
 # descent velocity when hitting/blocking a roomba
-hit_descent_velocity: -0.4
+hit_descent_velocity: -0.5
 # ascent velocity after hitting a roomba
 hit_ascent_velocity: 1.0
 # acceleration to use for ascent movements directly after hitting a roomba

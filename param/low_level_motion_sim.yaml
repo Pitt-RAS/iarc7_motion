@@ -18,16 +18,16 @@ battery_timeout: 0.5
 
 xy_mixer: "4dof"
 
-pitch_p: 2.94
-pitch_i: 4.9
-pitch_d: 0.0
+pitch_p: 3.0
+pitch_i: 0.75
+pitch_d: 0.2
 pitch_accumulator_max: 5.0
 pitch_accumulator_min: -5.0
 pitch_accumulator_enable_threshold: 10.0
 
-roll_p: 2.94
-roll_i: 4.9
-roll_d: 0.0
+roll_p: 3.0
+roll_i: 0.75
+roll_d: 0.2
 roll_accumulator_max: 5.0
 roll_accumulator_min: -5.0
 roll_accumulator_enable_threshold: 10.0
@@ -52,7 +52,7 @@ yaw_min           : -3.5
 yaw_max_rate      : 1000.0
 
 # Height below which the drone is required to be level
-level_flight_required_height: 0.35
+level_flight_required_height: 0.15
 # Height above the level flight height at which to allow the drone
 # to begin tilting again
 level_flight_required_hysteresis: 0.10

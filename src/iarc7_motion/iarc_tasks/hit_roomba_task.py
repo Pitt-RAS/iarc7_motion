@@ -113,7 +113,7 @@ class HitRoombaTask(AbstractTask):
                 odometry = self.topic_buffer.get_odometry_message()
 
                 if self._on_ground():
-                    self._transition_to_ascension()
+                    return self._transition_to_ascension()
 
                 if self._hit_detection_state == HitDetectionState.disarmed:
                     if odometry.twist.twist.linear.z < self._roomba_hit_arm_threshold:
@@ -121,7 +121,7 @@ class HitRoombaTask(AbstractTask):
                 elif self._hit_detection_state == HitDetectionState.armed:
                     if odometry.twist.twist.linear.z > self._roomba_hit_detected_threshold:
                         self._hit_detection_state == HitDetectionState.hit_detected
-                        self._transition_to_ascension()
+                        return self._transition_to_ascension()
 
                 try:
                     roomba_transform = self.topic_buffer.get_tf_buffer().lookup_transform(
@@ -164,41 +164,41 @@ class HitRoombaTask(AbstractTask):
                 # which is the equivalent of current-setpoint, so take the negative response
                 if x_success:
                     x_vel_target = -x_response + roomba_x_velocity
-                else:
-                    x_vel_target = roomba_x_velocity
+                #else:
+                #    x_vel_target = roomba_x_velocity
 
                 if y_success:
                     y_vel_target = -y_response + roomba_y_velocity
-                else:
-                    y_vel_target = roomba_y_velocity
+                #else:
+                #    y_vel_target = roomba_y_velocity
 
                 # make sure we are close enough before we descend
                 if self._distance_to_roomba <= self._max_roomba_descent_dist:
                     z_vel_target = self._descent_velocity
+                    desired_vel = [roomba_x_velocity, roomba_y_velocity, z_vel_target]
                 else:
                     z_vel_target = 0.0
                     rospy.logwarn('hit roomba task not close enough to roomba to descend')
+                    # cap velocity
+                    vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
-                # cap velocity
-                vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
+                    if vel_target > self._MAX_HORIZ_SPEED:
+                        x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
+                        y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
 
-                if vel_target > self._MAX_HORIZ_SPEED:
-                    x_vel_target = x_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
-                    y_vel_target = y_vel_target * (self._MAX_HORIZ_SPEED/vel_target)
+                    if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
+                        z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
 
-                if (abs(z_vel_target) > self._MAX_Z_VELOCITY):
-                    z_vel_target = math.copysign(self._MAX_Z_VELOCITY, z_vel_target)
+                    desired_vel = [x_vel_target, y_vel_target, z_vel_target]
 
-                desired_vel = [x_vel_target, y_vel_target, z_vel_target]
+                    drone_vel_x = odometry.twist.twist.linear.x
+                    drone_vel_y = odometry.twist.twist.linear.y
+                    drone_vel_z = odometry.twist.twist.linear.z
 
-                drone_vel_x = odometry.twist.twist.linear.x
-                drone_vel_y = odometry.twist.twist.linear.y
-                drone_vel_z = odometry.twist.twist.linear.z
+                    if self._current_velocity is None:
+                        self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                if self._current_velocity is None:
-                    self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
-
-                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
+                    desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
