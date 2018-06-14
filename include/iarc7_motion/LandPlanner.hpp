@@ -69,14 +69,17 @@ private:
     LandState state_;
 
     double requested_height_;
+    double cushion_height_;
 
     double actual_descend_rate_;
 
     // Rate at whicch to descent
     const double descend_rate_;
+    const double cushion_rate_;
 
     // Rate at which to accelerate to descent velocity
     const double descend_acceleration_;
+    const double cushion_acceleration_;
 
     // Last time an update was successful
     ros::Time last_update_time_;
