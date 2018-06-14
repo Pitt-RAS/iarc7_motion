@@ -43,6 +43,12 @@ translation_xyz_tolerance : 0.3
 track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
+# Maximum distance from a roomba for automatictrack to complete
+track_completed_distance: 0.05
+# Maximum velocity difference from a roomba for an automatic track to complete
+track_completed_vel_diff: 0.05
+# Amount of time the track completed conditions have to remain true for track to complete
+track_completed_time: 2.0
 
 # GO TO ROOMBA
 go_to_roomba_tolerance: 0.3
