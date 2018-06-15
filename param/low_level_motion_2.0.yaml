@@ -72,11 +72,11 @@ takeoff_throttle_ramp_duration: 0.5
 descend_rate: -0.7
 # Rate at which to descend during last phase
 # must be negative
-cushion_rate: -0.25
+cushion_rate: -0.35
 
 # Rate at which to accelerate to descent velocity
 # must be negative
-descend_acceleration: -1.0
+descend_acceleration: -2.0
 # Rate at which to accelerate to the final cushioned velocity
 # must be positive
 cushion_acceleration: 0.7

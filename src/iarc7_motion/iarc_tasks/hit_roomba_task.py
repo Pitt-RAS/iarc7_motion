@@ -120,9 +120,11 @@ class HitRoombaTask(AbstractTask):
                 if self._hit_detection_state == HitDetectionState.disarmed:
                     if odometry.twist.twist.linear.z < self._roomba_hit_arm_threshold:
                         self._hit_detection_state = HitDetectionState.armed
+                        rospy.logerr('ARMING DESCENT')
                 elif self._hit_detection_state == HitDetectionState.armed:
                     if odometry.twist.twist.linear.z > self._roomba_hit_detected_threshold:
                         self._hit_detection_state == HitDetectionState.hit_detected
+                        rospy.logerr('DETECTED ROOMBA HIT')
                         return self._transition_to_ascension()
 
                 try:
@@ -191,7 +193,7 @@ class HitRoombaTask(AbstractTask):
                 # make sure we are close enough before we descend
                 if self._distance_to_roomba <= self._max_roomba_descent_dist:
                     z_vel_target = self._descent_velocity
-                    desired_vel = [roomba_x_velocity, roomba_y_velocity, z_vel_target]
+                    desired_vel = [0.0, 0.0, z_vel_target]
                     velocity = TwistStamped()
                     velocity.header.frame_id = 'level_quad'
                     velocity.header.stamp = rospy.Time.now()
@@ -203,9 +205,6 @@ class HitRoombaTask(AbstractTask):
 
                     return (TaskRunning(), VelocityCommand(velocity))
 
-                else:
-                    self._state = HitRoombaTaskState.failure
-                    rospy.logwarn('hit roomba task not close enough to roomba to descend')
                     # cap velocity
                     # vel_target = math.sqrt(x_vel_target**2 + y_vel_target**2)
 
@@ -227,10 +226,16 @@ class HitRoombaTask(AbstractTask):
 
                     # desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
 
+                    return (TaskRunning(), VelocityCommand(velocity))
+                else:
+                    self._state = HitRoombaTaskState.failure
+                    rospy.logerr('hit roomba task not close enough to roomba to descend')
+
             if (self._state == HitRoombaTaskState.ascent):
                 odometry = self.topic_buffer.get_odometry_message()
 
                 if odometry.pose.pose.position.z > self._begin_ascension_deceleration_height:
+                    rospy.logerr('finished success ascending')
                     return (TaskDone(), VelocityCommand())
                 else:
                     velocity = TwistStamped()
@@ -244,6 +249,7 @@ class HitRoombaTask(AbstractTask):
                 odometry = self.topic_buffer.get_odometry_message()
 
                 if odometry.pose.pose.position.z > self._recovery_height:
+                    rospy.logerr('finished recovery height')
                     return (TaskDone(), VelocityCommand())
                 else:
                     velocity = TwistStamped()
@@ -270,7 +276,7 @@ class HitRoombaTask(AbstractTask):
                                                start_position_z
                                                    = odometry.pose.pose.position.z,
                                                start_velocity_z
-                                                   = odometry.twist.twist.linear.z,
+                                                   = 0.0,
                                                acceleration=self._ascent_acceleration))
 
     # checks to see if passed in roomba id is in sight of quad

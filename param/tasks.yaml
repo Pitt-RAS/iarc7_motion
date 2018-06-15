@@ -44,9 +44,9 @@ track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
 # Maximum distance from a roomba for automatictrack to complete
-track_completed_distance: 0.05
+track_completed_distance: 0.1
 # Maximum velocity difference from a roomba for an automatic track to complete
-track_completed_vel_diff: 0.05
+track_completed_vel_diff: 0.1
 # Amount of time the track completed conditions have to remain true for track to complete
 track_completed_time: 2.0
 
@@ -77,11 +77,11 @@ max_roomba_descent_dist: .3
 # maximum radial distance from roomba
 hit_roomba_max_start_dist: 2.0
 # descent velocity when hitting/blocking a roomba
-hit_descent_velocity: -0.5
+hit_descent_velocity: -1.5
 # ascent velocity after hitting a roomba
 hit_ascent_velocity: 1.0
 # acceleration to use for ascent movements directly after hitting a roomba
-hit_ascent_acceleration: 3.0
+hit_ascent_acceleration: 1.5
 
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings:
