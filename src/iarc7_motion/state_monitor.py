@@ -124,6 +124,8 @@ class StateMonitor:
 
             if self._state == RobotStates.SAFETY_ACTIVE:
                 pass
+
+            # If the tasked completed succesfully
             elif isinstance(state, task_states.TaskDone):
                 if isinstance(self._last_task, LandTask):
                     self._state = RobotStates.WAITING_ON_TAKEOFF
@@ -131,24 +133,30 @@ class StateMonitor:
                     self._state = RobotStates.WAITING_ON_RECOVERY
                 else:
                     self._state = RobotStates.NORMAL
+
+            # If the task was canceled, there might be cleanup actions
+            # to perform
             elif isinstance(state, task_states.TaskCanceled):
                 # LLM will finish a land, no matter what request we get
                 if isinstance(self._last_task, LandTask):
                     self._state = RobotStates.WAITING_ON_TAKEOFF
-                # the takeoff task is supposed to complete no matter the request
-                elif isinstance(self._last_task, TakeoffTask):
+                # Takeoff needs to take the drone above the safe height
+                # Hit roomba if canceled might not have taken the drone back up
+                elif (isinstance(self._last_task, TakeoffTask)
+                     or isinstance(self._last_task, HitRoombaTask)):
                     if not self._BELOW_MIN_MAN_HEIGHT:
                         self._state = RobotStates.NORMAL
                     else:
                         rospy.logerr('Takeoff did not finish when it was canceled')
                         self._state = RobotStates.FATAL
-                # the height recovery task is the most appropriate
-                # in this state, as we can be at any height
-                elif (isinstance(self._last_task, BlockRoombaTask)
-                    or isinstance(self._last_task, HitRoombaTask)):
+                # Block roomba can never bring the drone back up
+                elif isinstance(self._last_task, BlockRoombaTask):
                     self._state = RobotStates.WAITING_ON_RECOVERY
                 else:
                     self._state = RobotStates.NORMAL
+
+            # If the task aborted there is probably a situation that
+            # needs to be responded to
             elif (isinstance(state, task_states.TaskAborted)
                 or isinstance(state, task_states.TaskFailed)):
                 if isinstance(self._last_task, TakeoffTask):
@@ -160,6 +168,8 @@ class StateMonitor:
                 elif (isinstance(self._last_task, BlockRoombaTask)
                     or isinstance(self._last_task, HitRoombaTask)):
                     self._state = RobotStates.WAITING_ON_RECOVERY
+
+            # The task returned something that can't be interpreted
             else:
                 rospy.logerr('Invalid ending task state provided in StateMonitor')
                 self._state = RobotStates.FATAL
