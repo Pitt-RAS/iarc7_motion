@@ -165,9 +165,11 @@ class StateMonitor:
                     self._state = RobotStates.LANDING_FAILED
                 elif isinstance(self._last_task, HeightRecoveryTask):
                     self._state = RobotStates.RECOVERY_FAILED
-                elif (isinstance(self._last_task, BlockRoombaTask)
-                    or isinstance(self._last_task, HitRoombaTask)):
+                elif isinstance(self._last_task, BlockRoombaTask):
                     self._state = RobotStates.WAITING_ON_RECOVERY
+                # Hit handles its own abort due to the tricky situation
+                elif isinstance(self._last_task, HitRoombaTask):
+                    self._state = RobotStates.NORMAL
 
             # The task returned something that can't be interpreted
             else:
