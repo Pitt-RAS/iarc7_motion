@@ -79,9 +79,6 @@ class StateMonitor:
             self._receive_arm_status)
 
         try:
-            # task timeout time to decelerate
-            self._task_timeout_deceleration_time = rospy.Duration(
-                rospy.get_param('~task_timeout_deceleration_time'))
             # minimum safe height to manuever at
             self._MIN_MANEUVER_HEIGHT = rospy.get_param('~min_maneuver_height')
 

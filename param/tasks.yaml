@@ -1,5 +1,12 @@
 # PARAMS FOR ALL TASKS/TASK UTILITIES/PLANNERS
 
+# Global parameters (used in most tasks if not all)
+# Max translation speed in the xy plane in m/s
+max_translation_speed: 1.0
+# maximum z velocity
+max_z_velocity: 1.5
+
+
 # TAKEOFF TASK
 # Delay between arming and taking off
 delay_before_takeoff    : 2.0
@@ -14,28 +21,21 @@ takeoff_complete_height: 0.8
 takeoff_complete_height_tolerance: 0.15
 # Length of time to stabilize after takeoff
 takeoff_stabilize_delay: 0.5
-# Altitude when we transition from acro to angle mode
-takeoff_angle_mode_height: 0.2
-
-# LAND TASK
-# Velocity with which to land with
-land_velocity           : -0.2
-# Height below which landing is considered finish
-land_height_tolerance   : 0.15
 
 # TRANSLATE-STOP PLANNER
 # Max acceleration in the xy plane in m/s^2
 max_translation_acceleration: 3.0
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
-# Max translation speed in the xy plane in m/s
-max_translation_speed: 1.0
-# maximum z velocity
-max_z_velocity: 1.5
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
+# Anticipated control lag in seconds
+control_lag             : 0.3
+
+# GO TO ROOMBA
+go_to_roomba_tolerance: 0.3
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
@@ -49,9 +49,6 @@ track_completed_distance: 0.1
 track_completed_vel_diff: 0.1
 # Amount of time the track completed conditions have to remain true for track to complete
 track_completed_time: 2.0
-
-# GO TO ROOMBA
-go_to_roomba_tolerance: 0.3
 
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings:
@@ -82,6 +79,11 @@ hit_descent_velocity: -1.5
 hit_ascent_velocity: 1.0
 # acceleration to use for ascent movements directly after hitting a roomba
 hit_ascent_acceleration: 1.5
+# Velocity below which to arm the roomba hit detector
+roomba_hit_arm_threshold: -0.2
+# Velocity above which to consider the roomba hit after
+# arming the roomba hit detector
+roomba_hit_detected_threshold: -0.1
 
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings:
@@ -99,9 +101,6 @@ hit_roomba_pid_settings:
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
-
-roomba_hit_arm_threshold: -0.2
-roomba_hit_detected_threshold: -0.1
 
 # BLOCK ROOMBA
 # p-term for X direction
