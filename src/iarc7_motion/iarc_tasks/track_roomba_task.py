@@ -150,27 +150,25 @@ class TrackRoombaTask(AbstractTask):
 
                 x_v_diff = odometry.twist.twist.linear.x - roomba_x_velocity
                 y_v_diff = odometry.twist.twist.linear.y - roomba_y_velocity
-                diff_mag = math.sqrt(x_v_diff**2 + y_v_diff**2)
+                h_v_diff_mag = math.sqrt(x_v_diff**2 + y_v_diff**2)
 
                 roomba_track_msg = Odometry()
                 roomba_track_msg.header.stamp = rospy.Time.now()
                 roomba_track_msg.pose.pose.position.x = roomba_point.point.x
                 roomba_track_msg.pose.pose.position.y = roomba_point.point.y
-                roomba_track_msg.pose.pose.position.z = \
-                    math.sqrt(roomba_point.point.x**2 + roomba_point.point.y**2)
+                roomba_track_msg.pose.pose.position.z = roomba_h_distance
                 roomba_track_msg.twist.twist.linear.x = x_v_diff
                 roomba_track_msg.twist.twist.linear.y = y_v_diff
-                roomba_track_msg.twist.twist.linear.z = diff_mag
+                roomba_track_msg.twist.twist.linear.z = h_v_diff_mag
                 self.topic_buffer.publish_roomba_tracking_status(roomba_track_msg)
 
                 # Evaluate whether or not the lock completion sequence was accomplished
                 if self._time_to_track == 0.0 \
                    and roomba_h_distance <= self._LOCK_DISTANCE \
-                   and diff_mag <= self._LOCK_VELOCITY:
+                   and h_v_diff_mag <= self._LOCK_VELOCITY:
                     if self._lock_start_time is not None:
                         if rospy.Time.now() - self._lock_start_time > self._LOCK_REQUIRED_DURATION:
-                            rospy.loginfo('TrackRoombaTask has locked on the \
-                                          roomba for the required amount of time')
+                            rospy.loginfo('TrackRoombaTask has locked on the roomba for the required amount of time')
                             return (TaskDone(),)
                     else:
                         self._lock_start_time = rospy.Time.now()

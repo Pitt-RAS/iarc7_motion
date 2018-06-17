@@ -4,7 +4,7 @@
 # Max translation speed in the xy plane in m/s
 max_translation_speed: 1.0
 # maximum z velocity
-max_z_velocity: 1.5
+max_z_velocity: 2.0
 
 
 # TAKEOFF TASK
@@ -70,15 +70,13 @@ roomba_pid_settings:
 # HIT ROOMBA
 # max distance to roomba allowed for
 # descent to occur
-max_roomba_descent_dist: .3
-# maximum radial distance from roomba
-hit_roomba_max_start_dist: 2.0
+max_roomba_descent_dist: 0.001
 # descent velocity when hitting/blocking a roomba
 hit_descent_velocity: -1.5
 # ascent velocity after hitting a roomba
-hit_ascent_velocity: 1.0
+hit_safe_ascent_velocity: 1.0
 # acceleration to use for ascent movements directly after hitting a roomba
-hit_ascent_acceleration: 1.5
+hit_ascent_acceleration: 2.5
 # Velocity below which to arm the roomba hit detector
 roomba_hit_arm_threshold: -0.5
 # Velocity above which to consider the roomba hit after
@@ -88,14 +86,14 @@ roomba_hit_detected_threshold: -0.2
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings:
   x_terms:
-    kp: .75
+    kp: 1.0
     ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .75
+    kp: 1.0
     ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
