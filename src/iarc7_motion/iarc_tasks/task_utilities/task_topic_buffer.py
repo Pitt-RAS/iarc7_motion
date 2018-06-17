@@ -29,6 +29,8 @@ class TaskTopicBuffer(object):
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
 
+        self._task_message_dictionary = {}
+
         self._roomba_tracking_pub = rospy.Publisher(
             'roomba_tracking_status', Odometry,
             queue_size=10)
@@ -75,3 +77,6 @@ class TaskTopicBuffer(object):
 
     def publish_roomba_tracking_status(self, pose):
         self._roomba_tracking_pub.publish(pose)
+
+    def get_task_message_dictionary(self):
+        return self._task_message_dictionary

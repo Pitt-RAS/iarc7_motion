@@ -69,6 +69,18 @@ class HitRoombaTask(AbstractTask):
             rospy.logerr('Could not lookup a parameter for hit roomba task')
             raise
 
+        try:
+            task_messages = self.topic_buffer.get_task_message_dictionary()
+            x_pid_settings.i_accumulator_initial_value = task_messages['track_x_i_accumulator']
+            y_pid_settings.i_accumulator_initial_value = task_messages['track_y_i_accumulator']
+        except KeyError as e:
+            x_pid_settings.i_accumulator_initial_value = None
+            y_pid_settings.i_accumulator_initial_value = None
+            rospy.logwarn('Hit Roomba Task could not get track roombas accumulator values')
+        finally:
+            task_messages['track_x_i_accumulator'] = None
+            task_messages['track_y_i_accumulator'] = None
+
         self._x_pid = PidController(x_pid_settings)
         self._y_pid = PidController(y_pid_settings)
 

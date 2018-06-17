@@ -169,6 +169,11 @@ class TrackRoombaTask(AbstractTask):
                     if self._lock_start_time is not None:
                         if rospy.Time.now() - self._lock_start_time > self._LOCK_REQUIRED_DURATION:
                             rospy.loginfo('TrackRoombaTask has locked on the roomba for the required amount of time')
+
+                            task_messages = self.topic_buffer.get_task_message_dictionary()
+                            task_messages['track_x_i_accumulator'] = self._x_pid.get_accumulator()
+                            task_messages['track_y_I_accumulator'] = self._y_pid.get_accumulator()
+
                             return (TaskDone(),)
                     else:
                         self._lock_start_time = rospy.Time.now()
