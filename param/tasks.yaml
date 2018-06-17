@@ -80,10 +80,10 @@ hit_ascent_velocity: 1.0
 # acceleration to use for ascent movements directly after hitting a roomba
 hit_ascent_acceleration: 1.5
 # Velocity below which to arm the roomba hit detector
-roomba_hit_arm_threshold: -0.2
+roomba_hit_arm_threshold: -0.5
 # Velocity above which to consider the roomba hit after
 # arming the roomba hit detector
-roomba_hit_detected_threshold: -0.1
+roomba_hit_detected_threshold: -0.2
 
 # HIT ROOMBA PID TERMS
 hit_roomba_pid_settings:
