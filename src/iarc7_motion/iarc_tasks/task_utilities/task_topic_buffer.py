@@ -57,6 +57,13 @@ class TaskTopicBuffer(object):
     def get_roomba_message(self):
         return self._roomba_array
 
+    def get_roomba_odometry(self, id):
+        if self.has_roomba_message():
+            for odometry in self._roomba_array.data:
+                if odometry.child_frame_id == id:
+                    return True, odometry
+        return False, None
+
     def get_odometry_message(self):
         return self._drone_odometry
 
