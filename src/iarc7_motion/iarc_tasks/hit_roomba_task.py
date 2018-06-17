@@ -63,8 +63,8 @@ class HitRoombaTask(AbstractTask):
             self._ROOMBA_HIT_ARM_THRESHOLD = rospy.get_param('~roomba_hit_arm_threshold')
             self._ROOMBA_HIT_DETECTED_THRESHOLD = rospy.get_param('~roomba_hit_detected_threshold')
             self._RECOVERY_HEIGHT = rospy.get_param('~track_roomba_height')
-            x_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/x_terms'))
-            y_pid_settings = PidSettings(rospy.get_param('~roomba_pid_settings/y_terms'))
+            x_pid_settings = PidSettings(rospy.get_param('~hit_roomba_pid_settings/x_terms'))
+            y_pid_settings = PidSettings(rospy.get_param('~hit_roomba_pid_settings/y_terms'))
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for hit roomba task')
             raise

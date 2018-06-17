@@ -51,7 +51,7 @@ track_completed_vel_diff: 0.1
 track_completed_time: 0.5
 
 # TRACK ROOMBA PID TERMS
-roomba_pid_settings:
+track_roomba_pid_settings:
   x_terms:
     kp: 0.6
     ki: 0.1
