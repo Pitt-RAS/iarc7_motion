@@ -48,7 +48,7 @@ track_completed_distance: 0.1
 # Maximum velocity difference from a roomba for an automatic track to complete
 track_completed_vel_diff: 0.1
 # Amount of time the track completed conditions have to remain true for track to complete
-track_completed_time: 2.0
+track_completed_time: 0.5
 
 # TRACK ROOMBA PID TERMS
 roomba_pid_settings:
