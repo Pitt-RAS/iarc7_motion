@@ -62,7 +62,7 @@ class HitRoombaTask(AbstractTask):
             self._MAX_ROOMBA_DESCENT_DIST = rospy.get_param('~max_roomba_descent_dist')
             self._ROOMBA_HIT_ARM_THRESHOLD = rospy.get_param('~roomba_hit_arm_threshold')
             self._ROOMBA_HIT_DETECTED_THRESHOLD = rospy.get_param('~roomba_hit_detected_threshold')
-            self._RECOVERY_HEIGHT = rospy.get_param('~track_roomba_height')
+            self._ASCENT_HEIGHT = rospy.get_param('~hit_ascent_height')
             x_pid_settings = PidSettings(rospy.get_param('~hit_roomba_pid_settings/x_terms'))
             y_pid_settings = PidSettings(rospy.get_param('~hit_roomba_pid_settings/y_terms'))
         except KeyError as e:
@@ -233,7 +233,7 @@ class HitRoombaTask(AbstractTask):
             if (self._state == HitRoombaTaskState.failure):
                 odometry = self.topic_buffer.get_odometry_message()
 
-                if odometry.pose.pose.position.z > self._RECOVERY_HEIGHT:
+                if odometry.pose.pose.position.z > self._ASCENT_HEIGHT:
                     return (TaskDone(), VelocityCommand())
                 else:
                     velocity = TwistStamped()
@@ -248,7 +248,7 @@ class HitRoombaTask(AbstractTask):
         odometry = self.topic_buffer.get_odometry_message()
 
         self._ascension_begin_deceleration_height = \
-            (self._RECOVERY_HEIGHT - odometry.pose.pose.position.z) / 2.0
+            (self._ASCENT_HEIGHT - odometry.pose.pose.position.z) / 2.0
 
         ascent_acceleration_time = \
             math.sqrt(2.0

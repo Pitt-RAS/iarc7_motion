@@ -75,6 +75,8 @@ max_roomba_descent_dist: 0.2
 hit_descent_velocity: -1.5
 # ascent velocity after hitting a roomba
 hit_safe_ascent_velocity: 1.0
+# ascent target height after hitting a roomba
+hit_ascent_height: 1.2
 # acceleration to use for ascent movements directly after hitting a roomba
 hit_ascent_acceleration: 1.8
 # Velocity below which to arm the roomba hit detector
