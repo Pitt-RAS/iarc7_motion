@@ -53,15 +53,15 @@ track_completed_time: 0.5
 # TRACK ROOMBA PID TERMS
 track_roomba_pid_settings:
   x_terms:
-    kp: 0.6
-    ki: 0.1
+    kp: 1.0
+    ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: 0.6
-    ki: 0.1
+    kp: 1.0
+    ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
