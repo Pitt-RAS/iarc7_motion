@@ -1,0 +1,12 @@
+# The maximum perpendicular distance between a velocity vector and an obstacle before the obstacle is ignored
+obst_avoid_norm_limit: 1
+# How many steps to take when searching for a safe flight vector (effectivly determining the resolution)
+# Steps are sampled over a range of [0, 2*pi]
+obst_avoid_step_size: 90
+# Obstacles outside this radius are ignored
+obst_avoid_radius: 1
+# Flight vector magnitude - only used by the idle avoider
+obst_avoid_magnitude: 0.2
+# Minimum avoid flight vector magnitude - only used by the task helper
+obst_avoid_min_magnitude: 0.1
+

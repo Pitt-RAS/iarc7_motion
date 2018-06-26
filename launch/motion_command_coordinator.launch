@@ -6,6 +6,9 @@
             file="$(find iarc7_motion)/param/motion_command_coordinator.yaml" />
         <rosparam command="load"
             file="$(find iarc7_motion)/param/tasks.yaml" />
+        <rosparam command="load"
+            file="$(find iarc7_motion)/param/obstacle_avoider.yaml" />
+
     </node>
 
     <param name="$(arg bond_id_namespace)/motion_command_coordinator/form_bond"
