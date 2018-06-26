@@ -2,7 +2,7 @@
 import rospy
 import numpy as np
 
-class PidSettings(object): 
+class PidSettings(object):
     def __init__(self, settings_dict):
         self.kp = settings_dict['kp']
         self.ki = settings_dict['ki']
@@ -10,6 +10,7 @@ class PidSettings(object):
         self.accum_max = settings_dict['accumulator_max']
         self.accum_min = settings_dict['accumulator_min']
         self.accum_en_threshold = settings_dict['accumulator_enable_threshold']
+        self.i_accumulator_initial_value = None
 
 class PidController(object):
     def __init__(self, settings):
@@ -19,11 +20,15 @@ class PidController(object):
         self._i_accumulator_max = settings.accum_max
         self._i_accumulator_min = settings.accum_min
         self._i_accumulator_enable_threshold = settings.accum_en_threshold
-        
+
         self._initialized = False
         self._last_time = None
 
-        self._i_accumulator = 0.0
+        if settings.i_accumulator_initial_value is not None:
+            self._i_accumulator = settings.i_accumulator_initial_value
+        else:
+            self._i_accumulator = 0.0
+
         self._last_current_value = 0.0
         self._setpoint = 0.0
 
@@ -33,6 +38,9 @@ class PidController(object):
     def set_setpoint(self, setpoint):
         self._setpoint = setpoint
 
+    def get_accumulator(self):
+        return self._i_accumulator
+
     def update(self, current_value, time, log_debug):
         '''
         Updates PID controller
@@ -41,8 +49,8 @@ class PidController(object):
             current_value: current value of whatever you are controlling on
             time: current time; use rospy.get_time()
             log_debug: enables verbose debugging
-        
-        Returns: 
+
+        Returns:
             success: whether or not a response could be calculated
             response is the filter output
         '''
@@ -52,7 +60,7 @@ class PidController(object):
             self._last_time = time
             self._initialized = True
             return True, response
-        
+
         if time == self._last_time:
             rospy.logwarn(
                     'Time passed in to PidController is equal to last time.')
@@ -79,8 +87,8 @@ class PidController(object):
                                 + self._i_gain * difference * time_delta)
 
             if log_debug:
-                log = ('Set accumulator to ' + str(self._i_accumulator) + 
-                        ', i_gain to ' + str(self._i_gain) + 
+                log = ('Set accumulator to ' + str(self._i_accumulator) +
+                        ', i_gain to ' + str(self._i_gain) +
                         ', difference is ' + str(difference) +
                         ', time delta is ' + str(time_delta))
                 rospy.logwarn(log)
@@ -90,13 +98,13 @@ class PidController(object):
                                           self._i_accumulator_min)
 
             if log_debug:
-                log = ('Accumulator clamped to ' + str(self._i_accumulator) + 
-                        ' (min: ' + str(self._i_accumulator_min) + 
+                log = ('Accumulator clamped to ' + str(self._i_accumulator) +
+                        ' (min: ' + str(self._i_accumulator_min) +
                         ', max: ' + str(self._i_accumulator_max) + ')')
                 rospy.logwarn(log)
         else:
             if log_debug:
-                log = ('Ignoring difference ' + str(difference) + 
+                log = ('Ignoring difference ' + str(difference) +
                         ' above threshold ' + str(self._i_accumulator_enable_threshold))
                 rospy.logwarn(log)
 
@@ -108,7 +116,7 @@ class PidController(object):
         response = response - d_term
 
         if log_debug:
-            log = ('p: ' + str(p_term) + 
+            log = ('p: ' + str(p_term) +
                     ' I: ' + str(self._i_accumulator) +
                     ' D: ' + str(d_term))
 

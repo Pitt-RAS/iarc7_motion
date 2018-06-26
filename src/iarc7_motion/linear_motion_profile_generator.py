@@ -78,6 +78,8 @@ class LinearMotionProfileGenerator(object):
         try:
             self._TARGET_ACCEL = rospy.get_param(
                 '~linear_motion_profile_acceleration')
+            self._MAX_TARGET_ACCEL = rospy.get_param(
+                '~linear_motion_profile_max_acceleration')
             self._PLAN_DURATION = rospy.get_param(
                 '~linear_motion_profile_duration')
             self._PROFILE_TIMESTEP = rospy.get_param(
@@ -180,12 +182,23 @@ class LinearMotionProfileGenerator(object):
         v_desired = msg_to_np(velocity_command.target_twist.twist.linear)
         v_delta = v_desired - v_start
 
+
+        acceleration = self._TARGET_ACCEL if velocity_command.acceleration is None \
+                                          else velocity_command.acceleration
+
+        if acceleration > self._MAX_TARGET_ACCEL:
+            acceleration = self._MAX_TARGET_ACCEL
+            rospy.logerr('iarc7_motion: linear motion profile generator \
+                          requested acceleration is too large. \
+                          Requested: {} Limit {}'.format(acceleration,
+                                                         self._MAX_TARGET_ACCEL))
+
         # Assign a direction to the target acceleration
-        a_target = self._TARGET_ACCEL * v_delta / np.linalg.norm(v_delta)
+        a_target = acceleration * v_delta / np.linalg.norm(v_delta)
 
         # Find the time required to accelerate to the desired velocity
         acceleration_time = min(
-            np.linalg.norm(v_delta) / self._TARGET_ACCEL, self._PLAN_DURATION)
+            np.linalg.norm(v_delta) / acceleration, self._PLAN_DURATION)
 
         # Use the rest of the profile duration to hold the velocity
         steady_velocity_time = self._PLAN_DURATION - acceleration_time
@@ -216,7 +229,7 @@ class LinearMotionProfileGenerator(object):
         accelerations = np.diff(velocities, axis=0) / self._PROFILE_TIMESTEP
 
         for i in range(0, accelerations.shape[0]):
-            if np.linalg.norm(accelerations[i]) > 1.01 * self._TARGET_ACCEL:
+            if np.linalg.norm(accelerations[i]) > 1.01 * acceleration:
                 rospy.logerr(
                     'Linear Motion Profile generator produced an acceleration greater than the maximum allowed'
                 )

@@ -1,4 +1,11 @@
-# PARAMS FOR ALL TASKS/TASK UTILITIES/PLANNERS 
+# PARAMS FOR ALL TASKS/TASK UTILITIES/PLANNERS
+
+# Global parameters (used in most tasks if not all)
+# Max translation speed in the xy plane in m/s
+max_translation_speed: 1.0
+# maximum z velocity
+max_z_velocity: 2.0
+
 
 # TAKEOFF TASK
 # Delay between arming and taking off
@@ -14,28 +21,21 @@ takeoff_complete_height: 0.8
 takeoff_complete_height_tolerance: 0.15
 # Length of time to stabilize after takeoff
 takeoff_stabilize_delay: 0.5
-# Altitude when we transition from acro to angle mode
-takeoff_angle_mode_height: 0.2
-
-# LAND TASK
-# Velocity with which to land with
-land_velocity           : -0.2
-# Height below which landing is considered finish
-land_height_tolerance   : 0.15
 
 # TRANSLATE-STOP PLANNER
 # Max acceleration in the xy plane in m/s^2
 max_translation_acceleration: 3.0
 # Max acceleration in the xy plane in m/s^2
 desired_translation_acceleration: 1.0
-# Max translation speed in the xy plane in m/s
-max_translation_speed: 1.0
-# maximum z velocity 
-max_z_velocity: .3
 # Tolerance for a position hold in meters
 translation_position_hold_tolerance: 0.05
 # Translation is considered finished if x,y,z within this range of target
 translation_xyz_tolerance : 0.3
+# Anticipated control lag in seconds
+control_lag             : 0.3
+
+# GO TO ROOMBA
+go_to_roomba_tolerance: 0.3
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
@@ -43,49 +43,61 @@ translation_xyz_tolerance : 0.3
 track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0
-
-# GO TO ROOMBA
-go_to_roomba_tolerance: 0.3
+# Maximum distance from a roomba for automatictrack to complete
+track_completed_distance: 0.1
+# Maximum velocity difference from a roomba for an automatic track to complete
+track_completed_vel_diff: 0.1
+# Amount of time the track completed conditions have to remain true for track to complete
+track_completed_time: 0.5
 
 # TRACK ROOMBA PID TERMS
-roomba_pid_settings: 
+track_roomba_pid_settings:
   x_terms:
-    kp: 0.6
-    ki: 0.1
+    kp: 1.0
+    ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: 0.6
-    ki: 0.1
+    kp: 1.0
+    ki: 0.2
     kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
 
 # HIT ROOMBA
-# max distance to roomba allowed for 
+# max distance to roomba allowed for
 # descent to occur
-max_roomba_descent_dist: .1
-# maximum radial distance from roomba
-hit_roomba_max_start_dist: 2.0
-# descent velocity when hitting/blocking a roomba 
-hit_descent_velocity: -0.4
+max_roomba_descent_dist: 0.2
+# descent velocity when hitting/blocking a roomba
+hit_descent_velocity: -1.5
+# ascent velocity after hitting a roomba
+hit_safe_ascent_velocity: 1.0
+# ascent target height after hitting a roomba
+hit_ascent_height: 1.2
+# acceleration to use for ascent movements directly after hitting a roomba
+hit_ascent_acceleration: 1.8
+# Velocity below which to arm the roomba hit detector
+roomba_hit_arm_threshold: -0.5
+# Velocity above which to consider the roomba hit after
+# arming the roomba hit detector
+roomba_hit_detected_threshold: -0.2
 
 # HIT ROOMBA PID TERMS
-hit_roomba_pid_settings: 
+hit_roomba_pid_settings:
   x_terms:
-    kp: .75
+    kp: 1.0
     ki: 0.2
-    kd: 0.35
+    kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
   y_terms:
-    kp: .75
+    kp: 1.0
     ki: 0.2
-    kd: 0.35
+    kd: 0.0
     accumulator_max: 10.0
     accumulator_min: -10.0
     accumulator_enable_threshold: 10.0
@@ -101,7 +113,7 @@ roomba_diameter: .33
 drone_landing_gear_width: .775
 # maximum radial distance from roomba
 block_roomba_max_start_dist: 2.0
-# descent velocity when hitting/blocking a roomba 
+# descent velocity when hitting/blocking a roomba
 block_descent_velocity: -0.2
 
 # HEIGHT HOLDER
@@ -113,12 +125,12 @@ max_z_error: 1.0
 deadzone_height_hold_z: 0.10
 # distance from deadzone threshold that will turn off
 # deadzone mode
-deadzone_hysteresis_height_hold_z: 0.40
+deadzone_hysteresis_height_hold_z: 0.20
 # Enable debugging topics for height hold
 debug_height_hold_z: True
 
 # HOLD POSITION TASK
-# p-term for x 
+# p-term for x
 k_position_x: 1.25
 # p-term for y
 k_position_y: 1.25

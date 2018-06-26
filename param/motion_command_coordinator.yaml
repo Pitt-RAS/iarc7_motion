@@ -3,21 +3,21 @@
 # Timeout for transforms
 transform_timeout       : 0.2
 # Minimum height for any XY translationanl maneuvers
+# It used by tasks as well as the state monitor
 min_maneuver_height     : 0.3
 # Update rate in hz
 update_rate             : 25
-# Anticipated control lag in seconds
-control_lag             : 0.3
+
 # Startup timeout
 startup_timeout: 15.0
 # If there is no task for this many seconds a zero velocity command will be sent
 task_timeout: 1.0
-# time until set 0 velocity, in seconds
-task_timeout_deceleration_time: 1.0
 
 # Resolution to generate linear motion profiles with
 linear_motion_profile_timestep: 0.020
-# Acceleration to use for linear motion profile generation
+# Default acceleration to use for linear motion profile generation
 linear_motion_profile_acceleration: 1.0
+# Maximum acceleration to use for linear motion profile generation
+linear_motion_profile_max_acceleration: 3.0
 # Length of time to generate a linear motion profile for
 linear_motion_profile_duration: 0.2
