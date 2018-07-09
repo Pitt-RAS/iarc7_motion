@@ -4,7 +4,6 @@ import tf2_ros
 
 from geometry_msgs.msg import TwistStamped
 from actionlib_msgs.msg import GoalStatus
-from geometry_msgs.msg import TwistStamped
 
 from iarc7_msgs.msg import FlightControllerStatus
 

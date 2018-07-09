@@ -290,18 +290,35 @@ int main(int argc, char **argv)
         {
             last_time = current_time;
 
-            if (server.isPreemptRequested() && motion_state == MotionState::PASSTHROUGH) {
-                ROS_INFO("Transitioning out of PASSTHROUGH");
-                bool success = quadController.prepareForTakeover();
-                if (success) {
-                    motion_state = MotionState::VELOCITY_CONTROL;
-                    server.setSucceeded();
-                } else {
-                    ROS_ERROR("Failed to transition to quadController from passthrough mode");
-                    server.setAborted();
+            //cancellation inputs
+            if(server.isPreemptRequested()) {
+                
+                if(motion_state == MotionState::PASSTHROUGH) {
+                    ROS_INFO("Transitioning out of PASSTHROUGH");
+                    bool success = quadController.prepareForTakeover();
+                    if (success) {
+                        motion_state = MotionState::VELOCITY_CONTROL;
+                        server.setSucceeded();
+                    } else {
+                        ROS_ERROR("Failed to transition to quadController from passthrough mode");
+                        server.setAborted();
+                    }
+                }
+
+                else if (motion_state == MotionState::LAND){
+                    ROS_INFO("Transitioning out of LAND");
+                    bool success = quadController.prepareForTakeover();
+                    if (success) {
+                        motion_state = MotionState::VELOCITY_CONTROL;
+                        server.setSucceeded();
+                    } else {
+                        ROS_ERROR("Failed to transition to quadController from land mode");
+                        server.setAborted();
+                    }
                 }
             }
 
+            //new goal inputs
             if(server.isNewGoalAvailable() && !server.isActive())
             {
                 const iarc7_motion::GroundInteractionGoalConstPtr& goal = server.acceptNewGoal();

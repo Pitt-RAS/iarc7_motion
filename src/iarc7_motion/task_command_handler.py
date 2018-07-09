@@ -236,6 +236,9 @@ class TaskCommandHandler:
 
     def _handle_ground_interaction_command(self, ground_interaction_command):
         if self._ground_interaction_task_callback is not None:
+            if ground_interaction_command.interaction_type == 'cancel_land':
+                self._ground_interaction_client.cancel_goal()
+                return
             rospy.logerr('Task requested another ground interaction action before the last completed')
             rospy.logerr('Task Command Handler aborted task')
             self._task = None

@@ -137,9 +137,9 @@ class StateMonitor:
             # If the task was canceled, there might be cleanup actions
             # to perform
             elif isinstance(state, task_states.TaskCanceled):
-                # LLM will finish a land, no matter what request we get
-                if isinstance(self._last_task, LandTask):
-                    self._state = RobotStates.WAITING_ON_TAKEOFF
+                # assumes that canceling land results in velocity mode
+                if isinstance(self._last_task, LandTask): 
+                    self._state = RobotStates.NORMAL
                 # Takeoff needs to take the drone above the safe height
                 # Hit roomba if canceled might not have taken the drone back up
                 elif (isinstance(self._last_task, TakeoffTask)
