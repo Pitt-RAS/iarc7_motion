@@ -122,7 +122,7 @@ class TakeoffTask(AbstractTask):
                 velocity.header.frame_id = 'level_quad'
                 velocity.header.stamp = rospy.Time.now()
                 velocity.twist.linear.z = 0
-                return (TaskRunning(), VelocityCommand(velocity, start_position_z=self._TAKEOFF_COMPLETE_HEIGHT))
+                return (TaskRunning(), VelocityCommand(velocity))
             else:
                 self._state = TakeoffTaskState.done
 
@@ -141,7 +141,7 @@ class TakeoffTask(AbstractTask):
             rospy.loginfo('TakeoffTask cancellation accepted')
             self._canceled = True
             return True
-        else: 
+        else:
             rospy.loginfo('TakeoffTask cancellation rejected')
             return False
 
