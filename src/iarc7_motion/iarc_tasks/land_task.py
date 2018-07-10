@@ -14,7 +14,8 @@ from iarc_tasks.task_states import (TaskRunning,
                                     TaskFailed)
 from iarc_tasks.task_commands import (NopCommand,
                                       GroundInteractionCommand,
-                                      ResetLinearProfileCommand)
+                                      ResetLinearProfileCommand,
+                                      VelocityCommand)
 
 class LandTaskState(object):
     init = 0
@@ -23,6 +24,7 @@ class LandTaskState(object):
     failed = 3
     cancelling = 4
     cancelled = 5
+    cancelled_fo_real = 6
 
 class LandTask(AbstractTask):
     
@@ -42,28 +44,11 @@ class LandTask(AbstractTask):
         if status == GoalStatus.SUCCEEDED:
             # cancelling succeeded, so reset linear profile command
             if self._state == LandTaskState.cancelling:
-                rospy.loginfo('cancelling has succeeded, time to ResetLinearProfileCommand')
-                try:
-                    transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                        'map',
-                                        'base_footprint',
-                                        rospy.Time(0),
-                                        rospy.Duration(self._TRANSFORM_TIMEOUT))
-                except (tf2_ros.LookupException,
-                        tf2_ros.ConnectivityException,
-                        tf2_ros.ExtrapolationException) as ex:
-                    msg = 'Exception when looking up transform during land cancelling'
-                    rospy.logerr('LandTask: {}'.format(msg))
-                    rospy.logerr(ex.message)
-                    return (TaskAborted(msg=msg),)  
+                rospy.loginfo('cancelling has succeeded, time to switch to cancelled state')
                 # task succeeded, set state to cancelled
                 self._state = LandTaskState.cancelled
-                return(TaskCanceled(),
-                        ResetLinearProfileCommand(
-                            start_position_z = transStamped.transform.translation.z,
-                            start_velocity_x = 0.0,
-                            start_velocity_y = 0.0,
-                            start_velocity_z = 0.0))
+                return
+
             # task succeeded, set state to done
             self._state = LandTaskState.done
         else:
@@ -98,6 +83,35 @@ class LandTask(AbstractTask):
                        'cancel_land',
                        self.land_callback))
 
+        if self._state == LandTaskState.cancelled:
+            rospy.loginfo('LandTask is in cancelled state')
+            # get current height
+            try:
+                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
+                                    'map',
+                                    'base_footprint',
+                                    rospy.Time(0),
+                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as ex:
+                msg = 'Exception when looking up transform during land cancelling'
+                rospy.logerr('LandTask: {}'.format(msg))
+                rospy.logerr(ex.message)
+                return (TaskAborted(msg=msg),)
+            # reset linear profile with current height and no velocity
+            self._state = LandTaskState.cancelled_fo_real
+            return(TaskRunning(),
+                    VelocityCommand(
+                        start_position_z = transStamped.transform.translation.z,
+                        start_velocity_x = 0.0,
+                        start_velocity_y = 0.0,
+                        start_velocity_z = 0.0)) 
+
+        if self._state == LandTaskState.cancelled_fo_real:
+            rospy.loginfo('LandTask is done for real this time')
+            return(TaskCanceled(),)
+
         # Impossible state reached
         return (TaskAborted(msg='Impossible state in takeoff task reached'))
 
@@ -119,7 +133,7 @@ class LandTask(AbstractTask):
             return False
         elif self._state == LandTaskState.cancelled:
             rospy.loginfo('LandTask has finished cancelling')
-            return True
+            return False
         else: 
             rospy.loginfo('LandTask cancellation rejected')
             return False
