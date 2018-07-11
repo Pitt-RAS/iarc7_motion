@@ -69,7 +69,8 @@ class ObstacleAvoider(object):
                 rospy.logwarn("ObstacleAvoider: Couldn't lookup transform from {} to level_quad".format(obstacles.header.frame_id))
 
     def get_safe_vector(self, desired_vector):
-        original_vector_magnitude = np.linalg.norm(desired_vector)
+        # Find the norm and direction of the velocity in the horizontal plane
+        original_vector_magnitude = np.linalg.norm(desired_vector[:2])
         original_vector_direction = atan2(desired_vector[1], desired_vector[0])
         with self._lock:
             for angle in np.linspace(0, pi, num=self._vector_step_size):
