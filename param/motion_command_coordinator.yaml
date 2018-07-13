@@ -5,6 +5,8 @@ transform_timeout       : 0.2
 # Minimum height for any XY translationanl maneuvers
 # It used by tasks as well as the state monitor
 min_maneuver_height     : 0.3
+# Recovery height for when landing is cancelled
+recovery_height         : 1.25
 # Update rate in hz
 update_rate             : 25
 

@@ -33,6 +33,7 @@ class LandTask(AbstractTask):
 
         try:
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
+            self._RECOVERY_HEIGHT = rospy.get_param('~recovery_height')
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for takeoff task')
             raise
@@ -85,25 +86,11 @@ class LandTask(AbstractTask):
 
         if self._state == LandTaskState.cancelled:
             rospy.loginfo('LandTask is in cancelled state')
-            # get current height
-            try:
-                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                    'map',
-                                    'base_footprint',
-                                    rospy.Time(0),
-                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
-            except (tf2_ros.LookupException,
-                    tf2_ros.ConnectivityException,
-                    tf2_ros.ExtrapolationException) as ex:
-                msg = 'Exception when looking up transform during land cancelling'
-                rospy.logerr('LandTask: {}'.format(msg))
-                rospy.logerr(ex.message)
-                return (TaskAborted(msg=msg),)
-            # reset linear profile with current height and no velocity
+            # reset linear profile with a recovery height and no velocity
             self._state = LandTaskState.cancelled_fo_real
             return(TaskRunning(),
                     VelocityCommand(
-                        start_position_z = transStamped.transform.translation.z,
+                        start_position_z = self._RECOVERY_HEIGHT,
                         start_velocity_x = 0.0,
                         start_velocity_y = 0.0,
                         start_velocity_z = 0.0)) 
