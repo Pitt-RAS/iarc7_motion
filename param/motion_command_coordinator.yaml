@@ -6,7 +6,11 @@ transform_timeout       : 0.2
 # It used by tasks as well as the state monitor
 min_maneuver_height     : 0.3
 # Recovery height for when landing is cancelled
-recovery_height         : 1.25
+recovery_height         : 0.65
+# Recovery velocity for when landing is cancelled
+recovery_velocity       : 2.0
+# Recovery acceleration for when landing is cancelled
+recovery_acceleration   : 2.0
 # Update rate in hz
 update_rate             : 25
 
