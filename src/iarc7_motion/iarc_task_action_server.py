@@ -92,6 +92,9 @@ class IarcTaskActionServer:
         with self._lock:
             rospy.logdebug("cancel_request")
 
+            if self._cancel_requested is None:
+                return
+
             if cancel == self._current_goal :
                 rospy.logdebug("Cancel requested on current goal")
                 self._current_goal.set_cancel_requested()
