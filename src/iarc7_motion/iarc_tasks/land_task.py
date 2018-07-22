@@ -5,6 +5,7 @@ import rospy
 
 from actionlib_msgs.msg import GoalStatus
 from iarc7_msgs.msg import FlightControllerStatus
+from geometry_msgs.msg import TwistStamped
 
 from .abstract_task import AbstractTask
 from iarc_tasks.task_states import (TaskRunning,
@@ -23,8 +24,8 @@ class LandTaskState(object):
     done = 2
     failed = 3
     cancelling = 4
-    cancelled = 5
-    cancelled_fo_real = 6
+    recovering = 5
+    cancelled = 6
 
 class LandTask(AbstractTask):
     
@@ -32,9 +33,11 @@ class LandTask(AbstractTask):
         super(LandTask, self).__init__()
 
         try:
-            self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
+            self._RECOVERY_HEIGHT = rospy.get_param('~recovery_height')
+            self._RECOVERY_VELOCITY = rospy.get_param('~recovery_velocity')
+            self._RECOVERY_ACCELERATION = rospy.get_param('~recovery_acceleration')
         except KeyError as e:
-            rospy.logerr('Could not lookup a parameter for takeoff task')
+            rospy.logerr('Could not lookup a recovery parameter for takeoff task')
             raise
 
         self._transition = None
@@ -45,10 +48,9 @@ class LandTask(AbstractTask):
             # cancelling succeeded, so reset linear profile command
             if self._state == LandTaskState.cancelling:
                 rospy.loginfo('cancelling has succeeded, time to switch to cancelled state')
-                # task succeeded, set state to cancelled
-                self._state = LandTaskState.cancelled
+                # task succeeded, set state to recovering
+                self._state = LandTaskState.recovering
                 return
-
             # task succeeded, set state to done
             self._state = LandTaskState.done
         else:
@@ -66,7 +68,7 @@ class LandTask(AbstractTask):
 
         # Enter the landing phase
         if self._state == LandTaskState.land:
-            return (TaskRunning(), NopCommand());
+            return (TaskRunning(), NopCommand())
 
         # Change state to done
         if self._state == LandTaskState.done:
@@ -83,33 +85,31 @@ class LandTask(AbstractTask):
                        'cancel_land',
                        self.land_callback))
 
-        if self._state == LandTaskState.cancelled:
-            rospy.loginfo('LandTask is in cancelled state')
-            # get current height
-            try:
-                transStamped = self.topic_buffer.get_tf_buffer().lookup_transform(
-                                    'map',
-                                    'base_footprint',
-                                    rospy.Time(0),
-                                    rospy.Duration(self._TRANSFORM_TIMEOUT))
-            except (tf2_ros.LookupException,
-                    tf2_ros.ConnectivityException,
-                    tf2_ros.ExtrapolationException) as ex:
-                msg = 'Exception when looking up transform during land cancelling'
-                rospy.logerr('LandTask: {}'.format(msg))
-                rospy.logerr(ex.message)
-                return (TaskAborted(msg=msg),)
-            # reset linear profile with current height and no velocity
-            self._state = LandTaskState.cancelled_fo_real
-            return(TaskRunning(),
-                    VelocityCommand(
-                        start_position_z = transStamped.transform.translation.z,
-                        start_velocity_x = 0.0,
-                        start_velocity_y = 0.0,
-                        start_velocity_z = 0.0)) 
+        # Tell linear profile  to get to a recovery height
+        if self._state == LandTaskState.recovering:
+            rospy.loginfo('LandTask is in recovering state')
+            odometry = self.topic_buffer.get_odometry_message()
+            # time to deccelerate to recover height
+            if odometry.pose.pose.position.z > self._RECOVERY_HEIGHT:
+                self._state = LandTaskState.cancelled
+                return(TaskRunning(),
+                        VelocityCommand(acceleration = self._RECOVERY_ACCELERATION))
+            # time to accelerate up
+            else:
+                velocity = TwistStamped()
+                velocity.header.stamp = rospy.Time.now()
+                velocity.twist.linear.z = self._RECOVERY_VELOCITY
+                return(TaskRunning(),
+                        VelocityCommand(
+                            target_twist = velocity,
+                            start_position_z = odometry.pose.pose.position.z,
+                            start_velocity_x = 0.0,
+                            start_velocity_y = 0.0,
+                            start_velocity_z = odometry.twist.twist.linear.z,
+                            acceleration = self._RECOVERY_ACCELERATION))
 
-        if self._state == LandTaskState.cancelled_fo_real:
-            rospy.loginfo('LandTask is done for real this time')
+        if self._state == LandTaskState.cancelled:
+            rospy.loginfo('LandTask is cancelled and ready for next task')
             return(TaskCanceled(),)
 
         # Impossible state reached
@@ -131,9 +131,12 @@ class LandTask(AbstractTask):
         elif self._state == LandTaskState.cancelling:
             rospy.loginfo('LandTask in process of cancelling')
             return False
-        elif self._state == LandTaskState.cancelled:
-            rospy.loginfo('LandTask has finished cancelling')
+        elif self._state == LandTaskState.recovering:
+            rospy.loginfo('LandTask is waiting to recover height')
             return False
+        elif self._state == LandTaskState.cancelled:
+            rospy.loginfo('Land Task has cancelled')
+            return True 
         else: 
             rospy.loginfo('LandTask cancellation rejected')
             return False
