@@ -34,7 +34,7 @@ QuadVelocityController::QuadVelocityController(
         double vz_pid_settings[6],
         double vx_pid_settings[6],
         double vy_pid_settings[6],
-        double& height_p,
+        double (&position_p)[3],
         const ThrustModel& thrust_model,
         const ThrustModel& thrust_model_side,
         const ros::Duration& battery_timeout,
@@ -59,7 +59,7 @@ QuadVelocityController::QuadVelocityController(
       xy_mixer_(ros_utils::ParamUtils::getParam<std::string>(
               private_nh,
               "xy_mixer")),
-      height_p_(height_p),
+      position_p_(position_p),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
@@ -237,7 +237,7 @@ bool QuadVelocityController::update(const ros::Time& time,
     double local_y_setpoint_accel = -std::sin(current_yaw) * setpoint_accel.x
                                   +  std::cos(current_yaw) * setpoint_accel.y;
 
-    if (level_flight_active_ && col_height 
+    if (level_flight_active_ && col_height
                                   > level_flight_required_height_
                                     + level_flight_required_hysteresis_) {
         level_flight_active_ = false;
@@ -428,19 +428,25 @@ bool QuadVelocityController::waitUntilReady()
 
 void QuadVelocityController::updatePidSetpoints(double current_yaw, const Eigen::VectorXd& odometry)
 {
-    double position_velocity_request = height_p_ * 
-      (setpoint_.motion_point.pose.position.z - odometry[5]);
+    double position_velocity_request[3] = {
+        position_p_[0] * (setpoint_.motion_point.pose.position.x - odometry[3]),
+        position_p_[1] * (setpoint_.motion_point.pose.position.y - odometry[4]),
+        position_p_[2] * (setpoint_.motion_point.pose.position.z - odometry[5])
+    };
 
-    double velocity_request = position_velocity_request + setpoint_.motion_point.twist.linear.z;
+    double map_z_velocity = position_velocity_request[2] + setpoint_.motion_point.twist.linear.z;
 
-    vz_pid_.setSetpoint(velocity_request);
+    vz_pid_.setSetpoint(map_z_velocity);
 
     // x and y velocities are transformed according to the last yaw
     // angle because the incoming target velocities are in the map frame
-    double local_x_velocity = setpoint_.motion_point.twist.linear.x * std::cos(current_yaw)
-                            + setpoint_.motion_point.twist.linear.y * std::sin(current_yaw);
-    double local_y_velocity = setpoint_.motion_point.twist.linear.x * -std::sin(current_yaw)
-                            + setpoint_.motion_point.twist.linear.y *  std::cos(current_yaw);
+    double map_x_velocity = setpoint_.motion_point.twist.linear.x + position_velocity_request[0];
+    double map_y_velocity = setpoint_.motion_point.twist.linear.y + position_velocity_request[1];
+
+    double local_x_velocity = map_x_velocity * std::cos(current_yaw)
+                            + map_y_velocity * std::sin(current_yaw);
+    double local_y_velocity = map_x_velocity * -std::sin(current_yaw)
+                            + map_y_velocity *  std::cos(current_yaw);
 
     vx_pid_.setSetpoint(local_x_velocity);
     vy_pid_.setSetpoint(local_y_velocity);

@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     double throttle_pid[pid_param_array_size];
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
-    double height_p = 0.0;
+    double position_p[3];
 
     ThrustModel thrust_model(private_nh, "thrust_model");
     ThrustModel thrust_model_side;
@@ -136,7 +136,9 @@ int main(int argc, char **argv)
             roll_pid[4] = config.roll_accumulator_min;
             roll_pid[5] = config.roll_accumulator_enable_threshold;
 
-            height_p = config.height_p;
+            position_p[0] = config.position_p_x;
+            position_p[1] = config.position_p_y;
+            position_p[2] = config.position_p_z;
 
             dynamic_reconfigure_called = true;
         };
@@ -190,7 +192,7 @@ int main(int argc, char **argv)
     QuadVelocityController quadController(throttle_pid,
                                           pitch_pid,
                                           roll_pid,
-                                          height_p,
+                                          position_p,
                                           thrust_model,
                                           thrust_model_side,
                                           ros::Duration(battery_timeout),
@@ -292,7 +294,7 @@ int main(int argc, char **argv)
 
             //cancellation inputs
             if(server.isPreemptRequested()) {
-                
+
                 if(motion_state == MotionState::PASSTHROUGH) {
                     ROS_INFO("Transitioning out of PASSTHROUGH");
                     bool success = quadController.prepareForTakeover();
@@ -391,7 +393,7 @@ int main(int argc, char **argv)
             iarc7_msgs::OrientationThrottleStamped uav_command;
 
             // Check for a safety state in which case we should execute our safety response
-            if(safety_client.isSafetyActive() 
+            if(safety_client.isSafetyActive()
                && !safety_client.isSafetyResponseActive())
             {
                 // This is the safety response
@@ -466,7 +468,7 @@ int main(int argc, char **argv)
                 if (last_msg != nullptr && last_msg->header.stamp >= passthrough_start_time) {
                     geometry_msgs::Twist twist;
                     twist.linear.z = last_msg->throttle;
-                    
+
                     MotionPointStamped motion_point;
                     motion_point.motion_point.twist.linear.z = twist.linear.z;
 
