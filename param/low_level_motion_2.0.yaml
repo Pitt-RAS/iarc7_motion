@@ -1,6 +1,10 @@
+# The PID constants are applied to positional errors in the map frame
+position_p_x: 0.0
+position_p_y: 0.0
+position_p_z: 1.5
+
 # PID values are positive for forward acting PID loops and negative for
 # reverse acting PID loops. P, I, and D should all be the same sign.
-height_p: 1.5
 throttle_p: 2.5
 throttle_i: 0.2
 throttle_d: 0.4

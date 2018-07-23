@@ -50,7 +50,7 @@ public:
     QuadVelocityController(double throttle_pid_settings[6],
                            double pitch_pid_settings[6],
                            double roll_pid_settings[6],
-                           double& height_p,
+                           double (&position_p)[3],
                            const ThrustModel& thrust_model,
                            const ThrustModel& thrust_model_side,
                            const ros::Duration& battery_timeout,
@@ -118,8 +118,8 @@ private:
     // The XY plan mixer to use
     std::string xy_mixer_;
 
-    // P term for the position control
-    double& height_p_;
+    // P terms for the position control
+    double (&position_p_)[3];
 
     // Last time an update was successful
     ros::Time last_update_time_;
