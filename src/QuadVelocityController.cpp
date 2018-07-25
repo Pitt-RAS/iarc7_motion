@@ -35,6 +35,7 @@ QuadVelocityController::QuadVelocityController(
         double vx_pid_settings[6],
         double vy_pid_settings[6],
         double (&position_p)[3],
+        double yaw_p,
         const ThrustModel& thrust_model,
         const ThrustModel& thrust_model_side,
         const ros::Duration& battery_timeout,
@@ -60,6 +61,7 @@ QuadVelocityController::QuadVelocityController(
               private_nh,
               "xy_mixer")),
       position_p_(position_p),
+      yaw_p_(yaw_p),
       startup_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
               "startup_timeout")),
@@ -346,9 +348,8 @@ bool QuadVelocityController::update(const ros::Time& time,
             col_height)
             / voltage;
 
-    // Yaw rate needs no correction because the input and output are both
-    // velocities
-    uav_command.data.yaw = -setpoint_.motion_point.twist.angular.z;
+    // Hack heading to straight ahead
+    uav_command.data.yaw = -yaw_p_ * (0.0 - current_yaw);
 
     // Check that the PID loops did not return invalid values before returning
     if (!std::isfinite(uav_command.throttle)

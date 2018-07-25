@@ -51,6 +51,7 @@ public:
                            double pitch_pid_settings[6],
                            double roll_pid_settings[6],
                            double (&position_p)[3],
+                           double yaw_p,
                            const ThrustModel& thrust_model,
                            const ThrustModel& thrust_model_side,
                            const ros::Duration& battery_timeout,
@@ -120,6 +121,9 @@ private:
 
     // P terms for the position control
     double (&position_p_)[3];
+
+    // P term for yaw hold
+    double yaw_p_;
 
     // Last time an update was successful
     ros::Time last_update_time_;

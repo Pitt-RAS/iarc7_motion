@@ -36,6 +36,8 @@ roll_accumulator_max: 5.0
 roll_accumulator_min: -5.0
 roll_accumulator_enable_threshold: 10.0
 
+yaw_p: 0.4
+
 min_side_thrust: 0.0
 max_side_thrust: 0.0
 
