@@ -23,6 +23,8 @@ LandPlanner::LandPlanner(
       landing_detected_message_received_(false),
       transform_wrapper_(),
       state_(LandState::DONE),
+      requested_x_(0.0),
+      requested_y_(0.0),
       requested_height_(0.0),
       cushion_height_(0.0),
       actual_descend_rate_(0.0),
@@ -44,7 +46,7 @@ LandPlanner::LandPlanner(
               "startup_timeout")),
       update_timeout_(ros_utils::ParamUtils::getParam<double>(
               private_nh,
-              "update_timeout")),                    
+              "update_timeout")),
       uav_arm_client_(nh.serviceClient<iarc7_msgs::Arm>("uav_arm"))
 {
     landing_detected_subscriber_ = nh.subscribe("landing_detected",
@@ -83,10 +85,12 @@ bool LandPlanner::prepareForTakeover(const ros::Time& time)
         return false;
     }
 
-    requested_height_ = transform.transform.translation.z; 
+    requested_x_ = transform.transform.translation.x;
+    requested_y_ = transform.transform.translation.y;
+    requested_height_ = transform.transform.translation.z;
 
     // height determined by the ratio of landing accelerations
-    cushion_height_ = std::min(0.5 * (std::pow(descend_rate_,2)/cushion_acceleration_), 
+    cushion_height_ = std::min(0.5 * (std::pow(descend_rate_,2)/cushion_acceleration_),
                                requested_height_ * ( 1 - ( 1 / ( 1 - descend_acceleration_/cushion_acceleration_))));
     actual_descend_rate_ = 0.0;
 
@@ -133,7 +137,7 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
                                             + (cushion_acceleration_
                                             * (time - last_update_time_).toSec()));
         }
-        
+
         requested_height_ = std::max(0.0, requested_height_
                                           + (actual_descend_rate_
                                           * (time - last_update_time_).toSec()));
@@ -169,6 +173,8 @@ bool LandPlanner::getTargetMotionPoint(const ros::Time& time,
     // Fill in the uav_command's information
     motion_point.header.stamp = time;
 
+    motion_point.motion_point.pose.position.x = requested_x_;
+    motion_point.motion_point.pose.position.y = requested_y_;
     motion_point.motion_point.pose.position.z = requested_height_;
     motion_point.motion_point.twist.linear.z = actual_descend_rate_;
 

@@ -1,6 +1,6 @@
 # The PID constants are applied to positional errors in the map frame
-position_p_x: 0.0
-position_p_y: 0.0
+position_p_x: 1.0
+position_p_y: 1.0
 position_p_z: 5.0
 
 # PID values are positive for forward acting PID loops and negative for
