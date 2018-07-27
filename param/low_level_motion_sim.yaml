@@ -1,6 +1,6 @@
 # The PID constants are applied to positional errors in the map frame
-position_p_x: 0.0
-position_p_y: 0.0
+position_p_x: 1.0
+position_p_y: 1.0
 position_p_z: 5.0
 
 # PID values are positive for forward acting PID loops and negative for
@@ -35,6 +35,8 @@ roll_d: 0.2
 roll_accumulator_max: 5.0
 roll_accumulator_min: -5.0
 roll_accumulator_enable_threshold: 10.0
+
+yaw_p: 0.4
 
 min_side_thrust: 0.0
 max_side_thrust: 0.0

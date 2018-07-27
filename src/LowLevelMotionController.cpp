@@ -94,6 +94,7 @@ int main(int argc, char **argv)
     double pitch_pid[pid_param_array_size];
     double roll_pid[pid_param_array_size];
     double position_p[3];
+    double yaw_p;
 
     ThrustModel thrust_model(private_nh, "thrust_model");
     ThrustModel thrust_model_side;
@@ -139,6 +140,8 @@ int main(int argc, char **argv)
             position_p[0] = config.position_p_x;
             position_p[1] = config.position_p_y;
             position_p[2] = config.position_p_z;
+
+            yaw_p = config.yaw_p;
 
             dynamic_reconfigure_called = true;
         };
@@ -193,6 +196,7 @@ int main(int argc, char **argv)
                                           pitch_pid,
                                           roll_pid,
                                           position_p,
+                                          yaw_p,
                                           thrust_model,
                                           thrust_model_side,
                                           ros::Duration(battery_timeout),
