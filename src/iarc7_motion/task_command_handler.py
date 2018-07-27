@@ -75,8 +75,40 @@ class TaskCommandHandler:
         self._task_state = task_states.TaskRunning()
         self._task.set_incoming_transition(self._transition)
 
-    # cancels task
+    def abort_task(self, msg):
+        '''
+        Aborts task
+
+        Returns true if task is actually gone, false otherwise
+        '''
+        if self._task is None:
+            raise IARCFatalSafetyException('No task running to abort')
+        try:
+            ready = self._task.cancel()
+            if ready:
+                self._task = None
+                self._task_state = task_states.TaskAborted(msg)
+                return True
+            else:
+                rospy.logwarn('Task has not completed')
+                return False
+        except Exception as e:
+            rospy.logerr('Exception aborting task')
+            rospy.logerr(str(e))
+            rospy.logerr(traceback.format_exc())
+            rospy.logerr('Task Command Handler aborted task')
+            self._task_state = task_states.TaskAborted(
+                    msg=msg + ', then error aborting task')
+            self._task = None
+            return True
+        assert False
+
     def cancel_task(self):
+        '''
+        Cancels task
+
+        Returns true if task is actually gone, false otherwise
+        '''
         if self._task is None:
             raise IARCFatalSafetyException('No task running to cancel')
         try:
@@ -84,9 +116,10 @@ class TaskCommandHandler:
             if ready: 
                 self._task = None
                 self._task_state = task_states.TaskCanceled()
+                return True
             else: 
                 rospy.logwarn('Task has not completed')
-            return True
+                return False
         except Exception as e:
             rospy.logerr('Exception canceling task')
             rospy.logerr(str(e))
@@ -94,7 +127,8 @@ class TaskCommandHandler:
             rospy.logerr('Task Command Handler aborted task')
             self._task_state = task_states.TaskAborted(msg='Error canceling task')
             self._task = None
-            return False
+            return True
+        assert False
 
     # returns last command (ground interaction, velocity, etc.)
     # that task returned

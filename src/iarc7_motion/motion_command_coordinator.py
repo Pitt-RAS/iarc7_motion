@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import actionlib
+import numpy as np
 import rospy
 import sys
 import threading
@@ -31,6 +32,7 @@ from idle_obstacle_avoider import IdleObstacleAvoider
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
 
+from iarc_tasks.abstract_task import AbstractTask
 
 class MotionCommandCoordinator:
 
@@ -57,6 +59,9 @@ class MotionCommandCoordinator:
 
         self._idle_obstacle_avoider = IdleObstacleAvoider()
         self._avoid_magnitude = rospy.get_param("~obst_avoid_magnitude") 
+        self._kickout_distance = rospy.get_param('~kickout_distance')
+        self._new_task_distance = rospy.get_param('~new_task_distance')
+        self._safe_distance = rospy.get_param('~safe_distance')
 
         # safety 
         self._safety_client = SafetyClient('motion_command_coordinator')
@@ -97,6 +102,8 @@ class MotionCommandCoordinator:
                 self._startup_timeout - (rospy.Time.now() - start_time))
         self._idle_obstacle_avoider.wait_until_ready(
                 self._startup_timeout - (rospy.Time.now() - start_time))
+        AbstractTask().topic_buffer.wait_until_ready(
+                self._startup_timeout - (rospy.Time.now() - start_time))
 
         # forming bond with safety client
         if not self._safety_client.form_bond():
@@ -125,24 +132,35 @@ class MotionCommandCoordinator:
                     self._time_of_last_task = rospy.Time.now()
                     self._first_task_seen = True
 
+                closest_obstacle_dist = self._idle_obstacle_avoider.get_distance_to_obstacle()
+
                 if self._task is None and self._action_server.has_new_task():
                     new_task = self._action_server.get_new_task()
 
-                    if self._state_monitor.check_transition(new_task):
+                    if not self._state_monitor.check_transition(new_task):
+                        rospy.logerr('Illegal task transition request requested in motion coordinator. Aborting requested task.')
+                        self._action_server.set_aborted()
+                    elif not closest_obstacle_dist >= self._new_task_distance:
+                        rospy.logerr('Attempt to start task too close to obstacle.'
+                                + ' Aborting requested task.')
+                        self._action_server.set_aborted()
+                    else:
                         self._time_of_last_task = None
                         self._task = new_task
                         self._task_command_handler.new_task(new_task, self._get_current_transition())
-                    else: 
-                        rospy.logwarn('Illegal task transition request requested in motion coordinator. Aborting requested task.')
-                        self._action_server.set_aborted()
-                
+
                 if self._task is not None: 
-                    no_error_canceling = True
+                    task_canceled = False
                     if self._action_server.is_canceled():
-                        no_error_canceling = self._task_command_handler.cancel_task()
+                        task_canceled = self._task_command_handler.cancel_task()
+
+                    if not task_canceled and closest_obstacle_dist < self._kickout_distance:
+                        # Abort current task
+                        task_canceled = self._task_command_handler.abort_task(
+                                'Too close to obstacle')
 
                     # if canceling task did not result in an error
-                    if no_error_canceling:
+                    if not task_canceled:
                         self._task_command_handler.run()
 
                     task_state = self._task_command_handler.get_state()
@@ -177,7 +195,9 @@ class MotionCommandCoordinator:
                         self._state_monitor.set_last_task_end_state(task_state)
                 # No task is running, run obstacle avoider
                 else:
-                    avoid_vector = self._idle_obstacle_avoider.get_safest(self._avoid_magnitude)
+                    vel = AbstractTask.topic_buffer.get_odometry_message().twist.twist.linear
+                    vel_vec_2d = np.array([vel.x, vel.y], dtype=np.float)
+                    avoid_vector = self._idle_obstacle_avoider.get_safest(vel_vec_2d)
                     avoid_twist = TwistStamped() 
                     avoid_twist.header.stamp = rospy.Time.now()
                     avoid_twist.twist.linear.x = avoid_vector[0]

@@ -117,8 +117,11 @@ class VelocityTask(AbstractTask):
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                desired_vel = self.topic_buffer.get_obstacle_avoider().get_safe_vector(desired_vel)
-                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
+                obst_avoider = self.topic_buffer.get_obstacle_avoider()
+                desired_vel = obst_avoider.get_safe_vector(
+                        desired_vel, self._current_velocity[:2])
+                desired_vel = self._limiter.limit_acceleration(
+                        self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'

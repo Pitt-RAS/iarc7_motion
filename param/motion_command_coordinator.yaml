@@ -27,3 +27,7 @@ linear_motion_profile_acceleration: 1.0
 linear_motion_profile_max_acceleration: 3.0
 # Length of time to generate a linear motion profile for
 linear_motion_profile_duration: 0.2
+
+kickout_distance: 1.5
+new_task_distance: 1.8
+safe_distance: 2.1
