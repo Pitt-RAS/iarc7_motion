@@ -39,14 +39,14 @@ class MotionCommandCoordinator:
     def __init__(self, action_server):
         # action server for getting requests from AI
         self._action_server = action_server
-        
+
         # current state of motion coordinator
         self._task = None
         self._first_task_seen = False
 
-        # used for timeouts & extrapolating 
+        # used for timeouts & extrapolating
         self._time_of_last_task = None
-        self._timeout_vel_sent = False 
+        self._timeout_vel_sent = False
 
         # to keep things thread safe
         self._lock = threading.RLock()
@@ -58,12 +58,12 @@ class MotionCommandCoordinator:
         self._task_command_handler = TaskCommandHandler()
 
         self._idle_obstacle_avoider = IdleObstacleAvoider()
-        self._avoid_magnitude = rospy.get_param("~obst_avoid_magnitude") 
+        self._avoid_magnitude = rospy.get_param("~obst_avoid_magnitude")
         self._kickout_distance = rospy.get_param('~kickout_distance')
         self._new_task_distance = rospy.get_param('~new_task_distance')
         self._safe_distance = rospy.get_param('~safe_distance')
 
-        # safety 
+        # safety
         self._safety_client = SafetyClient('motion_command_coordinator')
         self._safety_land_complete = False
         self._safety_land_requested = False
@@ -113,7 +113,7 @@ class MotionCommandCoordinator:
             with self._lock:
                 # Exit immediately if fatal
                 if self._safety_client.is_fatal_active():
-                    raise IARCFatalSafetyException('Safety Client is fatal active') 
+                    raise IARCFatalSafetyException('Safety Client is fatal active')
                 elif self._safety_land_complete:
                     return
 
@@ -149,7 +149,7 @@ class MotionCommandCoordinator:
                         self._task = new_task
                         self._task_command_handler.new_task(new_task, self._get_current_transition())
 
-                if self._task is not None: 
+                if self._task is not None:
                     task_canceled = False
                     if self._action_server.is_canceled():
                         task_canceled = self._task_command_handler.cancel_task()
@@ -197,19 +197,19 @@ class MotionCommandCoordinator:
                 else:
                     vel = AbstractTask.topic_buffer.get_linear_motion_profile_generator().expected_point_at_time(rospy.Time.now()).motion_point.twist.linear
                     vel_vec_2d = np.array([vel.x, vel.y], dtype=np.float)
-                    avoid_vector = self._idle_obstacle_avoider.get_safest(vel_vec_2d)
-                    avoid_twist = TwistStamped() 
+                    avoid_vector, acceleration = self._idle_obstacle_avoider.get_safest(vel_vec_2d)
+                    avoid_twist = TwistStamped()
                     avoid_twist.header.stamp = rospy.Time.now()
                     avoid_twist.twist.linear.x = avoid_vector[0]
                     avoid_twist.twist.linear.y = avoid_vector[1]
-                    self._task_command_handler.send_timeout(avoid_twist)
+                    self._task_command_handler.send_timeout(avoid_twist, acceleration=acceleration)
                     rospy.logwarn_throttle(1.0, 'Task running timeout. Running obstacle avoider')
 
                 rate.sleep()
 
     # fills out the Intermediary State for the task
     def _get_current_transition(self):
-        state = TransitionData() 
+        state = TransitionData()
         state.last_twist = self._task_command_handler.get_last_twist()
         state.last_task_ending_state = self._task_command_handler.get_state()
         state.timeout_sent = self._timeout_vel_sent
@@ -217,7 +217,7 @@ class MotionCommandCoordinator:
 
     # callback for safety task completition
     def _safety_task_complete_callback(self, status, response):
-        with self._lock: 
+        with self._lock:
             if response.success:
                 rospy.logwarn('Motion Coordinator supposedly safely landed the aircraft')
             else:
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     # action server for getting action/motion requests
     action_server = IarcTaskActionServer()
     motion_command_coordinator = MotionCommandCoordinator(action_server)
-    
+
     try:
         motion_command_coordinator.run()
     except Exception, e:
