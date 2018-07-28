@@ -195,7 +195,7 @@ class MotionCommandCoordinator:
                         self._state_monitor.set_last_task_end_state(task_state)
                 # No task is running, run obstacle avoider
                 else:
-                    vel = AbstractTask.topic_buffer.get_odometry_message().twist.twist.linear
+                    vel = AbstractTask.topic_buffer.get_linear_motion_profile_generator().expected_point_at_time(rospy.Time.now()).motion_point.twist.linear
                     vel_vec_2d = np.array([vel.x, vel.y], dtype=np.float)
                     avoid_vector = self._idle_obstacle_avoider.get_safest(vel_vec_2d)
                     avoid_twist = TwistStamped() 
