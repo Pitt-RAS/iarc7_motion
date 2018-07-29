@@ -7,7 +7,7 @@ import numpy as np
 
 from math import sin, cos, atan2, pi
 
-from iarc7_safety.iarc_safety_exception import IARCSafetyException
+from iarc7_safety.iarc_safety_exception import IARCSafetyException, IARCFatalSafetyException
 from iarc7_msgs.msg import ObstacleArray
 from geometry_msgs.msg import PointStamped
 
