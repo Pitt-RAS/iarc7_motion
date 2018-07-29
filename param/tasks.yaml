@@ -6,6 +6,7 @@ max_translation_speed: 1.0
 # maximum z velocity
 max_z_velocity: 2.0
 
+max_velocity_time_duration: 30.0
 
 # TAKEOFF TASK
 # Delay between arming and taking off
