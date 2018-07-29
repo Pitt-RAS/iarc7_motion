@@ -110,11 +110,8 @@ class IdleObstacleAvoider(object):
                 desired_vector += unit_side * violation * 0.3
 
             # Decide which acceleration to use
-            if np.linalg.norm(curr_vel) > np.linalg.norm(desired_vector):
-                acceleration = 0.1
-            else:
-                acceleration = 1.0
-
+            dv = np.linalg.norm(curr_vel - desired_vector[:2])
+            acceleration = max(min(1.0, dv * 3), 0.1)
             return desired_vector, acceleration
         #with self._lock:
         #    regions = []
