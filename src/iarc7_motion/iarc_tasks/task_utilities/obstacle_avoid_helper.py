@@ -106,7 +106,7 @@ class ObstacleAvoider(object):
                         * self._response_strength * violation**2
 
                 # Push around
-                desired_vector += unit_side * violation * 0.3
+                desired_vector += unit_side * violation * 0.5
             return desired_vector
             #for angle in np.linspace(0, pi, num=self._vector_step_size):
             #    for sign in [-1, 1]:
