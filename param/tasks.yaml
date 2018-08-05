@@ -71,7 +71,7 @@ track_roomba_pid_settings:
 # HIT ROOMBA
 # max distance to roomba allowed for
 # descent to occur
-max_roomba_descent_dist: 0.2
+max_roomba_descent_dist: 3.0
 # descent velocity when hitting/blocking a roomba
 hit_descent_velocity: -1.5
 # ascent velocity after hitting a roomba
