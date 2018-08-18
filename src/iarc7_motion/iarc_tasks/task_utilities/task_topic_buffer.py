@@ -48,6 +48,20 @@ class TaskTopicBuffer(object):
             'roomba_tracking_status', Odometry,
             queue_size=10)
 
+    def wait_until_ready(self, timeout):
+        start_time = rospy.Time.now()
+        rate = rospy.Rate(30)
+        while not rospy.is_shutdown() and rospy.Time.now() - start_time < timeout:
+            if (self.has_landing_message()
+                    and self.has_odometry_message()
+                    and self.has_roomba_message()):
+                return
+            rate.sleep()
+        rospy.logerr('Have landing: %s', self.has_landing_message())
+        rospy.logerr('Have odom: %s', self.has_odometry_message())
+        rospy.logerr('Have roomba: %s', self.has_roomba_message())
+        raise IARCFatalSafetyException('TaskTopicBuffer not ready')
+
     def _receive_roomba_status(self, data):
         self._roomba_array = data
 

@@ -68,25 +68,58 @@ class TaskCommandHandler:
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
 
     # takes in new task from HLM Controller
-    # transition is of type TransitionData 
+    # transition is of type TransitionData
     def new_task(self, task, transition):
         self._task = task
         self._transition = transition
         self._task_state = task_states.TaskRunning()
         self._task.set_incoming_transition(self._transition)
 
-    # cancels task
+    def abort_task(self, msg):
+        '''
+        Aborts task
+
+        Returns true if task is actually gone, false otherwise
+        '''
+        if self._task is None:
+            raise IARCFatalSafetyException('No task running to abort')
+        try:
+            ready = self._task.cancel()
+            if ready:
+                self._task = None
+                self._task_state = task_states.TaskAborted(msg)
+                return True
+            else:
+                rospy.logwarn('Task has not completed')
+                return False
+        except Exception as e:
+            rospy.logerr('Exception aborting task')
+            rospy.logerr(str(e))
+            rospy.logerr(traceback.format_exc())
+            rospy.logerr('Task Command Handler aborted task')
+            self._task_state = task_states.TaskAborted(
+                    msg=msg + ', then error aborting task')
+            self._task = None
+            return True
+        assert False
+
     def cancel_task(self):
+        '''
+        Cancels task
+
+        Returns true if task is actually gone, false otherwise
+        '''
         if self._task is None:
             raise IARCFatalSafetyException('No task running to cancel')
         try:
             ready = self._task.cancel()
-            if ready: 
+            if ready:
                 self._task = None
                 self._task_state = task_states.TaskCanceled()
-            else: 
+                return True
+            else:
                 rospy.logwarn('Task has not completed')
-            return True
+                return False
         except Exception as e:
             rospy.logerr('Exception canceling task')
             rospy.logerr(str(e))
@@ -94,7 +127,8 @@ class TaskCommandHandler:
             rospy.logerr('Task Command Handler aborted task')
             self._task_state = task_states.TaskAborted(msg='Error canceling task')
             self._task = None
-            return False
+            return True
+        assert False
 
     # returns last command (ground interaction, velocity, etc.)
     # that task returned
@@ -104,7 +138,7 @@ class TaskCommandHandler:
     # returns last twist sent to LLM
     def get_last_twist(self):
         return self._last_twist
-    
+
     # public method wrapper for getting task state
     def get_state(self):
         return self._task_state
@@ -137,9 +171,9 @@ class TaskCommandHandler:
                 self._task_state = task_states.TaskAborted(msg='Exception getting task command')
                 return (task_commands.NopCommand(),)
 
-            try: 
+            try:
                 _task_state = task_request[0]
-            except (TypeError, IndexError) as e: 
+            except (TypeError, IndexError) as e:
                 rospy.logerr('Exception getting task state')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
@@ -147,25 +181,25 @@ class TaskCommandHandler:
                 self._task = None
                 self._task_state = task_states.TaskAborted(msg='Exception getting task state')
                 return (task_commands.NopCommand(),)
-            
+
             if issubclass(type(_task_state), task_states.TaskState):
                 self._task_state = _task_state
-            else: 
+            else:
                 rospy.logerr('Task provided unknown state')
                 rospy.logerr('Task Command Handler aborted task')
                 self._task = None
                 self._task_state = task_states.TaskAborted(msg='Error getting task state')
                 return (task_commands.NopCommand(),)
-            
-            try: 
+
+            try:
                 if isinstance(self._task_state, task_states.TaskDone):
                     self._task = None
                     return task_request[1:]
                 elif isinstance(self._task_state, task_states.TaskRunning):
                     return task_request[1:]
-                else: 
+                else:
                     self._task = None
-            except (TypeError, IndexError) as e: 
+            except (TypeError, IndexError) as e:
                 rospy.logerr('Exception getting task request')
                 rospy.logerr(str(e))
                 rospy.logerr(traceback.format_exc())
@@ -175,7 +209,7 @@ class TaskCommandHandler:
                 return (task_commands.NopCommand(),)
         elif isinstance(self._task_state, task_states.TaskCanceled):
             pass
-        else: 
+        else:
             raise IARCFatalSafetyException('TaskCommandHandler ran with no task running.')
 
         # no action to take, return a Nop
@@ -184,7 +218,7 @@ class TaskCommandHandler:
     """
     Command Handlers
 
-    Types: 
+    Types:
         ground interaction: these include takeoff
         nop command: do nothing
         velocity command: requests a velocity (x, y, z, and angular)
@@ -254,7 +288,7 @@ class TaskCommandHandler:
         goal = GroundInteractionGoal(interaction_type=ground_interaction_command.interaction_type)
         # Sends the goal to the action server.
         self._ground_interaction_client.send_goal(goal, done_cb=self.handle_ground_interaction_done)
-    
+
     # callback for status on ground interaction commands
     def handle_ground_interaction_done(self, status, result):
         if self._ground_interaction_task_callback is not None:
@@ -284,8 +318,8 @@ class TaskCommandHandler:
         self._motion_point_pub.publish(motion_point_stamped_array)
 
     # public wrapper for HLM Controller to send timeouts
-    def send_timeout(self, twist):
-        self._handle_velocity_command(task_commands.VelocityCommand(twist))
+    def send_timeout(self, twist, acceleration=1.0):
+        self._handle_velocity_command(task_commands.VelocityCommand(twist, acceleration=acceleration))
 
     def wait_until_ready(self, startup_timeout):
         if not self._ground_interaction_client.wait_for_server(

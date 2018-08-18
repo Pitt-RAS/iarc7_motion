@@ -22,6 +22,7 @@ float64 z_position
 # velocity task
 float64 x_velocity
 float64 y_velocity
+float64 velocity_duration
 ---
 # result definition
 bool success

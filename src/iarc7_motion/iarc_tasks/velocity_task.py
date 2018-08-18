@@ -44,6 +44,7 @@ class VelocityTask(AbstractTask):
             self._TRANSFORM_TIMEOUT = rospy.get_param('~transform_timeout')
             self._MAX_TRANSLATION_SPEED = rospy.get_param('~max_translation_speed')
             self._MAX_Z_VELOCITY = rospy.get_param('~max_z_velocity')
+            self._MAX_TIME_DURATION = rospy.Duration(rospy.get_param('~max_velocity_time_duration'))
 
         except KeyError as e:
             rospy.logerr('Could not lookup a parameter for velocity task')
@@ -57,6 +58,12 @@ class VelocityTask(AbstractTask):
             self._current_height_set = True
         else:
             self._z_holder = HeightHolder()
+
+        if task_request.velocity_duration <= 0.0:
+            self._time_duration = self._MAX_TIME_DURATION
+        else:
+            self._time_duration = rospy.Duration(task_request.velocity_duration)
+
 
         self._height_checker = HeightSettingsChecker()
         self._limiter = AccelerationLimiter()
@@ -76,14 +83,19 @@ class VelocityTask(AbstractTask):
                     self._state = VelocityTaskState.waiting
                 else:
                     self._state = VelocityTaskState.moving
+                    self._start_time = rospy.Time.now()
 
             if (self._state == VelocityTaskState.waiting):
                 if not self.topic_buffer.has_odometry_message():
                     return (TaskRunning(), NopCommand())
                 else:
                     self._state = VelocityTaskState.moving
+                    self._start_time = rospy.Time.now()
 
             if self._state == VelocityTaskState.moving:
+
+                if rospy.Time.now() - self._start_time > self._time_duration:
+                    return (TaskDone(), )
 
                 predicted_motion_point = self._linear_motion_profile_generator.expected_point_at_time(
                                            rospy.Time.now())
@@ -117,8 +129,11 @@ class VelocityTask(AbstractTask):
                 if self._current_velocity is None:
                     self._current_velocity = [drone_vel_x, drone_vel_y, drone_vel_z]
 
-                desired_vel = self.topic_buffer.get_obstacle_avoider().get_safe_vector(desired_vel)
-                desired_vel = self._limiter.limit_acceleration(self._current_velocity, desired_vel)
+                obst_avoider = self.topic_buffer.get_obstacle_avoider()
+                desired_vel = obst_avoider.get_safe_vector(
+                        desired_vel, self._current_velocity[:2])
+                desired_vel = self._limiter.limit_acceleration(
+                        self._current_velocity, desired_vel)
 
                 velocity = TwistStamped()
                 velocity.header.frame_id = 'level_quad'
