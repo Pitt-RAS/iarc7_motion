@@ -34,7 +34,7 @@ import iarc_tasks.task_commands as task_commands
 
 from iarc_tasks.abstract_task import AbstractTask
 
-class MotionCommandCoordinator:
+class MotionCommandCoordinator(object):
 
     def __init__(self, action_server):
         # action server for getting requests from AI
@@ -205,7 +205,7 @@ class MotionCommandCoordinator:
                     self._task_command_handler.send_timeout(avoid_twist, acceleration=acceleration)
                     rospy.logwarn_throttle(1.0, 'Task running timeout. Running obstacle avoider')
 
-                rate.sleep()
+            rate.sleep()
 
     # fills out the Intermediary State for the task
     def _get_current_transition(self):

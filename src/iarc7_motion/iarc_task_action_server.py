@@ -20,7 +20,7 @@ from iarc_tasks.velocity_task import VelocityTask
 from iarc_tasks.joystick_velocity_task import JoystickVelocityTask
 from iarc_tasks.go_to_roomba_task import GoToRoombaTask
 
-class IarcTaskActionServer:
+class IarcTaskActionServer(object):
     def __init__(self):
         self._action_name = "motion_planner_server"
 

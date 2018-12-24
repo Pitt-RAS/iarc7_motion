@@ -41,7 +41,7 @@ class RobotStates(Enum):
     FATAL = 7
     SAFETY_ACTIVE = 8
 
-class StateMonitor:
+class StateMonitor(object):
 
     def __init__(self):
         # state data
@@ -138,7 +138,7 @@ class StateMonitor:
             # to perform
             elif isinstance(state, task_states.TaskCanceled):
                 # assumes that canceling land results in velocity mode
-                if isinstance(self._last_task, LandTask): 
+                if isinstance(self._last_task, LandTask):
                     self._state = RobotStates.NORMAL
                 # Takeoff needs to take the drone above the safe height
                 # Hit roomba if canceled might not have taken the drone back up
