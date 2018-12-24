@@ -22,7 +22,7 @@ from iarc7_motion.msg import GroundInteractionGoal, GroundInteractionAction
 
 from iarc7_motion.linear_motion_profile_generator import LinearMotionProfileGenerator
 
-class TaskCommandHandler:
+class TaskCommandHandler(object):
 
     def __init__(self):
         # class state
