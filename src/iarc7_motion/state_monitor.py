@@ -190,13 +190,6 @@ class StateMonitor(object):
             state.arm_status = self._arm_status
             return state
 
-    # Handles no task running timeouts
-    def get_timeout_twist(self):
-        twist = TwistStamped()
-        twist.header.stamp = rospy.Time.now()
-        return twist
-
-
     def signal_safety_active(self):
         with self._lock:
             self._state = RobotStates.SAFETY_ACTIVE
