@@ -4,6 +4,7 @@ import sys
 import traceback
 import actionlib
 import rospy
+import time
 
 import iarc_tasks.task_states as task_states
 import iarc_tasks.task_commands as task_commands
@@ -62,7 +63,8 @@ class TaskCommandHandler(object):
             task_commands.GroundInteractionCommand: self._handle_ground_interaction_command,
             task_commands.ConfigurePassthroughMode: self._handle_passthrough_mode_command,
             task_commands.AngleThrottleCommand: self._handle_passthrough_command,
-            task_commands.ResetLinearProfileCommand: self._handle_reset_linear_profile_command
+            task_commands.ResetLinearProfileCommand: self._handle_reset_linear_profile_command,
+            task_commands.GlobalPlanCommand: self._handle_global_plan_command
             }
 
         self._motion_profile_generator = LinearMotionProfileGenerator.get_linear_motion_profile_generator()
@@ -114,7 +116,6 @@ class TaskCommandHandler(object):
         try:
             ready = self._task.cancel()
             if ready:
-                self._task = None
                 self._task_state = task_states.TaskCanceled()
                 return True
             else:
@@ -183,6 +184,11 @@ class TaskCommandHandler(object):
                 return (task_commands.NopCommand(),)
 
             if issubclass(type(_task_state), task_states.TaskState):
+                if isinstance(self._task_state, task_states.TaskCanceled):
+                    if not isinstance(_task_state, task_states.TaskCanceled):
+                        rospy.logerr('TaskCommandHandler: Task was supposed to return TaskCanceled')
+                        self._task = None
+                        return (task_commands.NopCommand(),)
                 self._task_state = _task_state
             else:
                 rospy.logerr('Task provided unknown state')
@@ -197,6 +203,9 @@ class TaskCommandHandler(object):
                     return task_request[1:]
                 elif isinstance(self._task_state, task_states.TaskRunning):
                     return task_request[1:]
+                elif isinstance(self._task_state, task_states.TaskCanceled):
+                    self._task = None
+                    return task_request[1:]
                 else:
                     self._task = None
             except (TypeError, IndexError) as e:
@@ -207,8 +216,6 @@ class TaskCommandHandler(object):
                 self._task = None
                 self._task_state = task_states.TaskAborted(msg='Exception getting task request')
                 return (task_commands.NopCommand(),)
-        elif isinstance(self._task_state, task_states.TaskCanceled):
-            pass
         else:
             raise IARCFatalSafetyException('TaskCommandHandler ran with no task running.')
 
@@ -305,6 +312,11 @@ class TaskCommandHandler(object):
             self._ground_interaction_task_callback = None
         else:
             rospy.logerr('Ground interaction done callback received with no task callback available')
+
+    def _handle_global_plan_command(self, plan_command):
+        self._motion_profile_generator.set_global_plan(plan_command.plan)
+        self._last_twist = plan_command.plan.motion_points[-1].motion_point.twist
+        self._motion_point_pub.publish(plan_command.plan)
 
     """
     Sends motion point stamped array to LLM

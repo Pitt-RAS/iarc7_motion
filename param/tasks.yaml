@@ -5,8 +5,13 @@
 max_translation_speed: 1.0
 # maximum z velocity
 max_z_velocity: 2.0
-
 max_velocity_time_duration: 30.0
+# planner lag, in seconds
+planning_lag: .100
+# timeout for time to get a plan
+planning_timeout: .5
+# distance from goal to stop replanning
+done_replanning_radius: 1.0
 
 # TAKEOFF TASK
 # Delay between arming and taking off
@@ -36,11 +41,10 @@ translation_xyz_tolerance : 0.3
 control_lag             : 0.3
 
 # GO TO ROOMBA
-go_to_roomba_tolerance: 0.3
+go_to_roomba_height: 1.5
 
 # TRACK ROOMBA
 # height at which roomba tracking takes place
-# also used for GO TO ROOMBA
 track_roomba_height: 1.5
 # maximum radial distance from roomba
 max_roomba_dist: 2.0

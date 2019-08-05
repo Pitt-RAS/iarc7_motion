@@ -2,9 +2,12 @@
 
 class TransitionData(object):
 
-    def __init__(self, drone_odometry=None, roombas=None, obstacles=None,
-        timeout_sent=None, last_task_ending_state=None,
-        arm_status=None, last_twist=None):
+    def __init__(self, drone_odometry=None,
+                       roombas=None,
+                       obstacles=None,
+                       last_task_ending_state=None,
+                       arm_status=None,
+                       last_twist=None):
         """
         Transition Data
 
@@ -14,7 +17,6 @@ class TransitionData(object):
                 all roombas in sight of drone
             obstacles: odometry (position, velocity, etc.) of
                 all obstacles in sight of drone
-            timeout_sent: whether or not timeout was sent
             last_task_ending_state: last task ending state
             arm_status: current arm status of drone
             last_twist: last twist (velocity request) sent to LLM
@@ -22,7 +24,6 @@ class TransitionData(object):
         self.drone_odometry = drone_odometry
         self.roombas = roombas
         self.obstacles = obstacles
-        self.timeout_sent = timeout_sent
         self.last_task_ending_state = last_task_ending_state
         self.arm_status = arm_status
         self.last_twist = last_twist
@@ -50,14 +51,6 @@ class TransitionData(object):
     @obstacles.setter
     def obstacles(self, obstacles):
         self._obstacles = obstacles
-
-    @property
-    def timeout_sent(self):
-        return self._timeout_sent
-
-    @timeout_sent.setter
-    def timeout_sent(self, timeout_sent):
-        self._timeout_sent = timeout_sent
 
     @property
     def last_task_ending_state(self):

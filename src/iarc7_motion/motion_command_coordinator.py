@@ -42,11 +42,7 @@ class MotionCommandCoordinator(object):
 
         # current state of motion coordinator
         self._task = None
-        self._first_task_seen = False
-
-        # used for timeouts & extrapolating
-        self._time_of_last_task = None
-        self._timeout_vel_sent = False
+        self._task_just_ended = False
 
         # to keep things thread safe
         self._lock = threading.RLock()
@@ -75,8 +71,6 @@ class MotionCommandCoordinator(object):
         try:
             # update rate for motion coordinator
             self._update_rate = rospy.get_param('~update_rate')
-            # task timeout values
-            self._task_timeout = rospy.Duration(rospy.get_param('~task_timeout'))
             # startup timeout
             self._startup_timeout = rospy.Duration(rospy.get_param('~startup_timeout'))
         except KeyError as e:
@@ -126,11 +120,6 @@ class MotionCommandCoordinator(object):
                     rospy.logwarn('motion coordinator attempting to execute safety land')
                     self._safety_land_requested = True
                     self._state_monitor.signal_safety_active()
-
-                # set the time of last task to now if we have not seen a task yet
-                if not self._first_task_seen:
-                    self._time_of_last_task = rospy.Time.now()
-                    self._first_task_seen = True
 
                 closest_obstacle_dist = self._idle_obstacle_avoider.get_distance_to_obstacle()
 
@@ -190,8 +179,7 @@ class MotionCommandCoordinator(object):
                     # as soon as we set a task to None, start time
                     # and send ending state to State Monitor
                     if self._task is None:
-                        self._time_of_last_task = rospy.Time.now()
-                        self._timeout_vel_sent = False
+                        self._task_just_ended = True
                         self._state_monitor.set_last_task_end_state(task_state)
                 # No task is running, run obstacle avoider
                 else:
@@ -205,14 +193,16 @@ class MotionCommandCoordinator(object):
                     self._task_command_handler.send_timeout(avoid_twist, acceleration=acceleration)
                     rospy.logwarn_throttle(1.0, 'Task running timeout. Running obstacle avoider')
 
-            rate.sleep()
+                if not self._task_just_ended:
+                    rate.sleep()
+
+                self._task_just_ended = False
 
     # fills out the Intermediary State for the task
     def _get_current_transition(self):
         state = TransitionData()
         state.last_twist = self._task_command_handler.get_last_twist()
         state.last_task_ending_state = self._task_command_handler.get_state()
-        state.timeout_sent = self._timeout_vel_sent
         return self._state_monitor.fill_out_transition(state)
 
     # callback for safety task completition

@@ -16,8 +16,6 @@ update_rate             : 25
 
 # Startup timeout
 startup_timeout: 15.0
-# If there is no task for this many seconds a zero velocity command will be sent
-task_timeout: 1.0
 
 # Resolution to generate linear motion profiles with
 linear_motion_profile_timestep: 0.020
