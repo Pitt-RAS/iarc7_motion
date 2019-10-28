@@ -8,7 +8,7 @@ from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 
 from iarc7_msgs.msg import MotionPointStamped, MotionPointStampedArray
-
+import cPickle as pickle
 
 # Convert a 3 element numpy array to a Vector3 message
 def np_to_msg(array, msg):
@@ -68,7 +68,6 @@ def interpolate_motion_points(first, second, time):
 
     return result
 
-
 # Generates fully defined motion profiles
 class LinearMotionProfileGenerator(object):
     def __init__(self, start_motion_point):
@@ -95,6 +94,8 @@ class LinearMotionProfileGenerator(object):
         self._override_start_position = None
         self._override_start_velocity = None
 
+        # self._info = []
+
     linear_motion_profile_generator = None
 
     @staticmethod
@@ -103,6 +104,31 @@ class LinearMotionProfileGenerator(object):
             LinearMotionProfileGenerator.linear_motion_profile_generator = LinearMotionProfileGenerator(
                 MotionPointStamped())
         return LinearMotionProfileGenerator.linear_motion_profile_generator
+
+    # def dump_info(self):
+    #     name = '/home/andrew/new_data.bin'
+    #     file = open(name, 'wb')
+    #     pickle.dump(self._info, file)
+    #     file.close()
+
+    def set_global_plan(self, plan):
+        if len(self._last_motion_plan.motion_points) == 0:
+            # self._info.append((self._last_motion_plan, plan))
+            self._last_motion_plan = plan
+        else:
+            new_plan = MotionPointStampedArray()
+            new_point_stamp = plan.motion_points[0].header.stamp
+
+            for i in range(0, len(self._last_motion_plan.motion_points)):
+                current_stamp = self._last_motion_plan.motion_points[i].header.stamp
+                if current_stamp > new_point_stamp:
+                    new_plan.motion_points = self._last_motion_plan.motion_points[:i]
+                    break
+
+            new_plan.motion_points.extend(plan.motion_points)
+            # self._info.append((self._last_motion_plan, plan))
+
+            self._last_motion_plan = new_plan
 
     # Get a starting motion point for a given time
     def _get_start_point(self,

@@ -33,6 +33,10 @@ class VelocityCommand(object):
         else:
             self.target_twist = target_twist
 
+class GlobalPlanCommand(object):
+    def __init__(self, plan):
+        self.plan = plan
+
 class ResetLinearProfileCommand(object):
     def __init__(self,
                  target_twist=None,
